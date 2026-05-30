@@ -1,0 +1,28 @@
+# Workbench default configuration
+# Override via .env, per-user DB settings, or environment variables (WORKBENCH_*)
+
+[general]
+log_level = "INFO"
+data_dir = "data"
+
+[api]
+host = "0.0.0.0"
+port = 8420
+cors_origins = ["http://localhost:8420", "http://localhost:3000"]
+
+[database]
+url_env = "DATABASE_URL"
+
+[openrouter]
+base_url = "https://openrouter.ai/api/v1"
+api_key_env = "OPENROUTER_API_KEY"
+default_model = "deepseek/deepseek-v4-flash"
+timeout_seconds = 120
+max_retries = 2
+
+[encryption]
+key_env = "ENCRYPTION_KEY"
+
+[auth]
+api_key_prefix = "wb"
+max_keys_per_user = 5

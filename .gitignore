@@ -1,0 +1,121 @@
+# ==============================================
+# Workbench .gitignore
+# Python 3.11+ | FastAPI | SQLAlchemy
+# ==============================================
+
+# --- Python bytecode ---
+__pycache__/
+*.py[cod]
+*.pyo
+*$py.class
+*.so
+
+# --- Distribution / packaging ---
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+sdist/
+*.whl
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+.env.*
+*.virtualenv
+
+# --- Secrets & credentials ---
+.env
+.secret_salt
+*.pem
+*.key
+*.crt
+credentials.*
+secrets.*
+
+# --- Database files ---
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+*.db3
+pgdata/
+postgres_data/
+pgdata_*/
+
+# --- Logs ---
+*.log
+logs/
+*.log.*
+
+# --- IDEs & editors ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.sublime-*
+.project
+.classpath
+.pydevproject
+.settings/
+
+# --- OS files ---
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# --- Type checking & linting cache ---
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.dmypy.json
+.pyre/
+.pytype/
+
+# --- Coverage & testing ---
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.tox/
+.benchmarks/
+
+# --- Runtime data ---
+data/
+uploads/
+tmp/
+temp/
+
+# --- Docker ---
+docker-compose.override.yml
+.docker/
+
+# --- Node (in case hybrid tooling) ---
+node_modules/
+package-lock.json
+yarn.lock
+.pnpm-store/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*.ipynb
+
+# --- Misc ---
+ideas.txt
+*.zip
+*.tar.gz
+*.tgz
+*.bak

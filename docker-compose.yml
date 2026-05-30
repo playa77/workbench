@@ -1,0 +1,50 @@
+version: "3.9"
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: workbench
+      POSTGRES_PASSWORD: workbench
+      POSTGRES_DB: workbench
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workbench"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  workbench:
+    build: .
+    ports:
+      - "8420:8420"
+    environment:
+      DATABASE_URL: postgresql+asyncpg://workbench:workbench@db:5432/workbench
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-change-me-to-a-random-64-char-hex-string}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs 2
+    command: workbench serve --host 0.0.0.0 --port 8420
+
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    ports:
+      - "3000:8080"
+    environment:
+      OPENAI_API_KEY: ${OPENROUTER_API_KEY:-}
+      OPENAI_API_BASE_URL: https://openrouter.ai/api/v1
+    volumes:
+      - openwebui_data:/app/backend/data
+    profiles:
+      - openwebui
+
+volumes:
+  pgdata:
+  openwebui_data:

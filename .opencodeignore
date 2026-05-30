@@ -1,0 +1,86 @@
+# Version control
+.git/
+
+# Python bytecode
+__pycache__/
+*.pyc
+*.pyo
+*$py.class
+*.so
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Secrets
+.env
+.secret_salt
+*.pem
+*.key
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-wal
+*.db-shm
+pgdata/
+postgres_data/
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Cache
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.tox/
+
+# Coverage
+htmlcov/
+.coverage
+.coverage.*
+
+# Runtime data
+data/
+uploads/
+tmp/
+
+# Docker
+docker-compose.override.yml
+
+# Node
+node_modules/
+
+# Misc
+ideas.txt
+*.zip
+
+# Legacy sub-projects (not part of unified workbench)
+ai_news_scraper/
+citizen/
+MADS/
+open-webui-wrapper/
+PlanExe/
+PResearch/
+stoa/

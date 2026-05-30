@@ -1,0 +1,87 @@
+"""Core database models for Workbench.
+
+Uses generic SQLAlchemy types that work with both PostgreSQL and SQLite.
+For production use with PostgreSQL + pgvector.
+"""
+
+from datetime import datetime
+from uuid import UUID, uuid4
+
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func, Uuid, JSON
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "workbench_users"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    username: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+    api_keys: Mapped[list["UserApiKey"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    openrouter_key: Mapped["UserOpenRouterKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+    plugin_settings: Mapped[list["UserPluginSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+
+class UserApiKey(Base):
+    __tablename__ = "workbench_api_keys"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
+    key_hash: Mapped[str] = mapped_column(String(120), nullable=False)
+    label: Mapped[str] = mapped_column(String(100), nullable=False, default="default")
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped["User"] = relationship(back_populates="api_keys")
+
+
+class UserOpenRouterKey(Base):
+    __tablename__ = "workbench_openrouter_keys"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="openrouter_key")
+
+
+class UserPluginSettings(Base):
+    __tablename__ = "workbench_plugin_settings"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
+    plugin_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    settings: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="plugin_settings")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "plugin_name", name="uq_user_plugin"),
+        Index("idx_plugin_settings_user", "user_id"),
+    )
+
+
+class StoredReport(Base):
+    __tablename__ = "workbench_reports"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
+    plugin_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    content_format: Mapped[str] = mapped_column(String(20), nullable=False, default="markdown")
+    metadata_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+    __table_args__ = (
+        Index("idx_reports_user", "user_id"),
+        Index("idx_reports_plugin", "plugin_name"),
+    )

@@ -1,0 +1,63 @@
+/* ==========================================
+   Workbench — Tab Router
+   Lazy-loads tab component scripts on demand
+   ========================================== */
+
+const Router = (() => {
+  let activeTab = null;
+  const tabCallbacks = {};
+  const loadedScripts = {};
+
+  function register(name, renderFn) {
+    tabCallbacks[name] = renderFn;
+  }
+
+  function setActive(name) {
+    activeTab = name;
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+
+    document.getElementById('welcome-screen').style.display = 'none';
+    document.getElementById('settings-panel').style.display = 'none';
+
+    if (name === 'settings') {
+      document.getElementById('settings-panel').style.display = 'block';
+      document.getElementById('active-tab-content').style.display = 'none';
+      return;
+    }
+
+    document.getElementById('active-tab-content').style.display = 'block';
+
+    const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
+    const jsPath = btn ? btn.dataset.js : null;
+    const container = document.getElementById('active-tab-content');
+
+    if (tabCallbacks[name]) {
+      tabCallbacks[name](container);
+      return;
+    }
+
+    container.innerHTML = '<div class="spinner" style="margin:40px auto"></div>';
+
+    if (jsPath && !loadedScripts[jsPath]) {
+      loadedScripts[jsPath] = true;
+      const script = document.createElement('script');
+      script.src = jsPath;
+      script.onload = () => {
+        const fallback = document.createElement('script');
+        fallback.textContent = `setTimeout(() => { Router.setActive('${name}'); }, 10);`;
+        document.body.appendChild(fallback);
+      };
+      document.body.appendChild(script);
+      return;
+    }
+
+    container.innerHTML = `<div class="card"><p>Agent "${name}" has no UI yet.</p></div>`;
+  }
+
+  function getActive() {
+    return activeTab;
+  }
+
+  return { register, setActive, getActive };
+})();
