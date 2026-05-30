@@ -37,7 +37,7 @@ def valid_config_dict():
         },
         "models": {
             "strong": {"id": "deepseek/deepseek-v4-pro", "temperature": 0.7},
-            "weak": {"id": "deepseek/deepseek-v4-flash", "temperature": 0.7},
+            "weak": {"id": "deepseek/deepseek-v4-pro", "temperature": 0.7},
         },
         "pipeline": {
             "schedule": "04:00",
@@ -100,7 +100,7 @@ class TestSuccessfulLoading:
         # -- models --
         assert cfg.models.strong.id == "deepseek/deepseek-v4-pro"
         assert cfg.models.strong.temperature == 0.7
-        assert cfg.models.weak.id == "deepseek/deepseek-v4-flash"
+        assert cfg.models.weak.id == "deepseek/deepseek-v4-pro"
         assert cfg.models.weak.temperature == 0.7
 
         # -- pipeline --

@@ -29,7 +29,7 @@ class RoleManager:
             return []
 
     # UPDATED DEFAULT ARGUMENT
-    def load_role(self, role_id: str, default_model: str = "google/gemini-2.5-flash-lite") -> Optional[AgentConfig]:
+    def load_role(self, role_id: str, default_model: str = "deepseek/deepseek-v4-pro") -> Optional[AgentConfig]:
         filepath = os.path.join(self.roles_dir, f"{role_id}.txt")
         
         if not os.path.exists(filepath):

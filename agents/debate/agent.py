@@ -70,7 +70,7 @@ class DebateAgent(AgentBase):
                         {"role": "system", "content": f"You are a {role_id}. Debate the topic from your assigned perspective. Be concise (2-3 paragraphs). Do not break character."},
                         {"role": "user", "content": prompt},
                     ],
-                    model="deepseek/deepseek-v4-flash",
+                    model="deepseek/deepseek-v4-pro",
                     temperature=0.7,
                     max_tokens=800,
                 )

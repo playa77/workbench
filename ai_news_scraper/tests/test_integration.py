@@ -67,7 +67,7 @@ def _make_config_dir(tmp_path, db_path: str | None = None) -> str:
         },
         "models": {
             "strong": {"id": "deepseek/deepseek-v4-pro", "temperature": 0.7},
-            "weak": {"id": "deepseek/deepseek-v4-flash", "temperature": 0.7},
+            "weak": {"id": "deepseek/deepseek-v4-pro", "temperature": 0.7},
         },
         "pipeline": {
             "max_retries": 0,

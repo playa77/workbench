@@ -20,7 +20,7 @@ def test_config_show_redacted(monkeypatch) -> None:
 [providers.primary]
 type = "openai"
 api_key_env = "OPENAI_API_KEY"
-default_model = "gpt-4o-mini"
+default_model = "deepseek/deepseek-v4-pro"
 """.strip()
         )
         result = runner.invoke(cli, ["config", "show"])

@@ -11,7 +11,7 @@ artifact_dir = "${data_dir}/art"
 [providers.main]
 type = "openai"
 api_key_env = "OPENAI_API_KEY"
-default_model = "gpt-4o-mini"
+default_model = "deepseek/deepseek-v4-pro"
 max_tokens = 1234
 timeout_seconds = 99
 

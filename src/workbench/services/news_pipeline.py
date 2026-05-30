@@ -126,7 +126,7 @@ class NewsPipeline:
                     {"role": "system", "content": "You are a news analyst. Respond only with valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                model="deepseek/deepseek-v4-flash",
+                model="deepseek/deepseek-v4-pro",
                 temperature=0.3,
                 max_tokens=2000,
             )
@@ -165,7 +165,7 @@ class NewsPipeline:
                         {"role": "system", "content": "You are a professional journalist. Write clear, engaging summaries."},
                         {"role": "user", "content": prompt},
                     ],
-                    model="deepseek/deepseek-v4-flash",
+                    model="deepseek/deepseek-v4-pro",
                     temperature=0.5,
                     max_tokens=2000,
                 )
@@ -184,7 +184,7 @@ class NewsPipeline:
                             {"role": "system", "content": "You are a video script writer. Write engaging YouTube scripts."},
                             {"role": "user", "content": script_prompt},
                         ],
-                        model="deepseek/deepseek-v4-flash",
+                        model="deepseek/deepseek-v4-pro",
                         temperature=0.6,
                         max_tokens=3000,
                     )
@@ -214,7 +214,7 @@ class NewsPipeline:
                     {"role": "system", "content": "You are an executive editor. Write concise, insightful daily briefs."},
                     {"role": "user", "content": prompt},
                 ],
-                model="deepseek/deepseek-v4-flash",
+                model="deepseek/deepseek-v4-pro",
                 temperature=0.4,
                 max_tokens=1500,
             )

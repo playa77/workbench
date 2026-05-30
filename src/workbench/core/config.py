@@ -29,7 +29,7 @@ class WorkbenchConfig(BaseModel):
     database_url: str = ""
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     openrouter_api_key_env: str = "OPENROUTER_API_KEY"
-    openrouter_default_model: str = "deepseek/deepseek-v4-flash"
+    openrouter_default_model: str = "deepseek/deepseek-v4-pro"
     openrouter_timeout_seconds: int = 120
     openrouter_max_retries: int = 2
     encryption_key: str = ""

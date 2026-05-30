@@ -27,7 +27,7 @@ type = "openai_compatible"
 api_key_env = "OPENROUTER_API_KEY"
 # OpenRouter OpenAI-compatible endpoint
 base_url = "https://openrouter.ai/api/v1"
-default_model = "openai/gpt-4o-mini"
+default_model = "deepseek/deepseek-v4-pro"
 max_tokens = 4096
 timeout_seconds = 120
 
@@ -35,14 +35,14 @@ timeout_seconds = 120
 type = "anthropic"
 # Environment variable containing the API key
 api_key_env = "ANTHROPIC_API_KEY"
-default_model = "claude-sonnet-4-20250514"
+default_model = "deepseek/deepseek-v4-pro"
 max_tokens = 8192
 timeout_seconds = 120
 
 [providers.openai]
 type = "openai"
 api_key_env = "OPENAI_API_KEY"
-default_model = "gpt-4o"
+default_model = "deepseek/deepseek-v4-pro"
 max_tokens = 4096
 timeout_seconds = 120
 

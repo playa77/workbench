@@ -59,7 +59,7 @@ def config():
         ),
         models=ModelsConfig(
             strong=ModelDef(id="deepseek/deepseek-v4-pro", temperature=0.7),
-            weak=ModelDef(id="deepseek/deepseek-v4-flash", temperature=0.7),
+            weak=ModelDef(id="deepseek/deepseek-v4-pro", temperature=0.7),
         ),
         pipeline=PipelineConfig(),
         email=EmailConfig(

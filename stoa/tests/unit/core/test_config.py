@@ -121,7 +121,7 @@ def test_providers_default_string_is_ignored() -> None:
                 "openrouter": {
                     "type": "openai_compatible",
                     "api_key_env": "OPENROUTER_API_KEY",
-                    "default_model": "bytedance-seed/seed-2.0-lite",
+                    "default_model": "deepseek/deepseek-v4-pro",
                 },
             }
         },

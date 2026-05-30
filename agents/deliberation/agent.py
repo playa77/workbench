@@ -62,7 +62,7 @@ class DeliberationAgent(AgentBase):
                     {"role": "system", "content": "You are an expert analyst. Provide thorough, balanced, structured analysis."},
                     {"role": "user", "content": prompt},
                 ],
-                model="deepseek/deepseek-v4-flash",
+                model="deepseek/deepseek-v4-pro",
                 temperature=0.5,
                 max_tokens=3000,
             )

@@ -96,7 +96,7 @@ async def synthesize(
     synthesis_result = await Synthesizer(
         provider=provider,
         trace_collector=services.trace_collector,
-        model="gpt-4o-mini",
+        model="deepseek/deepseek-v4-pro",
     ).synthesize(
         query=request.query, retrieval_results=retrieval_results, session_id=request.session_id
     )
@@ -131,7 +131,7 @@ async def export_report(
     provider_key = services.provider_registry.list_providers()[0]
     provider = services.provider_registry.get(provider_key)
     synthesis_result = await Synthesizer(
-        provider, services.trace_collector, model="gpt-4o-mini"
+        provider, services.trace_collector, model="deepseek/deepseek-v4-pro"
     ).synthesize(
         query=request.query,
         retrieval_results=retrieval_results,

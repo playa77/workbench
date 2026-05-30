@@ -13,7 +13,7 @@ class AgentConfig(BaseModel):
     system_prompt: str = Field(..., description="The core personality instructions")
     temperature: float = Field(0.7, ge=0.0, le=2.0, description="Creativity parameter")
     # UPDATED DEFAULT MODEL
-    model_name: str = Field("google/gemini-2.5-flash-lite", description="OpenRouter model string")
+    model_name: str = Field("deepseek/deepseek-v4-pro", description="OpenRouter model string")
     
     avatar_color: str = Field("#FFFFFF", description="Hex color code for UI")
 

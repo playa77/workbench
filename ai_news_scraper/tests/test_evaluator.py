@@ -58,7 +58,7 @@ def mock_llm():
 def mock_config():
     """Return a mock config with weak model and pipeline settings."""
     config = MagicMock()
-    config.models.weak.id = "deepseek/deepseek-chat"
+    config.models.weak.id = "deepseek/deepseek-v4-pro"
     config.models.weak.temperature = 0.3
     config.pipeline.max_refinement_rounds = 3
     return config
@@ -1121,7 +1121,7 @@ class TestRunQualityEval:
 
         mock_llm.complete.assert_called_once()
         call_kwargs = mock_llm.complete.call_args[1]
-        assert call_kwargs["model_id"] == "deepseek/deepseek-chat"
+        assert call_kwargs["model_id"] == "deepseek/deepseek-v4-pro"
         assert call_kwargs["temperature"] == 0.3
 
     def test_system_prompt_includes_quality_rubric(self, seeded_evaluator_db, mock_config, mock_llm):
@@ -1279,7 +1279,7 @@ class TestRunAdversarialEval:
 
         mock_llm.complete.assert_called_once()
         call_kwargs = mock_llm.complete.call_args[1]
-        assert call_kwargs["model_id"] == "deepseek/deepseek-chat"
+        assert call_kwargs["model_id"] == "deepseek/deepseek-v4-pro"
         assert call_kwargs["temperature"] == 0.3
 
     def test_system_prompt_includes_adversarial_criteria(self, seeded_evaluator_db, mock_config, mock_llm):

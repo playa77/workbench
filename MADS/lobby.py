@@ -29,7 +29,7 @@ class AgentConfigDialog(QDialog):
         self.model_combo = QComboBox()
         # UPDATED MODEL LIST - Development Priority
         models = [
-            "google/gemini-2.5-flash-lite",
+            "deepseek/deepseek-v4-pro",
             "x-ai/grok-4.1-fast:free",
             "z-ai/glm-4.5-air:free",
             "nousresearch/hermes-3-llama-3.1-405b:free"

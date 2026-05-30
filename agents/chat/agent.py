@@ -36,7 +36,7 @@ class ChatAgent(AgentBase):
         try:
             response = await client.chat_completion(
                 messages=[{"role": "user", "content": body.message}],
-                model=body.model or "deepseek/deepseek-v4-flash",
+                model=body.model or "deepseek/deepseek-v4-pro",
                 temperature=body.temperature,
                 max_tokens=body.max_tokens or 4096,
             )

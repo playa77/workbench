@@ -22,7 +22,7 @@ def _config() -> CAWConfig:
                 "primary": {
                     "type": "openai",
                     "api_key_env": "OPENAI_API_KEY",
-                    "default_model": "gpt-4o-mini",
+                    "default_model": "deepseek/deepseek-v4-pro",
                     "max_tokens": 500,
                 }
             },

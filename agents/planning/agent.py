@@ -56,7 +56,7 @@ class PlanningAgent(AgentBase):
                     {"role": "system", "content": "You are a senior strategic planner. Create comprehensive, actionable plans."},
                     {"role": "user", "content": prompt},
                 ],
-                model="deepseek/deepseek-v4-flash",
+                model="deepseek/deepseek-v4-pro",
                 temperature=0.5,
                 max_tokens=4000,
             )

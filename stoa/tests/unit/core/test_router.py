@@ -13,12 +13,12 @@ def _config() -> CAWConfig:
                 "primary": {
                     "type": "openai",
                     "api_key_env": "OPENAI_API_KEY",
-                    "default_model": "gpt-4o-mini",
+                    "default_model": "deepseek/deepseek-v4-pro",
                 },
                 "backup": {
                     "type": "openai",
                     "api_key_env": "OPENAI_API_KEY",
-                    "default_model": "gpt-4o",
+                    "default_model": "deepseek/deepseek-v4-pro",
                 },
             },
             "routing": {"strategy": "config", "fallback_chain": ["backup", "missing"]},
@@ -49,7 +49,7 @@ async def test_route_config_default() -> None:
     router = Router(config, ProviderRegistry(config))
     selection = await router.route()
     assert selection.provider_key == "primary"
-    assert selection.model == "gpt-4o-mini"
+    assert selection.model == "deepseek/deepseek-v4-pro"
 
 
 @pytest.mark.asyncio

@@ -45,7 +45,7 @@ class ResearchPlugin(PluginBase):
                     {"role": "system", "content": "You are a research planner. Plan a thorough investigation."},
                     {"role": "user", "content": plan_prompt},
                 ],
-                model="deepseek/deepseek-v4-flash",
+                model="deepseek/deepseek-v4-pro",
                 temperature=0.3,
                 max_tokens=800,
             )
@@ -63,7 +63,7 @@ class ResearchPlugin(PluginBase):
                     {"role": "system", "content": "You are an expert researcher. Write comprehensive, well-cited research reports."},
                     {"role": "user", "content": synth_prompt},
                 ],
-                model="deepseek/deepseek-v4-flash",
+                model="deepseek/deepseek-v4-pro",
                 temperature=0.4,
                 max_tokens=4000,
             )
