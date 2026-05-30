@@ -1,0 +1,45 @@
+{
+	"folders": [
+		{
+			"name": "database_api",
+			"path": "database_api"
+		},
+		{
+			"name": "database_postgres",
+			"path": "database_postgres"
+		},
+		{
+			"name": "frontend_multi_user",
+			"path": "frontend_multi_user"
+		},
+		{
+			"name": "worker_plan",
+			"path": "worker_plan"
+		},
+		{
+			"name": "worker_plan_database",
+			"path": "worker_plan_database"
+		},
+		{
+			"name": "PlanExe",
+			"path": "."
+		},
+		{
+			"path": "mcp_cloud"
+		},
+		{
+			"path": "database_worker"
+		},
+		{
+			"path": "llm_config"
+		}
+	],
+	"settings": {
+		"files.exclude": {
+			"**/__pycache__": true,
+			"**/.venv": true,
+			"**/.vscode": true,
+			"**/*.egg-info": true
+		}
+	}
+}

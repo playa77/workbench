@@ -1,0 +1,18 @@
+[pack]
+pack_id = "caw.packs.deep_research"
+version = "1.0.0"
+name = "Deep Research"
+description = "Full research pipeline with adversarial review."
+
+[[pack.skills]]
+skill_id = "caw.builtin.research_operator"
+version = ">=1.0.0"
+
+[[pack.skills]]
+skill_id = "caw.builtin.critique_agent"
+version = ">=1.0.0"
+priority_override = 150
+
+[pack.config_overrides]
+providers.default = "anthropic"
+routing.strategy = "capability"

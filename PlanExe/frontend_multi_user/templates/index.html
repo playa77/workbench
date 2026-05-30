@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+{% block title %}Home - PlanExe{% endblock %}
+{% block head %}
+<style>
+    /* ── Landing page (signed out) ──────────────────── */
+    .hero {
+        text-align: center;
+        padding: 64px 0 48px;
+    }
+    .hero h1 {
+        font-size: 2.5rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        margin: 0 0 16px;
+        color: var(--color-text);
+    }
+    .hero p {
+        font-size: 1.15rem;
+        color: var(--color-text-secondary);
+        margin: 0 0 32px;
+        max-width: 480px;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .btn-hero {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 32px;
+        background: var(--color-primary);
+        color: #fff;
+        border-radius: var(--radius);
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.15s, transform 0.1s;
+        border: none;
+    }
+    .btn-hero:hover {
+        background: var(--color-primary-hover);
+        color: #fff;
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+    .btn-hero-outline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 32px;
+        background: transparent;
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+        font-size: 1rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: border-color 0.15s, transform 0.1s;
+        margin-left: 12px;
+    }
+    .btn-hero-outline:hover {
+        border-color: var(--color-text-secondary);
+        color: var(--color-text);
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+    .hero-actions {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    /* Features grid */
+    .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 20px;
+        padding: 32px 0 48px;
+    }
+    .feature-card {
+        background: var(--color-bg-soft);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: 28px 24px;
+        transition: border-color 0.15s;
+    }
+    .feature-card:hover {
+        border-color: var(--color-primary);
+    }
+    .feature-icon {
+        width: 40px;
+        height: 40px;
+        background: var(--color-primary);
+        border-radius: var(--radius);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 16px;
+        color: #fff;
+    }
+    .feature-icon svg {
+        width: 20px;
+        height: 20px;
+    }
+    .feature-card h3 {
+        font-size: 1.05rem;
+        font-weight: 700;
+        margin: 0 0 8px;
+    }
+    .feature-card p {
+        font-size: 0.9rem;
+        color: var(--color-text-secondary);
+        margin: 0;
+        line-height: 1.5;
+    }
+
+    /* Info banner below features */
+    .info-banner {
+        text-align: center;
+        padding: 32px 0 16px;
+        color: var(--color-text-secondary);
+        font-size: 0.95rem;
+    }
+    .info-banner a {
+        color: var(--color-primary);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .info-banner a:hover {
+        text-decoration: underline;
+    }
+
+    /* ── Onboarding steps ──────────────────────────── */
+    .onboarding-title {
+        font-size: 1.1rem;
+        font-weight: 700;
+        margin: 0 0 4px;
+    }
+    .onboarding-subtitle {
+        font-size: 0.82rem;
+        color: var(--color-text-secondary);
+        margin: 0 0 20px;
+    }
+    .onboarding-steps {
+        max-width: 480px;
+    }
+    .onboarding-step {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--color-border);
+    }
+    .onboarding-step:last-child {
+        border-bottom: none;
+    }
+    .onboarding-check {
+        flex-shrink: 0;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 2px solid var(--color-border);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1px;
+        font-size: 0.7rem;
+        color: transparent;
+    }
+    .onboarding-check.done {
+        background: #059669;
+        border-color: #059669;
+        color: #fff;
+    }
+    .onboarding-check.done::after {
+        content: "\2713";
+    }
+    .onboarding-step-body {
+        flex: 1;
+        min-width: 0;
+    }
+    .onboarding-step-title {
+        font-size: 0.88rem;
+        font-weight: 600;
+        color: var(--color-text);
+        margin: 0;
+    }
+    .onboarding-step.pending .onboarding-step-title {
+        color: var(--color-text-secondary);
+    }
+    .onboarding-step-desc {
+        font-size: 0.78rem;
+        color: var(--color-text-secondary);
+        margin: 4px 0 0;
+        line-height: 1.5;
+    }
+    .onboarding-step-desc a {
+        color: var(--color-primary, #0066cc);
+        font-weight: 600;
+        text-decoration: none;
+    }
+    .onboarding-step-desc a:hover {
+        text-decoration: underline;
+    }
+    .onboarding-step-detail {
+        font-size: 0.75rem;
+        color: var(--color-text-secondary);
+        margin: 2px 0 0;
+    }
+    .onboarding-step-link {
+        font-size: 0.75rem;
+        color: var(--color-primary, #0066cc);
+        text-decoration: none;
+    }
+    .onboarding-step-link:hover {
+        text-decoration: underline;
+    }
+    .superuser-badge {
+        display: inline-block;
+        padding: 2px 8px;
+        background: #fef3c7;
+        border: 1px solid #f59e0b;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 700;
+        color: #92400e;
+        margin-left: 6px;
+        vertical-align: middle;
+    }
+    .quick-actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 32px;
+    }
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 24px;
+        border-radius: var(--radius);
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: background 0.15s, transform 0.1s;
+        border: none;
+    }
+    .btn-action:hover {
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+    .btn-action-primary {
+        background: var(--color-primary);
+        color: #fff;
+    }
+    .btn-action-primary:hover {
+        background: var(--color-primary-hover);
+        color: #fff;
+    }
+    .btn-action-secondary {
+        background: var(--color-bg-soft);
+        color: var(--color-text);
+        border: 1px solid var(--color-border);
+    }
+    .btn-action-secondary:hover {
+        border-color: var(--color-text-secondary);
+        color: var(--color-text);
+    }
+
+
+
+    /* ── Admin view ─────────────────────────────────── */
+    .admin-notice {
+        text-align: center;
+        padding: 48px 0;
+    }
+    .admin-notice h1 {
+        font-size: 1.75rem;
+        font-weight: 700;
+        margin: 0 0 8px;
+    }
+    .admin-notice p {
+        color: var(--color-text-secondary);
+        margin: 0 0 24px;
+    }
+
+    @media (max-width: 600px) {
+        .hero h1 { font-size: 1.75rem; }
+        .hero { padding: 40px 0 32px; }
+        .hero-actions { flex-direction: column; align-items: center; }
+        .btn-hero-outline { margin-left: 0; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% if user %}
+{# ─── Dashboard for signed-in users ─────────────────────────── #}
+<div style="max-width:480px; margin:0 auto;">
+<h1 class="onboarding-title">Onboarding</h1>
+<p class="onboarding-subtitle">Connect PlanExe with your AI assistant to create plans.</p>
+
+<div class="onboarding-steps">
+    {% for step in onboarding_steps %}
+    <div class="onboarding-step {% if not step.done %}pending{% endif %}">
+        <div class="onboarding-check {% if step.done %}done{% endif %}"></div>
+        <div class="onboarding-step-body">
+            <p class="onboarding-step-title">
+                {{ step.title }}
+                {% if step.title == "Superuser" and step.done %}
+                <span class="superuser-badge">Superuser</span>
+                {% endif %}
+            </p>
+            {% if not step.done and step.description %}
+            <p class="onboarding-step-desc">{{ step.description | safe }}</p>
+            {% endif %}
+            <p class="onboarding-step-detail">
+                {{ step.detail }}
+                {% if step.link %}
+                &middot; <a href="{{ step.link }}" class="onboarding-step-link">{% if "docs.planexe" in step.link %}Setup guide{% else %}Go{% endif %} &rarr;</a>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<p style="margin-top:28px; font-size:0.82rem; color:var(--color-text-secondary);">
+    Need help? Join the <a href="https://planexe.org/discord/" target="_blank" style="color:var(--color-primary, #0066cc); text-decoration:none; font-weight:600;">PlanExe Discord</a> for setup assistance and community support.
+</p>
+</div>
+
+{% if onboarding_debug %}
+<details style="margin-top:24px; font-size:0.75rem; color:var(--color-text-secondary);">
+    <summary style="cursor:pointer; font-weight:600;">Debug: onboarding data</summary>
+    <pre style="margin-top:8px; padding:10px; background:var(--color-bg-soft); border:1px solid var(--color-border); border-radius:var(--radius); overflow-x:auto;">{% for step in onboarding_steps %}
+{{ step.title }}:
+  done: {{ step.done }}
+  detail: {{ step.detail }}
+  link: {{ step.link or "—" }}
+{% endfor %}
+Override steps with URL parameters (1=done, 0=pending):
+  /?debug=1&step1=1&step2=1&step3=1&step4=1&step5=1  — all done
+  /?debug=1&step1=1&step2=0&step3=0&step4=0&step5=0  — new user
+  /?debug=1&step5=1                                    — force superuser</pre>
+</details>
+{% endif %}
+
+{% elif is_admin %}
+{# ─── Admin shortcut ────────────────────────────────────────── #}
+<div class="admin-notice">
+    <h1>PlanExe Admin</h1>
+    <p>You are signed in as an administrator.</p>
+    <div class="quick-actions" style="justify-content: center;">
+        <a href="{{ url_for('admin.index') }}" class="btn-action btn-action-primary">Open Admin Panel</a>
+    </div>
+</div>
+
+{% else %}
+{# ─── Landing page for visitors ─────────────────────────────── #}
+<section class="hero">
+    <h1>Welcome to PlanExe</h1>
+    <p>Generate detailed project plans from a simple description. Save time, save money, avoid surprises.</p>
+    <div class="hero-actions">
+        <a href="{{ url_for('auth.login') }}" class="btn-hero">Sign In to Get Started</a>
+        <a href="https://planexe.org/" target="_blank" class="btn-hero-outline">Learn More</a>
+    </div>
+</section>
+
+<section class="features">
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        </div>
+        <h3>Save Money</h3>
+        <p>Don't fund doomed projects. Get a reality check before committing resources to your next idea.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        </div>
+        <h3>Save Time</h3>
+        <p>It's time consuming to manually create a plan. Let AI handle the heavy lifting while you focus on execution.</p>
+    </div>
+    <div class="feature-card">
+        <div class="feature-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </div>
+        <h3>Avoid Surprises</h3>
+        <p>Uncover pitfalls early. Identify risks, dependencies, and blockers before they become costly problems.</p>
+    </div>
+</section>
+
+<section class="info-banner">
+    <p>
+        PlanExe is open source &mdash; learn more at
+        <a href="https://planexe.org/" target="_blank">planexe.org</a>
+    </p>
+</section>
+{% endif %}
+
+{% endblock %}

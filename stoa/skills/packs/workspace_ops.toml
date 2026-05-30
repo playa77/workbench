@@ -1,0 +1,13 @@
+[pack]
+pack_id = "caw.packs.workspace_ops"
+version = "0.1.0"
+name = "Workspace Ops"
+description = "Safe workspace operations with critique support."
+
+[[pack.skills]]
+skill_id = "caw.builtin.workspace_operator"
+version = ">=0.1.0"
+
+[[pack.skills]]
+skill_id = "caw.builtin.critique_agent"
+version = ">=0.1.0"

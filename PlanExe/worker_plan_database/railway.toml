@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "/worker_plan_database/Dockerfile"
+watchPatterns = ["/worker_plan_database/**", "/worker_plan/**", "/database_api/**", "/llm_config/**"]
+context = "."
+
+[deploy]
+restartPolicyType = "NEVER"
+restartPolicyMaxRetries = 3
+healthcheckInterval = 10

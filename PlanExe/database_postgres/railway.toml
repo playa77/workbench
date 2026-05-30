@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "/database_postgres/Dockerfile"
+watchPatterns = ["/database_postgres/**"]
+context = "."
+
+[deploy]
+restartPolicyType = "NEVER"
+restartPolicyMaxRetries = 3
+healthcheckInterval = 10

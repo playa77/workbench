@@ -1,0 +1,2 @@
+[workspace]
+sandbox_mode = "invalid_value"

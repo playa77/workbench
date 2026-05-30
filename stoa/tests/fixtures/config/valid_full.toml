@@ -1,0 +1,42 @@
+[general]
+version = "1.2.3"
+log_level = "WARNING"
+data_dir = "~/caw-data"
+
+[storage]
+db_path = "${data_dir}/db.sqlite"
+trace_dir = "${data_dir}/trace"
+artifact_dir = "${data_dir}/art"
+
+[providers.main]
+type = "openai"
+api_key_env = "OPENAI_API_KEY"
+default_model = "gpt-4o-mini"
+max_tokens = 1234
+timeout_seconds = 99
+
+[routing]
+strategy = "capability"
+fallback_chain = ["main"]
+
+[skills]
+builtin_dir = "skills/a"
+user_dir = "skills/b"
+packs_dir = "skills/c"
+
+[workspace]
+sandbox_mode = "strict"
+allowed_paths = ["~/proj", "/tmp"]
+confirm_writes = false
+confirm_deletes = false
+confirm_executions = true
+
+[evaluation]
+tasks_dir = "tasks2"
+results_dir = "${data_dir}/results"
+default_scorer = "other"
+
+[api]
+host = "0.0.0.0"
+port = 9000
+cors_origins = ["http://localhost:8080"]

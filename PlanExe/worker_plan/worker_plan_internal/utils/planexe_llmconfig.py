@@ -1,0 +1,145 @@
+"""
+Load PlanExe LLM profile configuration from the resolved llm_config/<profile>.json file.
+
+PROMPT> python -m worker_plan_internal.utils.planexe_llmconfig
+"""
+from dataclasses import dataclass
+from functools import cache
+from pathlib import Path
+from typing import Any, Dict
+import json
+from worker_plan_api.planexe_config import PlanExeConfig
+from worker_plan_api.model_profile import ModelProfileEnum
+from worker_plan_api.planexe_dotenv import PlanExeDotEnv
+from worker_plan_api.llm_class_filter import (
+    ENV_PLANEXE_LLM_CONFIG_WHITELISTED_CLASSES,
+    is_llm_class_allowed,
+    parse_llm_class_whitelist,
+)
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PlanExeLLMConfig:
+    llm_config_json_path: Path
+    llm_config_dict_raw: dict[str, Any]
+    llm_config_dict: dict[str, Any]
+
+    @classmethod
+    def load(
+        cls,
+        model_profile: ModelProfileEnum | str | None = None,
+        llm_config_json_name_override: str | None = None,
+    ):
+        profile_key = model_profile.value if isinstance(model_profile, ModelProfileEnum) else model_profile
+        return _load_cached(profile_key, llm_config_json_name_override)
+
+    @classmethod
+    def load_llm_config(cls, llm_config_json_path: Path) -> Dict[str, Any]:
+        """Loads the configuration from a JSON file."""
+        try:
+            with open(llm_config_json_path, "r") as f:
+                return json.load(f)
+        except FileNotFoundError:
+            logger.error(
+                "Warning: LLM config file not found at %s. Using an empty dictionary.",
+                llm_config_json_path,
+            )
+            return {}
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Error decoding JSON from {llm_config_json_path}: {e}")
+
+    @classmethod
+    def substitute_env_vars(cls, config: Dict[str, Any], env_vars: Dict[str, str]) -> Dict[str, Any]:
+        """Recursively substitutes environment variables in the configuration."""
+
+        def replace_value(value: Any) -> Any:
+            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                var_name = value[2:-1]  # Extract variable name
+                if var_name in env_vars:
+                    return env_vars[var_name]
+                else:
+                    logger.warning(f"Warning: Environment variable '{var_name}' not found.")
+                    return value  # Or raise an error if you prefer strict enforcement
+            return value
+
+        def process_item(item):
+            if isinstance(item, dict):
+                return {k: process_item(v) for k, v in item.items()}
+            elif isinstance(item, list):
+                return [process_item(i) for i in item]
+            else:
+                return replace_value(item)
+
+        return process_item(config)
+
+    @classmethod
+    def filter_by_whitelisted_classes(cls, config: Dict[str, Any], env_vars: Dict[str, str]) -> Dict[str, Any]:
+        """
+        Optionally filter entries by provider class using a comma-separated env var.
+        Example: PLANEXE_LLM_CONFIG_WHITELISTED_CLASSES="OpenRouter,Ollama"
+        """
+        raw_whitelist = env_vars.get(ENV_PLANEXE_LLM_CONFIG_WHITELISTED_CLASSES)
+        whitelist = parse_llm_class_whitelist(raw_whitelist)
+        if whitelist is None:
+            return config
+
+        filtered: Dict[str, Any] = {}
+        dropped_keys: list[str] = []
+        for key, value in config.items():
+            class_name = value.get("class") if isinstance(value, dict) else None
+            if is_llm_class_allowed(class_name, whitelist):
+                filtered[key] = value
+            else:
+                dropped_keys.append(key)
+
+        logger.info(
+            "Applied %s=%r. Allowed classes=%s. Kept=%s Dropped=%s",
+            ENV_PLANEXE_LLM_CONFIG_WHITELISTED_CLASSES,
+            raw_whitelist,
+            ",".join(sorted(whitelist)),
+            len(filtered),
+            len(dropped_keys),
+        )
+        if dropped_keys:
+            logger.debug("Dropped llm_config entries: %s", ", ".join(sorted(dropped_keys)))
+        return filtered
+
+    def __repr__(self):
+        return f"PlanExeLLMConfig(llm_config_json_path={self.llm_config_json_path!r}, llm_config_dict.keys()={self.llm_config_dict.keys()!r})"
+
+
+@cache
+def _load_cached(
+    profile_key: str | None,
+    llm_config_json_name_override: str | None,
+) -> PlanExeLLMConfig:
+    config = PlanExeConfig.load(
+        model_profile_override=profile_key,
+        llm_config_json_name_override=llm_config_json_name_override,
+    )
+    config.raise_if_required_files_not_found()
+    planexe_dotenv = PlanExeDotEnv.load()
+
+    llm_config_json_path = config.llm_config_json_path
+    llm_config_dict_raw = PlanExeLLMConfig.load_llm_config(llm_config_json_path)
+    # Filter before substituting so we don't warn about env vars
+    # belonging to entries that are about to be dropped (e.g. when
+    # PLANEXE_LLM_CONFIG_WHITELISTED_CLASSES=OpenRouter is set in
+    # production and OPENAI_API_KEY / DEEPSEEK_API_KEY are absent).
+    llm_config_dict = PlanExeLLMConfig.filter_by_whitelisted_classes(llm_config_dict_raw, planexe_dotenv.dotenv_dict)
+    llm_config_dict = PlanExeLLMConfig.substitute_env_vars(llm_config_dict, planexe_dotenv.dotenv_dict)
+
+    return PlanExeLLMConfig(
+        llm_config_json_path=llm_config_json_path,
+        llm_config_dict_raw=llm_config_dict_raw,
+        llm_config_dict=llm_config_dict,
+    )
+
+if __name__ == "__main__":
+    llm_config = PlanExeLLMConfig.load()
+    print(llm_config)    
+    print(f"\nllm_config.llm_config_dict_raw: {llm_config.llm_config_dict_raw!r}")
+    # print(f"\nllm_config.llm_config_dict: {llm_config.llm_config_dict!r}")

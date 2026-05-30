@@ -1,0 +1,21 @@
+[task]
+task_id = "research.sample"
+version = "1.0.0"
+name = "Sample Research Task"
+description = "Evaluate a short synthesis request."
+category = "research"
+difficulty = "easy"
+
+[task.input]
+type = "corpus"
+sources = ["../research/source_a.md"]
+query = "Summarize the provided source."
+
+[task.expected]
+type = "structured"
+min_claims = 2
+min_citations = 1
+
+[task.scoring]
+scorers = ["latency", "token_efficiency"]
+weights = { latency = 0.4, token_efficiency = 0.6 }

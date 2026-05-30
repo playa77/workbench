@@ -1,0 +1,17 @@
+[pack]
+pack_id = "caw.packs.adversarial_review"
+version = "0.1.0"
+name = "Adversarial Review"
+description = "Deliberation-oriented review with rhetorical diagnostics."
+
+[[pack.skills]]
+skill_id = "caw.builtin.deliberation_director"
+version = ">=0.1.0"
+
+[[pack.skills]]
+skill_id = "caw.builtin.critique_agent"
+version = ">=0.1.0"
+
+[[pack.skills]]
+skill_id = "caw.builtin.rhetoric_analyst"
+version = ">=0.1.0"

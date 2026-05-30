@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}Models - PlanExe{% endblock %}
+
+{% block head %}
+<style>
+    .models-title {
+        margin: 0 0 4px;
+        font-size: 1.35rem;
+        font-weight: 700;
+    }
+    .models-subtitle {
+        margin: 0 0 14px;
+        color: var(--color-text-secondary);
+    }
+    .models-toc {
+        margin: 0 0 16px;
+        padding: 0;
+        list-style: none;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    .models-toc a {
+        display: inline-block;
+        padding: 6px 10px;
+        border: 1px solid var(--color-border);
+        border-radius: 999px;
+        text-decoration: none;
+        color: var(--color-text);
+        background: var(--color-bg-soft);
+        font-size: 0.82rem;
+        font-weight: 600;
+    }
+    .models-toc a:hover {
+        border-color: var(--color-primary);
+        color: var(--color-primary);
+    }
+    .models-section {
+        padding-top: 8px;
+        margin-top: 8px;
+        border-top: 1px solid var(--color-border);
+    }
+    .models-section:first-of-type {
+        border-top: 0;
+        margin-top: 0;
+        padding-top: 0;
+    }
+    .models-section-title {
+        margin: 0 0 2px;
+        font-size: 1rem;
+        font-weight: 700;
+    }
+    .models-section-subtitle {
+        margin: 0 0 8px;
+        color: var(--color-text-secondary);
+        font-size: 0.86rem;
+    }
+    .models-label {
+        margin: 0 0 6px;
+        font-size: 0.86rem;
+        color: var(--color-text-secondary);
+    }
+    .models-table-wrap {
+        overflow-x: auto;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius);
+    }
+    .models-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+        font-size: 0.84rem;
+    }
+    .models-table th {
+        text-align: left;
+        padding: 8px 10px;
+        background: var(--color-bg-soft);
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-text-secondary);
+        font-size: 0.74rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .models-table td {
+        vertical-align: top;
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--color-border);
+        color: var(--color-text);
+        word-break: break-word;
+    }
+    .models-table tr:last-child td {
+        border-bottom: none;
+    }
+    .models-col-key {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .models-col-prio {
+        width: 8ch;
+        text-align: right;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        white-space: nowrap;
+    }
+    .models-col-model {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    }
+    .models-col-pricing {
+        width: 8ch;
+        white-space: nowrap;
+    }
+    .pricing-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 46px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        border: 1px solid var(--color-border);
+        background: var(--color-bg-soft);
+        font-size: 0.72rem;
+        font-weight: 700;
+        line-height: 1.2;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .pricing-badge.pricing-free {
+        color: #0d6832;
+        border-color: #84d7a7;
+        background: #eaf9f0;
+    }
+    .pricing-badge.pricing-paid {
+        color: #7a3412;
+        border-color: #fdba74;
+        background: #fff4e8;
+    }
+    .pricing-badge.pricing-unknown {
+        color: var(--color-text-secondary);
+    }
+    .models-col-comment {
+    }
+    .models-col-info {
+        width: 8ch;
+        white-space: nowrap;
+    }
+    th.models-col-prio,
+    td.models-col-prio,
+    th.models-col-info,
+    td.models-col-info {
+        padding-left: 6px;
+        padding-right: 6px;
+    }
+    .models-col-info a {
+        text-decoration: none;
+        color: var(--color-primary);
+        font-weight: 600;
+    }
+    .models-col-info a:hover {
+        text-decoration: underline;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section>
+    <h1 class="models-title">Models</h1>
+    <p class="models-subtitle">Inspect models by profile.</p>
+
+    <ul class="models-toc" aria-label="Model profile sections">
+        {% for section in profile_sections %}
+        <li><a href="#profile-{{ section.key }}">{{ section.title }}</a></li>
+        {% endfor %}
+    </ul>
+
+        {% for section in profile_sections %}
+    <section id="profile-{{ section.key }}" class="models-section">
+        <h2 class="models-section-title">{{ section.title }}</h2>
+        <p class="models-section-subtitle">{{ section.subtitle }}</p>
+        <p class="models-label"><code>{{ section.filename }}</code></p>
+        {% if section.models %}
+        <div class="models-table-wrap">
+        <table class="models-table">
+            <thead>
+                <tr>
+                    <th class="models-col-prio">Prio</th>
+                    <th class="models-col-key">Key</th>
+                    <th class="models-col-model">arguments.model</th>
+                    <th class="models-col-pricing">Pricing</th>
+                    <th class="models-col-comment">Comment</th>
+                    <th class="models-col-info">Info</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for model_row in section.models %}
+                <tr>
+                    <td class="models-col-prio">{{ model_row.prio or "-" }}</td>
+                    <td class="models-col-key">{{ model_row.key }}</td>
+                    <td class="models-col-model">{{ model_row.model or "-" }}</td>
+                    <td class="models-col-pricing">
+                        {% set pricing_value = (model_row.pricing_kind or "").lower() %}
+                        {% if pricing_value in ["free", "paid"] %}
+                        <span class="pricing-badge pricing-{{ pricing_value }}">{{ pricing_value }}</span>
+                        {% else %}
+                        <span class="pricing-badge pricing-unknown">unknown</span>
+                        {% endif %}
+                    </td>
+                    <td class="models-col-comment">{{ model_row.comment or "-" }}</td>
+                    <td class="models-col-info">
+                        {% if model_row.model_info_url %}
+                        <a href="{{ model_row.model_info_url }}" target="_blank" rel="noopener noreferrer">Open</a>
+                        {% else %}
+                        -
+                        {% endif %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <p>none found</p>
+        {% endif %}
+    </section>
+    {% endfor %}
+</section>
+{% endblock %}

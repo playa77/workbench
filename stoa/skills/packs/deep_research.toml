@@ -1,0 +1,17 @@
+[pack]
+pack_id = "caw.packs.deep_research"
+version = "0.1.0"
+name = "Deep Research"
+description = "Evidence-first research with critique and synthesis."
+
+[[pack.skills]]
+skill_id = "caw.builtin.research_operator"
+version = ">=0.1.0"
+
+[[pack.skills]]
+skill_id = "caw.builtin.critique_agent"
+version = ">=0.1.0"
+
+[[pack.skills]]
+skill_id = "caw.builtin.synthesis_agent"
+version = ">=0.1.0"

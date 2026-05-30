@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="format-detection" content="telephone=no">
+    <title>{% block title %}PlanExe{% endblock %}</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <style>
+        :root {
+            --color-bg: #ffffff;
+            --color-bg-soft: #f8f9fa;
+            --color-bg-muted: #f1f3f5;
+            --color-text: #1a1a2e;
+            --color-text-secondary: #6c757d;
+            --color-primary: #2563eb;
+            --color-primary-hover: #1d4ed8;
+            --color-border: #e5e7eb;
+            --color-card-bg: #ffffff;
+            --color-card-background-secondary: #f2f5fd;
+            --color-card-shadow: rgba(0, 0, 0, 0.06);
+            --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                         "Helvetica Neue", Arial, sans-serif;
+            --radius: 8px;
+            --radius-lg: 12px;
+            --max-width: 100%;
+        }
+
+        *, *::before, *::after { box-sizing: border-box; }
+
+        html {
+            font-size: 110%;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: var(--font-sans);
+            color: var(--color-text);
+            background: var(--color-bg);
+            line-height: 1.6;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* ── Header ─────────────────────────────────────── */
+        .site-header {
+            background: var(--color-bg);
+            border-bottom: 1px solid var(--color-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .header-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 0 24px;
+            height: 56px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        .site-brand-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            gap: 8px;
+            height: 32px;
+            color: var(--color-text);
+            text-decoration: none;
+            border-radius: 6px;
+        }
+        .site-brand-icon img {
+            width: 24px;
+            height: 24px;
+            display: block;
+        }
+        .site-brand-label {
+            font-size: 0.9rem;
+            font-weight: 600;
+            line-height: 1;
+        }
+        .site-nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+        .site-nav-spacer { flex: 1 1 auto; }
+        .site-nav a {
+            color: var(--color-text-secondary);
+            text-decoration: none;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: color 0.15s;
+            position: relative;
+        }
+        .site-nav a:hover {
+            color: var(--color-text);
+            text-decoration: none;
+        }
+        .site-nav a.nav-active {
+            color: var(--color-text);
+        }
+        .site-nav a.nav-active::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -4px;
+            height: 2px;
+            border-radius: 2px;
+            background: var(--px-primary, #3578e5);
+        }
+        .site-brand-icon.nav-active {
+            color: var(--color-text);
+        }
+        .site-nav a.site-brand-icon.nav-active::after {
+            content: none;
+        }
+        .site-brand-icon.nav-active .site-brand-label {
+            position: relative;
+        }
+        .site-brand-icon.nav-active .site-brand-label::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: -4px;
+            height: 2px;
+            border-radius: 2px;
+            background: var(--px-primary, #3578e5);
+        }
+        .nav-user {
+            color: var(--color-text) !important;
+            font-weight: 600 !important;
+        }
+        .btn-nav {
+            display: inline-flex;
+            align-items: center;
+            padding: 6px 16px;
+            background: var(--color-primary);
+            color: #fff !important;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 500;
+            text-decoration: none !important;
+            transition: background 0.15s;
+            border: none;
+        }
+        .btn-nav:hover {
+            background: var(--color-primary-hover);
+            color: #fff !important;
+        }
+
+        /* ── Main ───────────────────────────────────────── */
+        .site-main {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 32px 24px;
+            min-height: calc(100vh - 56px - 80px);
+        }
+
+        /* ── Footer ─────────────────────────────────────── */
+        .site-footer {
+            border-top: 1px solid var(--color-border);
+            padding: 20px 24px 28px;
+            text-align: left;
+            color: var(--color-text-secondary);
+            font-size: 0.85rem;
+            background: linear-gradient(180deg, var(--color-bg) 0%, var(--color-bg-soft) 100%);
+        }
+        .footer-inner {
+            max-width: var(--max-width);
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+        .footer-links {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+        .footer-links a {
+            color: var(--color-text);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+        .footer-links a:hover {
+            color: var(--color-text);
+            background: var(--color-bg-muted);
+        }
+        .footer-sep {
+            color: var(--color-border);
+            margin: 0 2px;
+        }
+        .footer-copy {
+            white-space: nowrap;
+        }
+
+        /* ── Shared components ──────────────────────────── */
+        .card {
+            background: var(--color-card-bg);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px var(--color-card-shadow);
+        }
+        code {
+            word-break: break-all;
+        }
+
+        /* keep Bootstrap .container constrained to our max-width */
+        .container {
+            max-width: none;
+            width: 100%;
+        }
+    </style>
+    {% if google_analytics_id %}
+    <script async src="https://www.googletagmanager.com/gtag/js?id={{ google_analytics_id }}"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', '{{ google_analytics_id }}');
+    </script>
+    {% endif %}
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-inner">
+            <nav class="site-nav">
+                <a href="{{ url_for('index') }}" class="site-brand-icon {% if request.endpoint == 'index' %}nav-active{% endif %}" aria-label="Home">
+                    <img src="https://planexe.org/planexe-icon.svg" alt="" width="24" height="24">
+                    <span class="site-brand-label">Home</span>
+                </a>
+                {% if current_user_name %}
+                    <a href="{{ url_for('plan_routes.plan_create_page') }}" class="{% if request.endpoint == 'plan_routes.plan_create_page' %}nav-active{% endif %}">Create</a>
+                    <a href="{{ url_for('plan_routes.plan') }}" class="{% if request.endpoint == 'plan_routes.plan' and not request.args.get('id') %}nav-active{% endif %}">Plans</a>
+                    <a href="{{ url_for('models') }}" class="{% if request.endpoint == 'models' %}nav-active{% endif %}">Models</a>
+                {% endif %}
+                <div class="site-nav-spacer"></div>
+                {% if current_user_name %}
+                    <a href="{{ url_for('account') }}" class="nav-user {% if request.endpoint == 'account' %}nav-active{% endif %}">{% if current_user.is_admin %}Account{% else %}{{ current_user_name }}{% endif %}</a>
+                    {% if current_user.is_admin %}
+                        <a href="{{ url_for('admin.index') }}" class="btn-nav">Admin Panel</a>
+                    {% endif %}
+                {% else %}
+                    <a href="https://planexe.org/" target="_blank">About</a>
+                    <a href="{{ url_for('auth.login') }}" class="btn-nav">Sign In</a>
+                {% endif %}
+            </nav>
+        </div>
+    </header>
+
+    <main class="site-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div class="footer-links">
+                <a href="https://planexe.org/">PlanExe</a>
+                <span class="footer-sep">&middot;</span>
+                <a href="https://docs.planexe.org/">Documentation</a>
+                <span class="footer-sep">&middot;</span>
+                <a href="https://github.com/PlanExeOrg/PlanExe">GitHub</a>
+                <span class="footer-sep">&middot;</span>
+                <a href="https://planexe.org/discord/">Discord</a>
+            </div>
+            <div class="footer-copy">Open source planning tool</div>
+        </div>
+    </footer>
+</body>
+</html>

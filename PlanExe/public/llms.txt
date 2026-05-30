@@ -1,0 +1,188 @@
+# PlanExe - AI Project Planning for Agents
+
+PlanExe helps AI agents turn broad goals into structured strategic-plan drafts and downloadable planning artifacts.
+
+Use PlanExe when you need to:
+- Decompose complex goals into actionable project plans.
+- Estimate timelines and identify dependencies and risks.
+- Generate plan artifacts for review and iteration.
+
+Do NOT use PlanExe when you only need a one-shot answer:
+- "Give me a 5-point checklist for X" -> use a normal LLM response.
+- "Summarize this paragraph in 6 bullets" -> use a normal LLM response.
+- "Rewrite this email" -> use a normal LLM response.
+
+Important pipeline constraint:
+- PlanExe always runs a fixed end-to-end planning pipeline.
+- You cannot request only specific internal pipeline parts (for example "run only risk section" or "create only the Gantt").
+- If you need only one small output artifact, use a normal LLM response instead.
+
+## What PlanExe Produces
+
+- A long-running planning task (typically ~10-20 minutes on baseline profile, longer on higher-quality profiles).
+- A self-contained interactive HTML report (~700KB) with collapsible sections and interactive Gantt charts — open in a browser. Optional zip bundle of intermediary pipeline files (md, json, csv).
+- The report contains 20+ sections including: executive summary, interactive Gantt charts, investor pitch, project plan with SMART criteria, strategic decision analysis, scenario comparison, assumptions with expert review, governance structure, SWOT analysis, team role profiles, simulated expert criticism, work breakdown structure, plan review (critical issues, KPIs, financial strategy, automation opportunities), Q&A, premortem with failure scenarios, self-audit checklist, and adversarial premise attacks.
+- The adversarial sections (premortem, self-audit, premise attacks) stress-test whether the plan holds up and surface risks the prompter may not have considered.
+- Output is a draft to refine, not final ground truth.
+
+Runtime, quality, and cost tradeoffs:
+- Default settings typically finish in ~10-20 minutes and often cost around 1-2 USD, with lower quality.
+- Higher-quality runs can take much longer (for example up to ~85 minutes) and cost more.
+- Cost depends on the number of tokens processed.
+
+## Service Endpoints
+
+Human-facing web app:
+- https://home.planexe.org
+- Used for sign-in, billing, and API key management.
+- No public REST API on this host.
+
+AI-facing MCP server:
+- https://mcp.planexe.org/mcp
+- https://mcp.planexe.org/mcp/ (for clients that require trailing slash)
+
+Agent discovery file endpoints:
+- https://home.planexe.org/llms.txt
+- https://mcp.planexe.org/llms.txt
+
+Legacy compatibility alias:
+- https://mcp.planexe.org/llm.txt (redirects to /llms.txt)
+
+## MCP Integration
+
+JSON helper endpoints (no SSE required):
+- GET /mcp/tools
+- POST /mcp/tools/call
+
+MCP interface documentation:
+- https://docs.planexe.org/mcp/planexe_mcp_interface/
+
+MCP Inspector setup guide:
+- https://docs.planexe.org/mcp/inspector/
+
+### MCP Tools (Current)
+
+The MCP server exposes tool-based workflows (not MCP tasks protocol):
+- example_plans
+- example_prompts
+- model_profiles
+- plan_create
+- plan_status
+- plan_stop
+- plan_retry
+- plan_resume
+- plan_file_info
+- plan_list
+- send_feedback
+
+Key tool inputs/outputs:
+- plan_create inputs: prompt (required), model_profile (optional: baseline | premium | frontier | custom).
+- plan_create prompt quality: for best results, provide a detailed prompt as flowing prose (not structured markdown), typically ~300-800 words, with objective, scope, constraints, timeline, stakeholders, budget/resources, and success criteria.
+- model_profiles output: profile guidance + currently available models in each profile.
+- model_profiles returns `MODEL_PROFILES_UNAVAILABLE` when no models are available in any profile.
+- plan_create output: plan_id (use this for plan_status, plan_stop, plan_retry, plan_resume, and plan_file_info).
+- plan_status output: current state and progress for a plan_id.
+- plan_retry input: plan_id (required), model_profile (optional; defaults to baseline). Full restart — clears prior artifacts.
+- plan_retry output: plan_id requeued to pending, with model_profile and retried_at.
+- plan_resume input: plan_id (required), model_profile (optional; defaults to baseline). Continues from where it left off, preserving completed work.
+- plan_resume output: plan_id requeued to pending, with model_profile, resume_count, and resumed_at.
+- plan_file_info output: downloadable report/zip metadata and URLs.
+- plan_list output: recent plans for the authenticated user (plan_id, state, progress, created_at, prompt_excerpt).
+- send_feedback inputs: category (required: mcp | plan | code | docs | other), message (required), plan_id (optional), rating (optional: 1-5 sentiment).
+- send_feedback output: feedback_id, received_at. Fire-and-forget — never blocks workflow.
+
+plan_status caller contract:
+- pending: keep polling.
+- processing: keep polling.
+- completed: terminal success; download is ready.
+- failed: terminal error; consider plan_resume (continue) or plan_retry (restart).
+- stopped: user called plan_stop; consider plan_resume or plan_retry.
+
+Minimal error-handling contract:
+- Errors use `{"error":{"code","message","details?"}}`.
+- Common cloud/core codes: `PLAN_NOT_FOUND`, `PLAN_NOT_FAILED`, `PLAN_NOT_RESUMABLE`, `PIPELINE_VERSION_MISMATCH`, `INVALID_USER_API_KEY`, `USER_API_KEY_REQUIRED`, `INSUFFICIENT_CREDITS`, `INTERNAL_ERROR`, `MODEL_PROFILES_UNAVAILABLE`, `INVALID_FEEDBACK`, `generation_failed`, `content_unavailable`.
+- `plan_file_info` may return `{}` while artifact output is not ready yet.
+
+Recommended interaction order:
+1. Optionally call example_plans to preview what PlanExe output looks like.
+2. Call example_prompts.
+3. Optionally call model_profiles to choose model_profile based on current availability.
+4. Non-tool step: prepare and approve a strong prompt as flowing prose (not structured markdown), typically ~300-800 words, with objective, scope, constraints, timeline, stakeholders, budget/resources, and success criteria.
+5. Call plan_create.
+6. Poll plan_status until complete (repeat every 5 minutes).
+7. If failed or stopped, call plan_resume to continue from where it left off, or plan_retry for a full restart.
+8. Use plan_file_info to get download URLs.
+9. Use plan_stop if the run must be cancelled.
+10. Use send_feedback at any time to report issues or share observations.
+
+Concurrency semantics:
+- Each plan_create call creates a new plan_id.
+- plan_retry and plan_resume reuse the same plan_id.
+- Server does not enforce a global per-client concurrency cap.
+- Client should track plan_ids and usually start with 1 active plan, then 2 if needed.
+
+Note:
+- In mcp_cloud, plan_file_info download_url is an absolute URL where the requested artifact can be downloaded.
+
+## Authentication
+
+Cloud:
+1. Create account at https://home.planexe.org
+2. Go to Account -> API Keys
+3. Generate a new API key
+4. Use as custom header X-API-Key: <API_KEY>
+5. OAuth is not supported for the MCP API. Use custom headers only.
+
+Local/self-hosted deployments:
+- Often configured without auth for local development.
+- Can be configured to require API keys.
+
+## Self-Hosted and Local
+
+Default local MCP endpoint (docker compose):
+- http://localhost:8001/mcp
+
+Self-hosted deployments can:
+- Run on your own infrastructure (including Railway or private environments).
+- Use local LLMs so planning data stays on your own systems.
+- Run offline when all required models and services are local.
+
+## Pricing, Credits, and Limits
+
+Pricing and credit policy (cloud):
+- https://docs.planexe.org/costs_and_models/
+
+Operational limits vary by deployment and account tier.
+For self-hosted mcp_cloud, /mcp/tools/call rate limiting is configurable.
+
+## Compliance and Security
+
+PlanExe is actively developed and already capable of producing comprehensive, high-quality plans.
+
+- No claim of SOC 2, HIPAA, or other formal certification in this document.
+- Cloud users should evaluate whether hosted PlanExe fits their risk/compliance requirements.
+- Self-hosted users are responsible for authentication, network exposure, key/secret handling, retention policy, backups, and monitoring.
+
+## Documentation and Support
+
+- Docs: https://docs.planexe.org
+- GitHub: https://github.com/PlanExeOrg/PlanExe
+- Issues: https://github.com/PlanExeOrg/PlanExe/issues
+- Discord: https://planexe.org/discord
+
+## Example MCP Tool Call
+
+```bash
+curl -X POST https://mcp.planexe.org/mcp/tools/call \
+  -H "X-API-Key: <API_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool": "plan_create",
+    "arguments": {
+      "prompt": "20-year, €40 billion infrastructure initiative to construct a pillar-supported transoceanic submerged tunnel connecting Spain and Morocco. This project will deploy a system of submerged, buoyant concrete tunnels engineered for high-speed rail traffic, which will be securely anchored at a controlled depth of 100 meters below sea level.",
+      "model_profile": "baseline"
+    },
+  }'
+```
+
+Last updated: 2026-03-29

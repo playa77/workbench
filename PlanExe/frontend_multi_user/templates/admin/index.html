@@ -1,0 +1,83 @@
+{% extends 'admin/master.html' %}
+
+{% block head_css %}
+  {{ super() }}
+  <style>
+    .content-wrapper {
+      max-width: 800px;
+      margin: 0 auto !important;
+      padding: 2rem;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+    h1 {
+      color: #2c3e50;
+      text-align: center;
+      margin-bottom: 2rem;
+      font-size: 2.5rem;
+    }
+    .nav-links {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .legacy-links-no-longer-used {
+      background: #bf6060;
+      padding: 2rem;
+      border-radius: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .nav-links a,
+    .nav-links button {
+      display: block;
+      width: 100%;
+      padding: 1rem;
+      margin: 0.5rem 0;
+      text-decoration: none;
+      border-radius: 5px;
+      transition: transform 0.3s ease, background 0.3s ease;
+      text-align: left;
+      font-size: 1rem;
+      background: #f8f9fa;
+      color: #3498db;
+      border: none;
+      cursor: pointer;
+    }
+    .nav-links a:hover,
+    .nav-links button:hover {
+      background: #e9ecef;
+      transform: translateX(5px);
+      color: #2980b9;
+    }
+    .description {
+      color: #666;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+  </style>
+{% endblock %}
+
+{% block body %}
+<h1>PlanExe Admin Console</h1>
+<p>Welcome to the admin console. This area is protected and only accessible to admins.</p>
+<h2>Primary links</h2>
+<div class="nav-links">
+  <a href="/ping">
+    Ping LLMs
+    <div class="description">Check if they are all running</div>
+  </a>
+  <a href="/admin/demo_run">
+    Demo Run - End to end test
+    <div class="description">Wraps the Run page inside an &lt;iframe&gt;.</div>
+  </a>
+  <a href="/admin/reconciliation">
+    Reconciliation and drift detection
+    <div class="description">Compare billed usage cost vs tracked inference cost per task.</div>
+  </a>
+  <a href="/admin/database">
+    Database
+    <div class="description">View PostgreSQL disk space usage, per-table breakdown, and maintenance actions.</div>
+  </a>
+</div>
+{% endblock %}

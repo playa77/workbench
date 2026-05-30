@@ -1,0 +1,249 @@
+# =============================================================================
+# Dependencies
+# =============================================================================
+node_modules/
+.yarn/
+!.yarn/cache
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/sdks
+!.yarn/versions
+.pnpm-store/
+package-lock.json.orig
+
+# =============================================================================
+# Build outputs (TypeScript, Vite, electron-builder)
+# =============================================================================
+dist/
+release/
+build/
+*.tsbuildinfo
+*.buildinfo
+*.js.map
+*.mjs.map
+*.vue
+
+# =============================================================================
+# Environment & Secrets
+# =============================================================================
+.env
+.env.*
+.envrc
+.env!.example
+!.env.example
+!.env.example.*
+
+.webui_secret_key
+
+# SSH / TLS private keys
+**/id_rsa
+**/id_rsa.pub
+**/id_ed25519
+**/id_ed25519.pub
+**/id_ecdsa
+**/id_ecdsa.pub
+*.pem
+*.key
+*.crt
+*.pfx
+*.p12
+*.p8
+
+# Secret / credential files (additive — add new patterns for new secret types)
+*.secret
+*.secret.*
+secrets.yaml
+secrets.yml
+secrets.json
+secrets.env
+*_secret_key
+*_secret_key.*
+*-secret-key*
+*_token
+*_token.*
+*-token-*
+credentials.json
+credentials.yaml
+credentials.yml
+*_credentials.*
+*.credential
+*.credential.*
+service-account.json
+service-account-key.json
+*_sa_key*.json
+
+# =============================================================================
+# Electron / electron-builder
+# =============================================================================
+linux-unpacked/
+mac-unpacked/
+win-unpacked/
+*-unpacked/
+*.deb
+*.AppImage
+*.snap
+*.rpm
+*.pacman
+*.dmg
+builder-debug.yml
+builder-effective-config.yaml
+electron-builder.env
+
+# =============================================================================
+# OS artifacts
+# =============================================================================
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+.com.apple.timemachine.donotpresent
+._*
+Icon?
+.VolumeIcon.icns
+
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msm
+*.msp
+*.lnk
+
+.directory
+.Trash-*
+
+# Vim / Neovim
+*.swp
+*.swo
+*.swn
+*.snd
+[._]*.s[a-v][a-z]
+[._]*.sw[a-p]
+Session.vim
+Sessionx.vim
+.netrwhist
+*~undo-tree
+
+# Emacs
+\#*\#
+.\#*
+*~
+
+# =============================================================================
+# Editor / IDE
+# =============================================================================
+.vscode/
+.history/
+.idea/
+*.iml
+*.iws
+*.ipr
+.project
+.classpath
+.settings/
+.externalToolBuilders/
+.factorypath
+.metadata/
+.recommenders/
+*.sublime-project
+*.sublime-workspace
+*.komodoproject
+.komodotools
+
+# =============================================================================
+# Logs
+# =============================================================================
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+pids/
+*.pid
+*.pidfile
+
+# =============================================================================
+# Testing / Coverage
+# =============================================================================
+coverage/
+*.lcov
+.nyc_output/
+.jest/
+jest-cache/
+.jest-cache/
+test-results/
+playwright-report/
+.playwright/
+cypress/
+cypress/videos/
+cypress/screenshots/
+cypress/downloads/
+
+# =============================================================================
+# Temporary / Scratch / Cache
+# =============================================================================
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.sav
+*.orig
+*.rej
+
+.cache/
+.parcel-cache/
+.vite/
+.next/
+.nuxt/
+.output/
+.eslintcache
+.stylelintcache
+.prettierrc_cache
+.node_repl_history
+
+# =============================================================================
+# Archives
+# =============================================================================
+*.tgz
+*.tar.gz
+*.tar.xz
+*.tar.bz2
+*.7z
+*.rar
+*.bz2
+
+# =============================================================================
+# Core dumps
+# =============================================================================
+core
+*.core
+*.core.*
+*.core.*.*
+
+# =============================================================================
+# Misc
+# =============================================================================
+.grunt/
+.sass-cache/
+.node-version
+.npmrc
+.lock-wscript
+.yarn-integrity
+*.sock
+*.socket

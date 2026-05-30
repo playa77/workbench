@@ -1,0 +1,87 @@
+---
+title: OpenRouter - AI provider
+---
+
+# Using PlanExe with OpenRouter
+
+For new users, OpenRouter is the recommended starting point. When you have have generated a few plans via OpenRouter, then you can try switch to other AI providers.
+
+[OpenRouter](https://openrouter.ai/) provides access to a large number of LLM models, that runs in the cloud.
+
+Unfortunately there is no `free` model that works reliable with PlanExe. When I use a `free` model on OpenRouter, then most of the times PlanExe fails to create a plan. My impression is that the `free` models are unreliable and slow, I guess the AI providers doesn't treat `free` models as high priority.
+
+In my experience, the `paid` models are the most reliable. Models like [google/gemini-2.0-flash-001](https://openrouter.ai/google/gemini-2.0-flash-001). and [openai/gpt-4o-mini](https://openrouter.ai/openai/gpt-4o-mini) are cheap and faster than running models on my own computer and without risk of it overheating.
+
+Avoid pricey `paid` models. PlanExe does more than 100 LLM inference calls per plan, so each run uses many tokens. With a cheap model, creating a full plan costs less than 0.50 USD; with one of the newest models, the price can exceed 20 USD. To keep PlanExe affordable for as many users as possible, the defaults use older, cheaper models.
+
+## Quickstart (Docker)
+
+1. Install Docker (with Docker Compose) — no local Python or pip is needed.
+2. Clone the repo and enter it:
+```
+git clone https://github.com/PlanExeOrg/PlanExe.git
+cd PlanExe
+```
+3. Copy `.env.docker-example` to `.env`, then set your API key and pick a default OpenRouter profile so the worker uses the cloud model by default:
+```
+OPENROUTER_API_KEY='sk-or-v1-...'
+DEFAULT_LLM='openrouter-paid-gemini-2.0-flash-001'   # or openrouter-paid-openai-gpt-4o-mini
+```
+   The containers mount `.env` and `llm_config/<profile>.json` automatically.
+4. Start PlanExe:
+```
+docker compose up worker_plan frontend_multi_user
+```
+   - Wait for http://localhost:5001 to come up, submit a prompt, and watch progress with `docker compose logs -f worker_plan`.
+   - Outputs are written to `run/<timestamped-output-dir>` on the host (mounted from the containers).
+5. Stop with `Ctrl+C` (or `docker compose down`). If you change `llm_config/<profile>.json`, restart the containers so they reload it: `docker compose restart worker_plan frontend_multi_user` (or `docker compose down && docker compose up`). No rebuild is needed for config-only edits.
+
+## Configuration
+
+Visit [OpenRouter](https://openrouter.ai/), create an account, purchase 5 USD in credits (plenty for making a several plans), and generate an API key.
+
+Copy `.env.docker-example` to a new file called `.env` (loaded by Docker at startup).
+
+Open the `.env` file in a text editor and insert your OpenRouter API key. Like this:
+
+```
+OPENROUTER_API_KEY='INSERT YOUR KEY HERE'
+```
+
+If you edit `llm_config/<profile>.json` later, restart the worker/frontend containers to pick up the changes: `docker compose restart worker_plan frontend_multi_user` (or stop/start). Rebuilds are only needed when dependencies change.
+
+## Troubleshooting
+
+Inside PlanExe, when clicking `Submit`, a new `Output Dir` should be created containing a `log.txt`. Open that file and scroll to the bottom, see if there are any error messages about what is wrong.
+
+When running in Docker, also check the worker logs for 401/429 or connectivity errors:
+
+```
+docker compose logs -f worker_plan
+```
+
+Report your issue on [Discord](https://planexe.org/discord). Please include info about your system, such as: "I'm on macOS with M1 Max with 64 GB.".
+
+## How to add a new OpenRouter model to `llm_config/<profile>.json`
+
+The [OpenRouter/rankings](https://openrouter.ai/rankings) page shows an overview of the most popular models. New models are added frequently
+
+For a model to work with PlanExe, it must meet the following criteria:
+
+- Minimum 8192 output tokens.
+- Support structured output.
+- Reliable. Avoid fragile setups where it works one day, but not the next day. If it's a beta version, be aware that it may stop working.
+- Low latency.
+
+Steps to add a model:
+
+1. Copy the model id from the openrouter website.
+2. Paste the model id into the `llm_config/<profile>.json`.
+3. Restart PlanExe to apply the changes.
+
+---
+
+## Next steps
+
+- Learn prompt quality: [Prompt writing guide](../prompt_writing_guide.md)
+- Understand output sections: [Plan output anatomy](../plan_output_anatomy.md)
