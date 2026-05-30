@@ -31,7 +31,7 @@
       document.getElementById('debate-roles').innerHTML = roles.map(r => `
         <label class="toggle" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px">
           <input type="checkbox" class="debate-role-cb" value="${r.id}" ${['optimist','pessimist','pragmatist'].includes(r.id) ? 'checked' : ''}>
-          <span class="toggle-label" style="margin-left:8px">${r.name}</span>
+          <span class="toggle-label" style="margin-left:8px">${Utils.escapeHtml(r.name)}</span>
         </label>`).join('');
     } catch (e) {
       document.getElementById('debate-roles').innerHTML = 'Failed to load roles';
@@ -59,14 +59,16 @@
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || 'Error');
 
-      let html = `<h3 style="margin-bottom:16px">${data.topic}</h3>`;
-      data.messages.forEach(msg => {
-        const [role, ...content] = msg.split(']: ');
-        html += `<div class="card"><strong>${role.replace('[','')}</strong><p style="margin-top:8px;font-size:13px;white-space:pre-wrap">${content.join(']: ')}</p></div>`;
+      let html = `<h3 style="margin-bottom:16px">${Utils.escapeHtml(data.topic)}</h3>`;
+      data.messages.forEach(function (msg) {
+        const bracketIdx = msg.indexOf(']: ');
+        const role = bracketIdx > -1 ? msg.substring(1, bracketIdx) : 'Unknown';
+        const content = bracketIdx > -1 ? msg.substring(bracketIdx + 3) : msg;
+        html += '<div class="card"><strong>' + Utils.escapeHtml(role) + '</strong><p style="margin-top:8px;font-size:13px;white-space:pre-wrap">' + Utils.escapeHtml(content) + '</p></div>';
       });
       document.getElementById('debate-result').innerHTML = html;
     } catch (e) {
-      document.getElementById('debate-result').innerHTML = `<div class="alert alert-error">${e.message}</div>`;
+      document.getElementById('debate-result').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(String(e.message)) + '</div>';
     } finally {
       btn.disabled = false;
       btn.textContent = 'Start Debate';

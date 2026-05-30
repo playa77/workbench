@@ -1,4 +1,8 @@
-"""Alembic migration environment."""
+"""Alembic migration environment.
+
+Uses the workbench async engine for online migrations.
+Call ``alembic_setup_db(config)`` before running migrations to initialize the engine.
+"""
 
 from logging.config import fileConfig
 
@@ -22,12 +26,39 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    from workbench.core.db import _engine
-    connectable = _engine
-    with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
-        with context.begin_transaction():
-            context.run_migrations()
+    from sqlalchemy.ext.asyncio import AsyncEngine
+
+    from workbench.core.db import get_engine
+
+    connectable = get_engine()
+    is_async = isinstance(connectable, AsyncEngine)
+
+    if is_async:
+        import asyncio
+
+        async def _run_async_migrations() -> None:
+            async with connectable.connect() as connection:
+                await connection.run_sync(_do_run_migrations)
+            await connectable.dispose()
+
+        asyncio.run(_run_async_migrations())
+    else:
+        with connectable.connect() as connection:
+            _do_run_migrations(connection)
+
+
+def _do_run_migrations(connection):
+    context.configure(connection=connection, target_metadata=target_metadata)
+    with context.begin_transaction():
+        context.run_migrations()
+
+
+def run_migrations(config: object | None = None) -> None:
+    """Entry point for programmatic migration invocation."""
+    if context.is_offline_mode():
+        run_migrations_offline()
+    else:
+        run_migrations_online()
 
 
 if context.is_offline_mode():

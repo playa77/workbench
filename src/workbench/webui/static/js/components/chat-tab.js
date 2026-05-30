@@ -27,7 +27,7 @@
         ? 'margin-left:auto;background:var(--accent-bg);color:var(--text-primary)'
         : 'background:var(--bg-hover);color:var(--text-primary)'
     }`;
-    div.innerHTML = `<div style="font-size:11px;font-weight:600;margin-bottom:4px;color:var(--text-muted)">${role === 'user' ? 'You' : 'Assistant'}</div><div style="font-size:13px;white-space:pre-wrap">${content}</div>`;
+    div.innerHTML = `<div style="font-size:11px;font-weight:600;margin-bottom:4px;color:var(--text-muted)">${role === 'user' ? 'You' : 'Assistant'}</div><div style="font-size:13px;white-space:pre-wrap">${Utils.escapeHtml(content)}</div>`;
     msgs.appendChild(div);
     msgs.scrollTop = msgs.scrollHeight;
   }
@@ -50,7 +50,7 @@
       if (!resp.ok) throw new Error(data.detail || 'Error');
       addMessage('assistant', data.response);
     } catch (e) {
-      addMessage('assistant', 'Error: ' + e.message);
+      addMessage('assistant', 'Error: ' + Utils.escapeHtml(e.message));
     }
   };
 })();

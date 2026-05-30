@@ -86,7 +86,7 @@
       <div class="alert alert-success">Account created!</div>
       <div class="form-group">
         <label>Your API Key (save it — visible only once)</label>
-        <div class="api-key-display" style="cursor:pointer" onclick="navigator.clipboard.writeText('${rawKey}')">${rawKey}</div>
+         <div class="api-key-display" style="cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent)">${Utils.escapeHtml(rawKey)}</div>
       </div>
       <button class="btn btn-primary" onclick="location.reload()">Continue to Workbench</button>`;
   }
@@ -131,7 +131,7 @@
     content.innerHTML += `
       <div class="settings-section">
         <h3>Profile</h3>
-        ${currentUser ? `<p>Logged in as <strong>${currentUser.username}</strong> — <code style="font-size:11px">${currentUser.id}</code></p>` : ''}
+        ${currentUser ? `<p>Logged in as <strong>${Utils.escapeHtml(currentUser.username)}</strong> — <code style="font-size:11px">${currentUser.id}</code></p>` : ''}
       </div>`;
 
     const hasKey = currentUser?.has_openrouter_key;
@@ -156,7 +156,7 @@
     content.innerHTML += `
       <div class="settings-section">
         <h3>Agents</h3>
-        <div class="plugin-grid" id="agent-list"></div>
+        <div class="agent-grid" id="agent-list"></div>
       </div>`;
 
     content.innerHTML += `
@@ -194,16 +194,16 @@
       const grid = document.getElementById('agent-list');
       if (!grid) return;
       grid.innerHTML = agents.map(p => `
-        <div class="plugin-card">
-          <div class="plugin-card-header">
-            <span class="plugin-card-name">${getIcon(p.icon)} ${p.display_name}</span>
+        <div class="agent-card">
+          <div class="agent-card-header">
+            <span class="agent-card-name">${getIcon(p.icon)} ${p.display_name}</span>
             <label class="toggle">
               <input type="checkbox" ${p.enabled ? 'checked' : ''} onchange="window.toggleAgent('${p.name}', this.checked)">
               <span class="toggle-switch"></span>
             </label>
           </div>
-          <p class="plugin-card-desc">${p.description}</p>
-          <p class="plugin-card-version">v${p.version}</p>
+          <p class="agent-card-desc">${p.description}</p>
+          <p class="agent-card-version">v${p.version}</p>
         </div>`).join('');
     } catch (e) { /* silently fail */ }
   }
@@ -216,7 +216,7 @@
       section.innerHTML = keys.map(k => `
         <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">
           <div>
-            <span style="font-weight:500;font-size:13px">${k.label}</span>
+            <span style="font-weight:500;font-size:13px">${Utils.escapeHtml(k.label)}</span>
             <span style="font-size:11px;color:var(--text-muted);margin-left:8px">Created ${k.created_at?.split('T')[0]}</span>
             ${k.last_used_at ? `<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Last used ${k.last_used_at?.split('T')[0]}</span>` : ''}
           </div>
@@ -235,7 +235,7 @@
         try {
           const result = await API.createApiKey(label);
           document.getElementById('new-key-display').innerHTML = `
-            <div class="alert alert-success">New key: <code style="word-break:break-all">${result.api_key}</code> — save it now!</div>`;
+            <div class="alert alert-success">New key: <code style="word-break:break-all">${Utils.escapeHtml(result.api_key)}</code> — save it now!</div>`;
           loadApiKeys();
         } catch (e) { alert(e.message); }
       });

@@ -1,8 +1,7 @@
 """Agent system — registration, lifecycle, settings.
 
-Every agent subclasses AgentBase (defined as PluginBase in the core for model compat).
-Agents register API routes under /api/v1/agents/{name}, provide settings schemas,
-and define frontend tabs. Each agent maps to a dedicated browser tab.
+Every agent subclasses AgentBase. Agents register API routes under
+/api/v1/agents/{name}, provide settings schemas, and define frontend tabs.
 """
 
 from __future__ import annotations
@@ -15,15 +14,13 @@ from fastapi import APIRouter, FastAPI
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from workbench.core.models import UserPluginSettings
+from workbench.core.models import UserAgentSettings
 
 logger = logging.getLogger(__name__)
 
-_LAZY_IMPORT_LOCK = False
 
-
-class PluginBase(ABC):
-    """Abstract base class for all Workbench agents (PluginBase for DB model compat)."""
+class AgentBase(ABC):
+    """Abstract base class for all Workbench agents."""
 
     name: str = ""
     display_name: str = ""
@@ -64,80 +61,79 @@ class PluginBase(ABC):
         pass
 
 
-AgentBase = PluginBase
-
-
-class PluginRegistry:
-    """Central registry for all loaded agents (retains 'PluginRegistry' for compat)."""
+class AgentRegistry:
+    """Central registry for all loaded agents."""
 
     def __init__(self) -> None:
-        self._plugins: dict[str, PluginBase] = {}
+        self._agents: dict[str, AgentBase] = {}
 
-    def register(self, plugin: PluginBase) -> None:
-        if plugin.name in self._plugins:
-            logger.debug("Agent '%s' already registered — skipping", plugin.name)
+    def register(self, agent: AgentBase) -> None:
+        if agent.name in self._agents:
+            logger.debug("Agent '%s' already registered — skipping", agent.name)
             return
-        self._plugins[plugin.name] = plugin
-        logger.info("Registered agent: %s v%s", plugin.name, plugin.version)
+        self._agents[agent.name] = agent
+        logger.info("Registered agent: %s v%s", agent.name, agent.version)
 
-    def get(self, name: str) -> PluginBase | None:
-        return self._plugins.get(name)
+    def get(self, name: str) -> AgentBase | None:
+        return self._agents.get(name)
 
-    def list_all(self) -> list[PluginBase]:
-        return list(self._plugins.values())
+    def list_all(self) -> list[AgentBase]:
+        return list(self._agents.values())
 
     def mount_all(self, app: FastAPI) -> None:
-        for plugin in self._plugins.values():
-            plugin.register_routes(app)
+        for agent in self._agents.values():
+            agent.register_routes(app)
 
     def get_tabs(self) -> list[dict[str, Any]]:
-        return [p.get_frontend_tab() for p in self._plugins.values()]
+        return [a.get_frontend_tab() for a in self._agents.values()]
 
 
-_registry: PluginRegistry | None = None
+_registry: AgentRegistry | None = None
 
 
-def get_registry() -> PluginRegistry:
+def get_registry() -> AgentRegistry:
     global _registry
     if _registry is None:
-        _registry = PluginRegistry()
+        _registry = AgentRegistry()
     return _registry
 
 
-async def get_user_plugin_settings(user_id: str, session: AsyncSession) -> dict[str, dict[str, Any]]:
+async def get_user_agent_settings(user_id: str, session: AsyncSession) -> dict[str, dict[str, Any]]:
+    from uuid import UUID
+
     result = await session.execute(
-        select(UserPluginSettings).where(UserPluginSettings.user_id == user_id)
+        select(UserAgentSettings).where(UserAgentSettings.user_id == UUID(user_id))
     )
     rows = result.scalars().all()
     return {
-        row.plugin_name: {"enabled": row.enabled, "settings": row.settings}
+        row.agent_name: {"enabled": row.enabled, "settings": row.settings}
         for row in rows
     }
 
 
-async def set_user_plugin_setting(
+async def set_user_agent_setting(
     user_id: str,
-    plugin_name: str,
+    agent_name: str,
     enabled: bool | None = None,
     settings: dict[str, Any] | None = None,
     session: AsyncSession | None = None,
-) -> UserPluginSettings:
+) -> UserAgentSettings:
     from uuid import UUID
     if session is None:
         raise RuntimeError("Session required")
 
     result = await session.execute(
-        select(UserPluginSettings).where(
-            UserPluginSettings.user_id == UUID(user_id) if isinstance(user_id, str) else user_id,
-            UserPluginSettings.plugin_name == plugin_name,
+        select(UserAgentSettings).where(
+            UserAgentSettings.user_id == UUID(user_id) if isinstance(user_id, str) else user_id,
+            UserAgentSettings.agent_name == agent_name,
         )
     )
     row = result.scalar_one_or_none()
 
     if row is None:
-        row = UserPluginSettings(
+        row = UserAgentSettings(
             user_id=UUID(user_id) if isinstance(user_id, str) else user_id,
-            plugin_name=plugin_name,
+            agent_name=agent_name,
             enabled=enabled if enabled is not None else False,
             settings=settings or {},
         )

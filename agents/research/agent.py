@@ -86,7 +86,7 @@ class ResearchAgent(AgentBase):
 
         result = await session.execute(
             select(StoredReport).where(
-                StoredReport.user_id == user.id, StoredReport.plugin_name == "research"
+                StoredReport.user_id == user.id, StoredReport.agent_name == "research"
             )
         )
         reports = result.scalars().all()

@@ -39,7 +39,7 @@ class NewsPipeline:
                 await self._generate(run_id, interest, llm)
             if interest.get("enable_brief"):
                 await self._brief(run_id, interest, llm)
-            await self._store.update_run(run_id, status="completed", completed_at=datetime.utcnow().isoformat())
+            await self._store.update_run(run_id, status="completed", completed_at=datetime.now(tz=datetime.UTC).isoformat())
         except Exception as exc:
             logger.error("Pipeline run %d failed: %s", run_id, exc)
             await self._store.update_run(run_id, status="failed", error=str(exc))

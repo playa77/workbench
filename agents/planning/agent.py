@@ -75,7 +75,7 @@ class PlanningAgent(AgentBase):
 
         result = await session.execute(
             select(StoredReport).where(
-                StoredReport.user_id == user.id, StoredReport.plugin_name == "planning"
+                StoredReport.user_id == user.id, StoredReport.agent_name == "planning"
             )
         )
         reports = result.scalars().all()

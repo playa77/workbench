@@ -103,12 +103,18 @@ class NewsAgent(AgentBase):
     async def get_themes(self, run_id: int, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
         from workbench.services.news_store import NewsStore
         store = NewsStore(session)
+        run = await store.get_run_for_user(str(user.id), run_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
         themes = await store.get_themes_for_run(run_id)
         return {"themes": themes}
 
     async def get_brief(self, run_id: int, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
         from workbench.services.news_store import NewsStore
         store = NewsStore(session)
+        run = await store.get_run_for_user(str(user.id), run_id)
+        if not run:
+            raise HTTPException(status_code=404, detail="Run not found")
         brief = await store.get_daily_brief_for_run(run_id)
         return {"brief": brief}
 

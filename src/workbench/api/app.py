@@ -15,7 +15,7 @@ from fastapi.staticfiles import StaticFiles
 from workbench.core.config import WorkbenchConfig, load_config
 from workbench.core.db import close_db, init_db
 from workbench.core.encryption import init_encryption
-from workbench.core.plugins import get_registry
+from workbench.core.agents import get_registry
 
 logger = logging.getLogger(__name__)
 
@@ -45,11 +45,8 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logger.info("Workbench %s starting — host=%s port=%s", "0.1.0", config.api_host, config.api_port)
-        from workbench.core.db import _engine
-        from workbench.core.models import Base
-        async with _engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        logger.info("Database tables verified/created")
+        _run_alembic_upgrade()
+        logger.info("Database migrations applied")
         yield
         logger.info("Workbench shutting down")
         await close_db()
@@ -82,7 +79,7 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
 def _register_core_routes(app: FastAPI) -> None:
     from workbench.api.routes import auth, health
     from workbench.api.routes import config as config_routes
-    from workbench.api.routes import plugins as agent_routes
+    from workbench.api.routes import agents as agent_routes
 
     app.include_router(health.router, tags=["core"])
     app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
@@ -91,8 +88,18 @@ def _register_core_routes(app: FastAPI) -> None:
 
     _auto_register_agents(app, get_registry())
 
-    plugin_registry = get_registry()
-    plugin_registry.mount_all(app)
+    agent_registry = get_registry()
+    agent_registry.mount_all(app)
+
+
+def _run_alembic_upgrade() -> None:
+    from alembic import command
+    from alembic.config import Config as AlembicConfig
+
+    root = Path(__file__).resolve().parents[3]
+    alembic_cfg = AlembicConfig(str(root / "alembic.ini"))
+    alembic_cfg.set_main_option("script_location", str(root / "alembic"))
+    command.upgrade(alembic_cfg, "head")
 
 
 def _auto_register_agents(app: FastAPI, registry) -> None:

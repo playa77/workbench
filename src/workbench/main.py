@@ -9,6 +9,7 @@ import argparse
 import asyncio
 import logging
 import sys
+from pathlib import Path
 
 import uvicorn
 
@@ -33,6 +34,7 @@ def main() -> None:
 
     if args.command == "version":
         from workbench.__version__ import __version__
+
         print(f"Workbench v{__version__}")
         return
 
@@ -54,19 +56,26 @@ def main() -> None:
 
 
 def _run_migrations(config) -> None:
-    from workbench.core.db import init_db, close_db
-    from workbench.core.models import Base
+    from workbench.core.db import close_db, init_db
 
     init_db(config)
-    from workbench.core.db import _engine as engine
 
-    async def _do() -> None:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-        print("Database schema initialized successfully.")
-
-    asyncio.run(_do())
+    asyncio.run(_run_alembic_upgrade())
     asyncio.run(close_db())
+
+
+async def _run_alembic_upgrade() -> None:
+    from alembic import command
+    from alembic.config import Config as AlembicConfig
+
+    root = Path(__file__).resolve().parents[2]
+    alembic_ini = root / "alembic.ini"
+
+    alembic_cfg = AlembicConfig(str(alembic_ini))
+    alembic_cfg.set_main_option("script_location", str(root / "alembic"))
+
+    command.upgrade(alembic_cfg, "head")
+    print("Database schema initialized successfully (Alembic upgrade complete).")
 
 
 if __name__ == "__main__":

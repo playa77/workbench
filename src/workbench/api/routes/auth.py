@@ -12,7 +12,6 @@ from workbench.core.auth import (
     set_user_openrouter_key,
 )
 from workbench.core.db import get_session
-from workbench.core.encryption import encrypt
 from workbench.core.models import User, UserApiKey, UserOpenRouterKey
 
 router = APIRouter()

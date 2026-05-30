@@ -5,16 +5,28 @@ Supports PostgreSQL (via asyncpg) and SQLite (via aiosqlite) as a fallback for l
 
 from collections.abc import AsyncGenerator
 
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import (
+    AsyncEngine,
+    AsyncSession,
+    async_sessionmaker,
+    create_async_engine,
+)
 
 from workbench.core.config import WorkbenchConfig
 
-_engine = None
+_engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
 
 
-def _build_engine(database_url: str):
+def _build_engine(database_url: str) -> AsyncEngine:
     if database_url.startswith("sqlite"):
+        try:
+            import aiosqlite  # noqa: F401
+        except ImportError:
+            raise RuntimeError(
+                "aiosqlite is required for SQLite support. "
+                "Install with: pip install aiosqlite"
+            )
         return create_async_engine(
             database_url,
             connect_args={"check_same_thread": False},
@@ -28,6 +40,13 @@ def _build_engine(database_url: str):
     )
 
 
+def get_engine() -> AsyncEngine:
+    """Return the initialized async engine. Raises if not initialized."""
+    if _engine is None:
+        raise RuntimeError("Database not initialized — call init_db() first")
+    return _engine
+
+
 def init_db(config: WorkbenchConfig) -> None:
     global _engine, _session_factory
     db_url = config.database_url
@@ -35,11 +54,6 @@ def init_db(config: WorkbenchConfig) -> None:
     if not db_url:
         import os
         db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///data/workbench.db")
-
-    try:
-        import aiosqlite  # noqa: F401
-    except ImportError:
-        db_url = db_url.replace("sqlite+aiosqlite:", "sqlite+aiosqlite:")
 
     _engine = _build_engine(db_url)
     _session_factory = async_sessionmaker(

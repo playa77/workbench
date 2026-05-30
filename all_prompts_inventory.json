@@ -1,0 +1,220 @@
+{
+  "meta": {
+    "version": "2.0.0",
+    "description": "LLM prompt inventory for the workbench core (agents/ + services/)",
+    "total_prompts": 21,
+    "scope": "workbench core only"
+  },
+  "prompts": [
+    {
+      "id": 1,
+      "category": "debate",
+      "file_path": "agents/debate/agent.py",
+      "line_numbers": "62-66",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "You are the {role_id.upper()} perspective in a debate.\nDebate topic: {body.topic}\n\n{'Opening statement - make your case.' if i == 0 else 'Respond to the debate so far. Argue from your perspective.'}\n\nDebate history: { chr(10).join(messages[-3:]) if messages else '(none yet)' }",
+      "notes": "Templates: role_id, body.topic, i, messages"
+    },
+    {
+      "id": 2,
+      "category": "debate",
+      "file_path": "agents/debate/agent.py",
+      "line_numbers": "70",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are a {role_id}. Debate the topic from your assigned perspective. Be concise (2-3 paragraphs). Do not break character.",
+      "notes": "Template: {role_id}"
+    },
+    {
+      "id": 3,
+      "category": "deliberation",
+      "file_path": "agents/deliberation/agent.py",
+      "line_numbers": "54",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "Analyze this topic from both pro and con perspectives. First the PRO case, then the CON case, then a balanced synthesis:\n\n{body.question}",
+      "notes": "Frame: pro_con"
+    },
+    {
+      "id": 4,
+      "category": "deliberation",
+      "file_path": "agents/deliberation/agent.py",
+      "line_numbers": "56",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "Perform a SWOT analysis of this topic. Cover Strengths, Weaknesses, Opportunities, and Threats:\n\n{body.question}",
+      "notes": "Frame: swot"
+    },
+    {
+      "id": 5,
+      "category": "deliberation",
+      "file_path": "agents/deliberation/agent.py",
+      "line_numbers": "58",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "Analyze this topic from multiple perspectives, providing a structured, balanced analysis:\n\n{body.question}",
+      "notes": "Frame: default"
+    },
+    {
+      "id": 6,
+      "category": "deliberation",
+      "file_path": "agents/deliberation/agent.py",
+      "line_numbers": "62",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are an expert analyst. Provide thorough, balanced, structured analysis.",
+      "notes": ""
+    },
+    {
+      "id": 7,
+      "category": "planning",
+      "file_path": "agents/planning/agent.py",
+      "line_numbers": "42-52",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "Goal: {body.goal}\n\nCreate a comprehensive strategic plan. Include:\n1. Executive Summary\n2. SWOT Analysis\n3. Key Objectives (3-5)\n4. Action Plan with timeline\n5. Resource Requirements\n6. Risk Assessment\n7. Success Metrics\n\nUse markdown formatting. Be thorough and actionable.",
+      "notes": ""
+    },
+    {
+      "id": 8,
+      "category": "planning",
+      "file_path": "agents/planning/agent.py",
+      "line_numbers": "55",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are a senior strategic planner. Create comprehensive, actionable plans.",
+      "notes": ""
+    },
+    {
+      "id": 9,
+      "category": "research",
+      "file_path": "agents/research/agent.py",
+      "line_numbers": "43-46",
+      "variable_name": "plan_prompt",
+      "role": "user",
+      "full_text": "Research question: {body.question}\n\nPlan a research approach. List 3-5 subtopics to investigate. Use numbered list.",
+      "notes": "Stage: plan"
+    },
+    {
+      "id": 10,
+      "category": "research",
+      "file_path": "agents/research/agent.py",
+      "line_numbers": "49",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are a research planner. Plan a thorough investigation.",
+      "notes": "Stage: plan"
+    },
+    {
+      "id": 11,
+      "category": "research",
+      "file_path": "agents/research/agent.py",
+      "line_numbers": "57-62",
+      "variable_name": "synth_prompt",
+      "role": "user",
+      "full_text": "Research question: {body.question}\n\nResearch plan:\n{plan}\n\nWrite a comprehensive research report covering the planned subtopics. Use markdown formatting. Include a summary section and key findings. Be thorough and well-structured.",
+      "notes": "Stage: synthesis"
+    },
+    {
+      "id": 12,
+      "category": "research",
+      "file_path": "agents/research/agent.py",
+      "line_numbers": "66",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are an expert researcher. Write comprehensive, well-cited research reports.",
+      "notes": "Stage: synthesis"
+    },
+    {
+      "id": 13,
+      "category": "chat",
+      "file_path": "agents/chat/agent.py",
+      "line_numbers": "38",
+      "variable_name": "(inline)",
+      "role": "user",
+      "full_text": "(raw user message: body.message - no templated prompt, no system prompt)",
+      "notes": "User input passed directly to LLM"
+    },
+    {
+      "id": 14,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "126",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are a news analyst. Respond only with valid JSON.",
+      "notes": "Stage: _analyze"
+    },
+    {
+      "id": 15,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "110-121",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "Analyze the following news articles. Identify 3-5 major themes.\nFor each theme, provide:\n1. A concise title (one line)\n2. A two-sentence description\n3. Which article numbers are relevant\n\nFormat as JSON array:\n[{\"title\": \"...\", \"description\": \"...\", \"article_indices\": [1,3,5]}, ...]\n\nArticles:\n\n[N] Title: {title}  Source: {url}  Body: {body}",
+      "notes": "Stage: _analyze. Built iteratively per article"
+    },
+    {
+      "id": 16,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "165",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are a professional journalist. Write clear, engaging summaries.",
+      "notes": "Stage: _generate (summary)"
+    },
+    {
+      "id": 17,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "157-162",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "Write a {target_words}-word summary of this news theme:\n\nTheme: {theme['title']}\nDescription: {theme['description']}\n\nWrite a well-structured, journalistic summary with a headline.",
+      "notes": "Stage: _generate (summary)"
+    },
+    {
+      "id": 18,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "184",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are a video script writer. Write engaging YouTube scripts.",
+      "notes": "Stage: _generate (script)"
+    },
+    {
+      "id": 19,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "176-181",
+      "variable_name": "script_prompt",
+      "role": "user",
+      "full_text": "Write a {target_script}-word YouTube script about this news theme:\n\nTheme: {theme['title']}\nSummary: {response}\n\nFormat as a video script with intro, segments, and outro. Include speaker directions in [brackets].",
+      "notes": "Stage: _generate (script)"
+    },
+    {
+      "id": 20,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "214",
+      "variable_name": "(inline)",
+      "role": "system",
+      "full_text": "You are an executive editor. Write concise, insightful daily briefs.",
+      "notes": "Stage: _brief"
+    },
+    {
+      "id": 21,
+      "category": "news_pipeline",
+      "file_path": "src/workbench/services/news_pipeline.py",
+      "line_numbers": "206-211",
+      "variable_name": "prompt",
+      "role": "user",
+      "full_text": "Synthesize a daily news brief from these themes:\n\n{theme_summaries}\n\nWrite a cohesive 400-600 word brief that ties these themes together, highlighting connections and key takeaways.",
+      "notes": "Stage: _brief"
+    }
+  ]
+}

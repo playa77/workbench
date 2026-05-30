@@ -64,7 +64,7 @@ dev = [
 workbench = "workbench.main:main"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/workbench", "agents", "plugins"]
+packages = ["src/workbench", "agents"]
 
 [tool.ruff]
 line-length = 100

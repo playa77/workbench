@@ -359,14 +359,14 @@ pre code {
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Plugin list grid */
-.plugin-grid {
+/* Agent list grid */
+.agent-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
 }
 
-.plugin-card {
+.agent-card {
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius);
@@ -374,27 +374,27 @@ pre code {
   transition: border-color var(--transition);
 }
 
-.plugin-card:hover { border-color: var(--accent); }
+.agent-card:hover { border-color: var(--accent); }
 
-.plugin-card-header {
+.agent-card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
 }
 
-.plugin-card-name {
+.agent-card-name {
   font-size: 15px;
   font-weight: 600;
 }
 
-.plugin-card-desc {
+.agent-card-desc {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.4;
 }
 
-.plugin-card-version {
+.agent-card-version {
   font-size: 11px;
   color: var(--text-muted);
   font-family: var(--font-mono);

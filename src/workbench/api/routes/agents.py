@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from workbench.core.auth import get_current_user
 from workbench.core.db import get_session
 from workbench.core.models import User
-from workbench.core.plugins import get_registry, get_user_plugin_settings, set_user_plugin_setting
+from workbench.core.agents import get_registry, get_user_agent_settings, set_user_agent_setting
 
 router = APIRouter()
 
@@ -32,7 +32,7 @@ async def list_agents(
     session: AsyncSession = Depends(get_session),
 ):
     registry = get_registry()
-    user_settings = await get_user_plugin_settings(str(user.id), session)
+    user_settings = await get_user_agent_settings(str(user.id), session)
     agents = []
     for agent in registry.list_all():
         agent_config = user_settings.get(agent.name, {})
@@ -60,7 +60,7 @@ async def get_agent_settings(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    user_settings = await get_user_plugin_settings(str(user.id), session)
+    user_settings = await get_user_agent_settings(str(user.id), session)
     agent_config = user_settings.get(agent_name, {})
 
     return {
@@ -83,9 +83,9 @@ async def update_agent_settings(
     if agent is None:
         raise HTTPException(status_code=404, detail="Agent not found")
 
-    updated = await set_user_plugin_setting(
+    updated = await set_user_agent_setting(
         user_id=str(user.id),
-        plugin_name=agent_name,
+        agent_name=agent_name,
         enabled=body.enabled,
         settings=body.settings,
         session=session,

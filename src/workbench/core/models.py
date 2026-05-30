@@ -24,7 +24,7 @@ class User(Base):
 
     api_keys: Mapped[list["UserApiKey"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     openrouter_key: Mapped["UserOpenRouterKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
-    plugin_settings: Mapped[list["UserPluginSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    agent_settings: Mapped[list["UserAgentSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserApiKey(Base):
@@ -51,21 +51,21 @@ class UserOpenRouterKey(Base):
     user: Mapped["User"] = relationship(back_populates="openrouter_key")
 
 
-class UserPluginSettings(Base):
-    __tablename__ = "workbench_plugin_settings"
+class UserAgentSettings(Base):
+    __tablename__ = "workbench_agent_settings"
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
-    plugin_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    agent_name: Mapped[str] = mapped_column(String(100), nullable=False)
     enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     settings: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="plugin_settings")
+    user: Mapped["User"] = relationship(back_populates="agent_settings")
 
     __table_args__ = (
-        UniqueConstraint("user_id", "plugin_name", name="uq_user_plugin"),
-        Index("idx_plugin_settings_user", "user_id"),
+        UniqueConstraint("user_id", "agent_name", name="uq_user_agent"),
+        Index("idx_agent_settings_user", "user_id"),
     )
 
 
@@ -74,7 +74,7 @@ class StoredReport(Base):
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
-    plugin_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    agent_name: Mapped[str] = mapped_column(String(100), nullable=False)
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     content_format: Mapped[str] = mapped_column(String(20), nullable=False, default="markdown")
@@ -83,5 +83,5 @@ class StoredReport(Base):
 
     __table_args__ = (
         Index("idx_reports_user", "user_id"),
-        Index("idx_reports_plugin", "plugin_name"),
+        Index("idx_reports_agent", "agent_name"),
     )
