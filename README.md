@@ -1,6 +1,6 @@
 # Workbench
 
-**Self-hosted BYOK AI Workbench** -- one dashboard, six LLM-powered agents, zero telemetry.
+**Self-hosted BYOK AI Workbench** -- one dashboard, six LLM-powered agents plus Open WebUI, zero telemetry.
 
 Run locally. Bring your own OpenRouter key. Every agent lives in its own browser tab.
 
@@ -20,8 +20,7 @@ Run locally. Bring your own OpenRouter key. Every agent lives in its own browser
 | **Deep Research** | Research | Autonomous web research driven by function-calling. Multiple search iterations, source gathering, contradiction detection, and a single cited report at the end. |
 | **Deliberation** | Deliberation | Multi-frame reasoning with 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...). Pairwise critique, rhetoric analysis, disagreement surface mapping, and a final synthesis. |
 | **Strategic Planning** | Planning | Generates any of 9 plan types: project plans, SWOT analyses, WBS, schedules, root cause analyses, pitch decks, governance frameworks, team compositions, or executive summaries. |
-
-An optional **seventh tab** embeds **Open WebUI** via iframe for a chat-first interface alongside the agent tabs.
+| **Open WebUI** | Open WebUI | Full chat-first LLM interface with model management, RAG, and multimodality. Runs alongside the agent tabs in its own iframe, proxied through nginx. |
 
 ---
 
@@ -92,15 +91,10 @@ workbench version                       Print version
 ```bash
 cp .env.example .env
 # Fill in POSTGRES_PASSWORD and ENCRYPTION_KEY
-docker compose up -d
-```
-
-This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and an optional Open WebUI container on port 3000.
-
-```bash
-# With Open WebUI
 docker compose --profile openwebui up -d
 ```
+
+This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and Open WebUI on port 3000.
 
 For full production deployment instructions see [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -232,7 +226,7 @@ workbench/
 ├── config/default.toml              # Default configuration
 ├── alembic/                         # Database migrations (3 versions)
 ├── tests/                           # pytest suite (46 tests)
-├── docker-compose.yml               # Docker deployment (PG + Workbench + optional Open WebUI)
+├── docker-compose.yml               # Docker deployment (PG + Workbench + Open WebUI)
 ├── Dockerfile                       # python:3.12-slim, news+research extras
 ├── pyproject.toml                   # Build, dependencies, tool configs
 └── DEPLOYMENT.md                    # Production deployment guide
