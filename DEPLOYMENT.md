@@ -6,19 +6,41 @@ This document covers production deployment of Workbench. For local development s
 
 ## Table of Contents
 
-1. [Prerequisites](#prerequisites)
-2. [Deployment Paths](#deployment-paths)
-   - [Docker Compose (Recommended)](#docker-compose-recommended)
-   - [Bare-Metal](#bare-metal)
-3. [Reverse Proxy with TLS](#reverse-proxy-with-tls)
+1. [Architecture](#architecture)
+2. [Prerequisites](#prerequisites)
+3. [Docker Compose Deployment](#docker-compose-deployment)
+   - [Step 1: Prepare](#step-1-prepare)
+   - [Step 2: Environment File](#step-2-environment-file)
+   - [Step 3: Generate Secrets](#step-3-generate-secrets)
+   - [Step 4: Build and Start](#step-4-build-and-start)
+   - [Step 5: Install nginx Reverse Proxy](#step-5-install-nginx-reverse-proxy)
+   - [Step 6: Verify](#step-6-verify)
+   - [Step 7: Create Admin User](#step-7-create-admin-user)
+   - [Step 8: Access](#step-8-access)
 4. [Open WebUI Integration](#open-webui-integration)
-5. [Health Checks](#health-checks)
-6. [Backup and Restore](#backup-and-restore)
-7. [Upgrading](#upgrading)
-8. [Logging and Monitoring](#logging-and-monitoring)
-9. [Security Hardening Checklist](#security-hardening-checklist)
-10. [Troubleshooting](#troubleshooting)
-11. [Environment Variable Reference](#environment-variable-reference)
+5. [Service Management](#service-management)
+6. [Reverse Proxy with TLS](#reverse-proxy-with-tls)
+7. [Bare-Metal Deployment](#bare-metal-deployment)
+8. [Health Checks](#health-checks)
+9. [Backup and Restore](#backup-and-restore)
+10. [Upgrading](#upgrading)
+11. [Logging and Monitoring](#logging-and-monitoring)
+12. [Security Hardening Checklist](#security-hardening-checklist)
+13. [Troubleshooting](#troubleshooting)
+14. [Environment Variable Reference](#environment-variable-reference)
+
+---
+
+## Architecture
+
+```
+                           ┌─────────────────────────────────────┐
+Internet ──→ nginx (:80) ──┤  /             → workbench :8420    │ 127.0.0.1 only
+                           │  /open-webui/  → open-webui :3000   │ 127.0.0.1 only
+                           └─────────────────────────────────────┘
+```
+
+**nginx is the only service exposed to the network.** Both Workbench and Open WebUI bind exclusively to `127.0.0.1` — they are never directly reachable from outside. Open WebUI is proxied through nginx at the `/open-webui/` sub-path with content rewriting so the iframe embedded in Workbench loads correctly.
 
 ---
 
@@ -28,7 +50,8 @@ This document covers production deployment of Workbench. For local development s
 
 * **OpenRouter API key** -- [sign up](https://openrouter.ai) (free, pay-per-token). Key format: `sk-or-v1-...`
 * **A machine** running Linux (amd64/arm64). Minimum: 1 CPU, 1 GB RAM, 2 GB disk. Recommended: 2 CPUs, 2 GB RAM, 10 GB disk.
-* **Docker and Docker Compose** (v2+) for the Docker path, or **Python 3.11+** for bare-metal.
+* **Docker and Docker Compose** (v2+)
+* **nginx** (installed in step 5)
 
 ### Supported Databases
 
@@ -40,40 +63,35 @@ This document covers production deployment of Workbench. For local development s
 
 ---
 
-## Deployment Paths
+## Docker Compose Deployment
 
-### Docker Compose (Recommended)
+Three containers: PostgreSQL 16 (pgvector), Workbench application, and optional Open WebUI.
 
-This is the simplest path. Two containers: PostgreSQL 16 (pgvector) and the Workbench application.
-
-#### Step 1: Clone and Prepare
+### Step 1: Prepare
 
 ```bash
 git clone https://github.com/your-org/workbench.git
 cd workbench
 ```
 
-#### Step 2: Create the Environment File
+### Step 2: Environment File
 
 ```bash
 cp .env.example .env
+chmod 600 .env
 ```
 
-#### Step 3: Generate Secrets
+### Step 3: Generate Secrets
 
 ```bash
 # Generate a 64-hex-char AES encryption key
 python3 -c "import secrets; print(secrets.token_hex(32))"
-```
 
-```bash
 # Generate a strong PostgreSQL password
 python3 -c "import secrets; print(secrets.token_urlsafe(24))"
 ```
 
-#### Step 4: Edit `.env`
-
-Fill in these mandatory values:
+Edit `.env` and fill in:
 
 ```ini
 POSTGRES_USER=workbench
@@ -84,62 +102,319 @@ ENCRYPTION_KEY=<64-hex-char-key>
 OPENROUTER_API_KEY=sk-or-v1-...
 ```
 
-**All four values are mandatory.** Docker Compose will fail with an error if any required variable is missing or empty.
+**All four values are mandatory.** Docker Compose will fail with an error if `POSTGRES_USER`, `POSTGRES_PASSWORD`, or `ENCRYPTION_KEY` is missing or empty.
 
-#### Step 5: Start
-
-```bash
-docker compose up -d
-```
-
-Wait ~10 seconds for PostgreSQL to become healthy, then Workbench starts.
-
-#### Step 6: Verify
+### Step 4: Build and Start
 
 ```bash
-curl http://localhost:8420/health
-# Expected: {"status":"ok"}
+docker compose build workbench
+docker compose --profile openwebui up -d
 ```
 
-#### Step 7: Create Initial User
+Wait ~10 seconds for PostgreSQL to become healthy, then Workbench starts. The `--profile openwebui` flag includes the optional Open WebUI container; omit it if you don't want Open WebUI.
+
+### Step 5: Install nginx Reverse Proxy
+
+Both Workbench and Open WebUI bind to `127.0.0.1` only. nginx acts as the single public entry point.
+
+```bash
+sudo apt install -y nginx
+```
+
+Create `/etc/nginx/sites-available/workbench`:
+
+```nginx
+server {
+    listen 80;
+    server_name _;
+
+    # Workbench application (default route)
+    location / {
+        proxy_pass http://127.0.0.1:8420;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
+    # Open WebUI — proxied at /open-webui/ with path rewriting
+    location /open-webui/ {
+        rewrite ^/open-webui(/.*)$ $1 break;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        proxy_read_timeout 1800s;
+        proxy_send_timeout 1800s;
+
+        # Rewrite absolute paths so the SPA works under /open-webui/
+        sub_filter_types application/javascript application/json text/css text/html;
+        sub_filter_once off;
+        sub_filter 'href="/' 'href="/open-webui/';
+        sub_filter "href='/" "href='/open-webui/";
+        sub_filter ' "/_app/' ' "/open-webui/_app/';
+        sub_filter " '/_app/" " '/open-webui/_app/";
+        sub_filter ' "/api/' ' "/open-webui/api/';
+        sub_filter " '/api/" " '/open-webui/api/";
+        sub_filter ' "/ws/' ' "/open-webui/ws/';
+        sub_filter ' "/static/' ' "/open-webui/static/';
+        sub_filter ' "/favicon' ' "/open-webui/favicon';
+        sub_filter ' "/opensearch' ' "/open-webui/opensearch';
+    }
+}
+```
+
+Enable it:
+
+```bash
+sudo rm -f /etc/nginx/sites-enabled/default
+sudo ln -s /etc/nginx/sites-available/workbench /etc/nginx/sites-enabled/workbench
+sudo nginx -t
+sudo systemctl reload nginx
+sudo systemctl enable nginx
+```
+
+### Step 6: Verify
+
+```bash
+# Health check via nginx
+curl http://localhost/health
+# Expected: {"status":"ok","version":"0.1.0"}
+
+# Workbench UI via nginx
+curl -s -o /dev/null -w "%{http_code}" http://localhost/
+# Expected: 200
+
+# Open WebUI via nginx proxy
+curl -s -o /dev/null -w "%{http_code}" http://localhost/open-webui/
+# Expected: 200
+
+# Verify internal ports are NOT exposed externally:
+curl --connect-timeout 3 -s -o /dev/null -w "%{http_code}" http://<server-ip>:8420/health
+# Expected: 000
+curl --connect-timeout 3 -s -o /dev/null -w "%{http_code}" http://<server-ip>:3000/health
+# Expected: 000
+
+# Check container health
+docker compose ps
+```
+
+### Step 7: Create Admin User
 
 ```bash
 docker compose exec workbench workbench create-user admin
-# Saves the API key output -- it is shown only once.
+# Save the API key output — it is shown only once.
 ```
 
-#### Step 8: Access
+### Step 8: Access
 
-Open `http://<your-server>:8420` in a browser. Log in with the API key from step 7.
+Open `http://<your-server>` in a browser. Log in with the API key from step 7.
 
-#### Service Management
+---
+
+## Open WebUI Integration
+
+Workbench includes an optional Open WebUI container that embeds via iframe in the "Open WebUI" tab. Open WebUI is **never exposed publicly** — it is only reachable through the nginx reverse proxy at `/open-webui/`.
+
+### Why this design
+
+Open WebUI (a SvelteKit app) does not support sub-path hosting natively — its static assets, API calls, and WebSocket connections use hardcoded absolute paths (`/_app/`, `/api/`, `/ws/`). **Open WebUI maintainers have explicitly rejected sub-path support** in favour of subdomain-only deployments. We work around this with nginx `sub_filter` that rewrites absolute paths in responses, making the SPA functional under `/open-webui/`.
+
+### Start with Open WebUI
 
 ```bash
-docker compose ps                     # Show container status
-docker compose logs -f workbench      # Follow Workbench logs
-docker compose logs -f db             # Follow database logs
-docker compose restart workbench      # Restart after config changes
-docker compose down                   # Stop and remove containers
-docker compose down -v                # Also delete volumes (destroys database!)
+docker compose --profile openwebui up -d
+```
+
+The container binds to `127.0.0.1:3000`. nginx proxies it at `/open-webui/`.
+
+### How the iframe works
+
+The Workbench frontend (`owui-tab.js`) health-checks `/open-webui/health` and loads the iframe at `/open-webui/`. The CSP header allows this via `frame-src 'self'` — no external origins permitted.
+
+### Limitations of sub_filter proxying
+
+The `sub_filter` approach rewrites paths in text-based responses (HTML, CSS, JS, JSON). This covers almost all Open WebUI functionality, but note:
+
+* **Client-side navigation** (SvelteKit's `goto()`) may break on page refresh. Use the browser back button or re-navigate from the Open WebUI UI.
+* **WebSocket connections** work correctly since nginx passes through the `Upgrade` header.
+* After upgrading the Open WebUI image, re-test the sub-path rewrite rules.
+
+### Custom Open WebUI URL
+
+If using an external Open WebUI instance (not the bundled container), configure it via the `WORKBENCH_API__CSP_HEADER` environment variable:
+
+```bash
+WORKBENCH_API__CSP_HEADER="default-src 'self'; ...; frame-src 'self' https://open-webui.yourdomain.com"
+```
+
+If pointing to an external instance served at a subdomain (the recommended approach by Open WebUI maintainers), update `owui-tab.js`'s iframe URL accordingly.
+
+---
+
+## Service Management
+
+```bash
+# Show container status (all profiles)
+docker compose ps
+
+# With Open WebUI
+docker compose --profile openwebui ps
+
+# Follow logs
+docker compose logs -f workbench
+docker compose logs -f open-webui   # if running with --profile openwebui
+
+# Restart after config changes
+docker compose --profile openwebui restart workbench
+
+# Stop and remove containers (preserves volumes)
+docker compose --profile openwebui down
+
+# Stop and destroy all data (⚠️ irreversible)
+docker compose --profile openwebui down -v
+
+# Rebuild image after source changes
+docker compose build workbench
+docker compose --profile openwebui up -d
+
+# nginx management
+sudo systemctl restart nginx
+sudo systemctl status nginx
+sudo nginx -t
 ```
 
 ---
 
-### Bare-Metal
+## Reverse Proxy with TLS
+
+For public access with HTTPS, extend the nginx config with Let's Encrypt.
+
+### Install certbot
+
+```bash
+sudo apt install -y certbot python3-certbot-nginx
+```
+
+### Update nginx config
+
+Replace `/etc/nginx/sites-available/workbench`:
+
+```nginx
+# HTTP — redirect to HTTPS
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS
+server {
+    listen 443 ssl http2;
+    server_name your-domain.com;
+
+    ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    # Workbench application
+    location / {
+        proxy_pass http://127.0.0.1:8420;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+        proxy_send_timeout 600s;
+    }
+
+    # Open WebUI (with path rewriting — same as HTTP config above)
+    location /open-webui/ {
+        rewrite ^/open-webui(/.*)$ $1 break;
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_buffering off;
+        proxy_read_timeout 1800s;
+        proxy_send_timeout 1800s;
+
+        sub_filter_types application/javascript application/json text/css text/html;
+        sub_filter_once off;
+        sub_filter 'href="/' 'href="/open-webui/';
+        sub_filter "href='/" "href='/open-webui/";
+        sub_filter ' "/_app/' ' "/open-webui/_app/';
+        sub_filter " '/_app/" " '/open-webui/_app/";
+        sub_filter ' "/api/' ' "/open-webui/api/';
+        sub_filter " '/api/" " '/open-webui/api/";
+        sub_filter ' "/ws/' ' "/open-webui/ws/';
+        sub_filter ' "/static/' ' "/open-webui/static/';
+        sub_filter ' "/favicon' ' "/open-webui/favicon';
+        sub_filter ' "/opensearch' ' "/open-webui/opensearch';
+    }
+}
+```
+
+Obtain certificates:
+
+```bash
+sudo nginx -t
+sudo systemctl reload nginx
+sudo certbot --nginx -d your-domain.com
+```
+
+### CORS Configuration
+
+If using HTTPS, update CORS origins via environment:
+
+```bash
+# In .env:
+WORKBENCH_API__CORS_ORIGINS=["https://your-domain.com"]
+```
+
+### HSTS
+
+```bash
+# In .env:
+WORKBENCH_API__STRICT_TRANSPORT_SECURITY="max-age=31536000; includeSubDomains"
+```
+
+---
+
+## Bare-Metal Deployment
 
 Use this for systems without Docker, or when you want to manage the database yourself.
 
-#### Step 1: Install System Dependencies
+### Step 1: Install System Dependencies
 
 ```bash
 # Debian / Ubuntu
-sudo apt install -y python3 python3-venv python3-pip git
+sudo apt install -y python3 python3-venv python3-pip git nginx
 
 # RHEL / Fedora
-sudo dnf install -y python3 python3-pip git
+sudo dnf install -y python3 python3-pip git nginx
 ```
 
-#### Step 2: Clone and Set Up the Application
+### Step 2: Clone and Set Up the Application
 
 ```bash
 git clone https://github.com/your-org/workbench.git /opt/workbench
@@ -150,7 +425,7 @@ source .venv/bin/activate
 pip install -e ".[news,research,planning]"
 ```
 
-#### Step 3: Set Up the Database
+### Step 3: Set Up the Database
 
 **Option A: SQLite (simple, single-machine)**
 
@@ -181,13 +456,13 @@ export DATABASE_URL="postgresql+asyncpg://workbench:<strong-password>@localhost:
 workbench init-db
 ```
 
-#### Step 4: Generate an Encryption Key
+### Step 4: Generate an Encryption Key
 
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-#### Step 5: Set Environment Variables
+### Step 5: Set Environment Variables
 
 ```bash
 export ENCRYPTION_KEY="<64-hex-char-key>"
@@ -195,19 +470,23 @@ export ENCRYPTION_KEY="<64-hex-char-key>"
 export OPENROUTER_API_KEY="sk-or-v1-..."
 ```
 
-#### Step 6: Create an Admin User
+### Step 6: Create an Admin User
 
 ```bash
 workbench create-user admin
 ```
 
-#### Step 7: Start
+### Step 7: Start
 
 ```bash
 workbench serve --host 127.0.0.1 --port 8420
 ```
 
-#### Step 8: Set Up systemd (Optional but Recommended)
+### Step 8: Set Up nginx Reverse Proxy
+
+Same nginx config as the Docker path (see [Step 5: Install nginx Reverse Proxy](#step-5-install-nginx-reverse-proxy) and [Reverse Proxy with TLS](#reverse-proxy-with-tls)).
+
+### Step 9: Set Up systemd (Optional but Recommended)
 
 Create `/etc/systemd/system/workbench.service`:
 
@@ -244,105 +523,6 @@ sudo systemctl status workbench
 
 ---
 
-## Reverse Proxy with TLS
-
-For public access, place Workbench behind a reverse proxy with HTTPS.
-
-### nginx
-
-Install nginx and certbot:
-
-```bash
-sudo apt install -y nginx certbot python3-certbot-nginx
-```
-
-Create `/etc/nginx/sites-available/workbench`:
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    # SSE endpoints need unbuffered proxying
-    location / {
-        proxy_pass http://127.0.0.1:8420;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
-        proxy_read_timeout 600s;
-        proxy_send_timeout 600s;
-    }
-}
-```
-
-Enable and get certificates:
-
-```bash
-sudo ln -s /etc/nginx/sites-available/workbench /etc/nginx/sites-enabled/
-sudo nginx -t
-sudo systemctl reload nginx
-
-sudo certbot --nginx -d your-domain.com
-```
-
-### CORS Configuration
-
-If your frontend domain differs from the API domain, set CORS origins:
-
-```bash
-# In .env (Docker) or environment (bare-metal):
-WORKBENCH_API__CORS_ORIGINS=["https://your-domain.com"]
-```
-
-### HSTS
-
-To enable HSTS, set in `.env` or environment:
-
-```bash
-WORKBENCH_API__STRICT_TRANSPORT_SECURITY="max-age=31536000; includeSubDomains"
-```
-
----
-
-## Open WebUI Integration
-
-Workbench includes an optional Open WebUI container that embeds via iframe in a dedicated tab.
-
-### Start with Open WebUI
-
-```bash
-docker compose --profile openwebui up -d
-```
-
-This adds a container on port 3000. The Open WebUI tab auto-detects it at `http://localhost:3000`.
-
-### Custom Open WebUI URL
-
-You can point the tab to any Open WebUI instance (local, remote, or cloud-hosted). Configure this in the agent settings endpoint, or modify the frame-src CSP directive if your Open WebUI is on a different host:
-
-```bash
-WORKBENCH_API__CSP_HEADER="default-src 'self'; ...; frame-src 'self' http://localhost:3000 https://your-openwebui-host.com"
-```
-
----
-
 ## Health Checks
 
 ### Endpoint
@@ -353,7 +533,7 @@ GET /health
 
 Response:
 ```json
-{"status": "ok"}
+{"status": "ok", "version": "0.1.0"}
 ```
 
 Used by Docker Compose healthcheck, load balancers, and uptime monitors.
@@ -365,8 +545,19 @@ Used by Docker Compose healthcheck, load balancers, and uptime monitors.
 docker compose ps
 
 # Expected output for healthy containers:
-# workbench   Up (healthy)
-# db          Up (healthy)
+# workbench-workbench-1   Up 2 minutes (healthy)
+# workbench-db-1           Up 2 minutes (healthy)
+# workbench-open-webui-1   Up 2 minutes (healthy)
+```
+
+### Via nginx
+
+```bash
+# Workbench health
+curl http://localhost/health
+
+# Open WebUI health
+curl http://localhost/open-webui/health
 ```
 
 ### Monitoring Script
@@ -375,7 +566,7 @@ docker compose ps
 #!/bin/bash
 # check_workbench.sh -- suitable for cron or monitoring tools
 
-HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:8420/health)
+HEALTH=$(curl -s -o /dev/null -w "%{http_code}" http://localhost/health)
 if [ "$HEALTH" != "200" ]; then
     echo "Workbench health check failed (HTTP $HEALTH)"
     exit 1
@@ -395,7 +586,7 @@ echo "Workbench is healthy"
 # Dump the database
 docker compose exec db pg_dump -U workbench workbench > workbench_backup_$(date +%Y%m%d).sql
 
-# Also back up the data volume in case of SQLite usage within the container:
+# Also back up the data volume:
 docker compose cp workbench:/app/data ./data_backup_$(date +%Y%m%d)
 ```
 
@@ -466,39 +657,23 @@ git pull origin main
 
 # Rebuild and restart
 docker compose build workbench
-docker compose up -d
+docker compose --profile openwebui up -d
 
 # Check logs for errors
 docker compose logs -f workbench
 
 # Verify
-curl http://localhost:8420/health
+curl http://localhost/health
 ```
 
 Database migrations run automatically on startup. No manual migration step needed.
-
-### Bare-Metal
-
-```bash
-cd /opt/workbench
-git pull origin main
-
-source .venv/bin/activate
-pip install -e ".[news,research,planning]"
-
-# Run migrations
-workbench init-db
-
-# Restart
-sudo systemctl restart workbench
-sudo systemctl status workbench
-```
 
 ### Upgrade Notes
 
 * Always review `CHANGELOG.md` or git log for breaking changes before upgrading.
 * Migrations are additive and idempotent. Running `init-db` on an already-migrated database is safe.
 * The encryption key must remain the same across upgrades. **Changing `ENCRYPTION_KEY` after storing encrypted data will make existing keys unrecoverable.**
+* When upgrading Open WebUI (`docker compose --profile openwebui pull open-webui`), re-test the `/open-webui/` sub-path proxying — the `sub_filter` rules may need adjusting for new asset paths.
 * Test upgrades on a staging instance before production.
 
 ---
@@ -519,6 +694,16 @@ docker compose logs -f --since=10m workbench  # Last 10 minutes
 journalctl -u workbench -f                  # Follow logs
 journalctl -u workbench --since "1 hour ago"
 journalctl -u workbench -n 200
+```
+
+### nginx
+
+```bash
+# Access logs
+sudo tail -f /var/log/nginx/access.log
+
+# Error logs
+sudo tail -f /var/log/nginx/error.log
 ```
 
 ### Log Levels
@@ -550,15 +735,16 @@ Complete these items before exposing Workbench to the internet.
 
 - [ ] Use a randomly generated `ENCRYPTION_KEY` (64 hex characters, generated with `secrets.token_hex(32)`)
 - [ ] Change PostgreSQL credentials from any defaults. Use a strong, unique password.
-- [ ] Never expose the PostgreSQL port (5432) to the public internet. Docker Compose already only exposes internally.
-- [ ] Run behind a reverse proxy (nginx/Caddy) with TLS. Use Let's Encrypt for free certificates.
+- [ ] Never expose the PostgreSQL port (5432) to the public internet. Docker Compose only exposes it internally.
+- [ ] Both Workbench (8420) and Open WebUI (3000) bind to `127.0.0.1` only in `docker-compose.yml`. Verify with `curl --connect-timeout 3 http://<server-ip>:8420/health` (should return `000`).
+- [ ] Run behind nginx as the single public entry point. Enable TLS via Let's Encrypt (`certbot --nginx`).
 - [ ] Enable HSTS via `WORKBENCH_API__STRICT_TRANSPORT_SECURITY` once TLS is confirmed working.
 - [ ] Set CORS origins explicitly: `WORKBENCH_API__CORS_ORIGINS=["https://your-domain.com"]`
-- [ ] Set CSP header for your production domain: `WORKBENCH_API__CSP_HEADER=...` -- include your Open WebUI host in `frame-src` if using that feature.
+- [ ] CSP header defaults to `frame-src 'self'` — Open WebUI is iframed from the same origin. Only add external origins if using an externally hosted Open WebUI instance.
 - [ ] Consider setting `WORKBENCH_AUTH__ALLOW_REGISTRATION=false` after creating your initial users.
 - [ ] Run the application as a non-root user (the Docker image runs as root by default in slim images; add a `USER` directive if needed).
 - [ ] Restrict file permissions on `.env` and backup files: `chmod 600 .env`.
-- [ ] Set up firewall rules to allow only 443 (and 80 for ACME) on the public interface. Block 8420 and 5432 from all but localhost.
+- [ ] Set up firewall rules to allow only 80 and 443 on the public interface. Internal ports 8420 and 3000 are unreachable anyway since they bind to `127.0.0.1`.
 - [ ] Review rate limit settings for your expected traffic patterns.
 - [ ] Keep the host system, Docker, and Python packages updated regularly.
 - [ ] Back up the database before any upgrade.
@@ -589,6 +775,44 @@ docker compose exec db pg_isready -U workbench
 
 If it returns "no response", the database container may still be initializing. Wait 10-15 seconds and retry.
 
+If you previously deployed with different credentials, old volume data might conflict. Destroy and recreate:
+
+```bash
+docker compose --profile openwebui down -v
+docker compose --profile openwebui up -d
+```
+
+### nginx returns 502 Bad Gateway
+
+One of the backend containers isn't running or listening:
+
+```bash
+docker compose ps                           # All should show "Up (healthy)"
+curl http://127.0.0.1:8420/health            # Workbench
+curl http://127.0.0.1:3000/health            # Open WebUI
+```
+
+Check nginx error log:
+
+```bash
+sudo tail -20 /var/log/nginx/error.log
+```
+
+### Open WebUI iframe is blank or shows 404
+
+Check the nginx `sub_filter` rules are catching all asset paths:
+
+```bash
+# Check for un-rewritten paths in Open WebUI responses
+curl -s http://localhost/open-webui/ | grep -oP '(src|href)="/(?!open-webui)[^"]*"'
+```
+
+If you see un-rewritten paths, add additional `sub_filter` directives. Common paths to watch: `/_app/`, `/api/`, `/ws/`, `/static/`, `/favicon`, `/opensearch`.
+
+### Open WebUI works at root but breaks on page refreshes
+
+This is a known limitation of the `sub_filter` approach — SvelteKit's client-side router uses absolute paths that are rewritten at the HTTP level, but JavaScript-initiated navigations may bypass the rewrite. Reload from the browser's URL bar or re-navigate from within the Open WebUI UI.
+
 ### OpenRouter API returns 401 or 403
 
 * Verify your key starts with `sk-or-v1-` and is valid at [openrouter.ai/keys](https://openrouter.ai/keys).
@@ -611,20 +835,37 @@ If it returns "no response", the database container may still be initializing. W
 
 ### 413 Request Entity Too Large
 
-Long texts (e.g., pasting large documents) may exceed the default request size limit. Increase it by running behind nginx with `client_max_body_size 10m;`.
+Long texts (e.g., pasting large documents) may exceed the default request size limit. Add to the nginx server block:
+
+```nginx
+client_max_body_size 10m;
+```
 
 ### Disk space growing unexpectedly
 
 Check log volume and database growth:
 
 ```bash
-du -sh logs/ data/pgdata/
+du -sh logs/ data/
 docker compose exec db psql -U workbench -c "SELECT pg_size_pretty(pg_database_size('workbench'));"
 ```
 
 ### Cannot create user with CLI while server is running
 
 The `create-user` command and server can run concurrently since the CLI uses its own database connection pool. If you encounter locking issues, wait and retry.
+
+### User already exists
+
+```bash
+docker compose exec workbench workbench create-user admin
+# "User 'admin' already exists."
+```
+
+Use a different username, or connect to the database directly to check existing users:
+
+```bash
+docker compose exec db psql -U workbench -c "SELECT username, id FROM workbench_users;"
+```
 
 ---
 
@@ -641,7 +882,7 @@ All variables that can appear in `.env` or the environment.
 | `POSTGRES_DB` | `workbench` | PostgreSQL database name (Docker only) |
 | `ENCRYPTION_KEY` | `a1b2...64 chars total` | AES-256-GCM key for at-rest encryption |
 
-### Optional -- Server Configuration
+### Optional — Server Configuration
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -650,17 +891,17 @@ All variables that can appear in `.env` or the environment.
 | `WORKBENCH_GENERAL__LOG_LEVEL` | `INFO` | Logging level: DEBUG, INFO, WARNING, ERROR |
 | `WORKBENCH_GENERAL__DATA_DIR` | `data` | Directory for data files |
 
-### Optional -- Network
+### Optional — Network
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `WORKBENCH_API__HOST` | `127.0.0.1` | Bind address |
 | `WORKBENCH_API__PORT` | `8420` | Listen port |
-| `WORKBENCH_API__CORS_ORIGINS` | `["http://localhost:8420","http://localhost:3000"]` | Allowed CORS origins (JSON array) |
-| `WORKBENCH_API__CSP_HEADER` | (restrictive default) | Content-Security-Policy header value |
+| `WORKBENCH_API__CORS_ORIGINS` | `["http://localhost:8420"]` | Allowed CORS origins (JSON array) |
+| `WORKBENCH_API__CSP_HEADER` | (restrictive default with `frame-src 'self'`) | Content-Security-Policy header value |
 | `WORKBENCH_API__STRICT_TRANSPORT_SECURITY` | (empty) | HSTS header value (e.g. `max-age=31536000`) |
 
-### Optional -- OpenRouter
+### Optional — OpenRouter
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -669,7 +910,7 @@ All variables that can appear in `.env` or the environment.
 | `WORKBENCH_OPENROUTER__TIMEOUT_SECONDS` | `120` | HTTP timeout for LLM calls |
 | `WORKBENCH_OPENROUTER__MAX_RETRIES` | `2` | Retries on transient failures |
 
-### Optional -- Authentication
+### Optional — Authentication
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -678,7 +919,7 @@ All variables that can appear in `.env` or the environment.
 | `WORKBENCH_AUTH__ALLOW_REGISTRATION` | `true` | Allow new user registration via the API |
 | `WORKBENCH_AUTH__SESSION_EXPIRY_HOURS` | `24` | Session cookie lifetime |
 
-### Optional -- Rate Limiting
+### Optional — Rate Limiting
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -687,36 +928,8 @@ All variables that can appear in `.env` or the environment.
 | `WORKBENCH_RATE_LIMIT__AGENTS` | `60/minute` | Rate limit for agent endpoints |
 | `WORKBENCH_RATE_LIMIT__GENERAL` | `120/minute` | Rate limit for all other endpoints |
 
-### Optional -- Encryption
+### Optional — Encryption
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `WORKBENCH_ENCRYPTION__ENCRYPT_REPORTS` | `false` | Also encrypt stored research reports at rest |
-
----
-
-## Firewall Rules (iptables/nftables)
-
-Example rules for a public-facing server using iptables:
-
-```bash
-# Allow SSH, HTTP, HTTPS
-iptables -A INPUT -p tcp --dport 22 -j ACCEPT
-iptables -A INPUT -p tcp --dport 80 -j ACCEPT
-iptables -A INPUT -p tcp --dport 443 -j ACCEPT
-
-# Block direct access to Workbench and PostgreSQL from outside
-iptables -A INPUT -p tcp --dport 8420 -s 127.0.0.1 -j ACCEPT
-iptables -A INPUT -p tcp --dport 8420 -j DROP
-iptables -A INPUT -p tcp --dport 5432 -j DROP
-
-# Allow established connections
-iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-
-# Default deny
-iptables -P INPUT DROP
-iptables -P FORWARD DROP
-iptables -P OUTPUT ACCEPT
-```
-
-Save with `iptables-save > /etc/iptables/rules.v4` (Debian/Ubuntu) or your distribution's equivalent.

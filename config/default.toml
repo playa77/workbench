@@ -8,7 +8,7 @@ data_dir = "data"
 [api]
 host = "127.0.0.1"
 port = 8420
-cors_origins = ["http://localhost:8420", "http://localhost:3000"]
+cors_origins = ["http://localhost:8420"]
 
 [database]
 url_env = "DATABASE_URL"

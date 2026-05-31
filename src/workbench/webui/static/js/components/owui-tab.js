@@ -56,8 +56,8 @@
 
     if (healthCheckTimer) { clearTimeout(healthCheckTimer); }
 
-    var url = 'http://localhost:' + currentPort + '/health';
-    fetch(url, { mode: 'cors' })
+    var url = '/open-webui/health';
+    fetch(url)
       .then(function (resp) {
         if (resp.ok) {
           showOwuiActive();
@@ -74,19 +74,19 @@
     currentChecked = true;
     var status = document.getElementById('owui-status');
     if (status) {
-      status.innerHTML = '<span class="status-dot active" style="width:8px;height:8px;margin-right:6px"></span> Running on port ' + currentPort;
+      status.innerHTML = '<span class="status-dot active" style="width:8px;height:8px;margin-right:6px"></span> Running';
     }
 
     var content = document.getElementById('owui-content');
     if (!content) return;
 
-    var owuiUrl = 'http://localhost:' + currentPort + '/';
+    var owuiUrl = '/open-webui/';
 
     content.innerHTML = ''
       + '<div class="card" style="padding:0;overflow:hidden">'
       +   '<div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:var(--bg-hover);border-bottom:1px solid var(--border-color)">'
       +     '<span style="font-size:12px;color:var(--text-secondary)">' + owuiUrl + '</span>'
-      +     '<a href="' + owuiUrl + '" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Open in Tab</a>'
+      +     '<a href="/open-webui/" target="_blank" class="btn btn-secondary btn-sm" style="text-decoration:none">Open in Tab</a>'
       +   '</div>'
       +   '<iframe id="owui-iframe"'
       +     ' src="' + owuiUrl + '"'
