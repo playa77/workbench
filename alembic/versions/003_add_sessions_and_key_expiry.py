@@ -5,7 +5,7 @@ and expires_at column to workbench_api_keys.
 """
 
 from alembic import op
-from sqlalchemy import Column, DateTime, ForeignKey, String
+from sqlalchemy import Column, DateTime, ForeignKey, String, text as sa_text
 from sqlalchemy.dialects.postgresql import UUID
 
 revision = "003"
@@ -21,7 +21,7 @@ def upgrade() -> None:
             "id",
             UUID(as_uuid=True),
             primary_key=True,
-            server_default=op.f("gen_random_uuid()"),
+            server_default=sa_text("gen_random_uuid()"),
         ),
         Column(
             "user_id",
@@ -34,7 +34,7 @@ def upgrade() -> None:
             "created_at",
             DateTime,
             nullable=False,
-            server_default=op.f("now()"),
+            server_default=sa_text("now()"),
         ),
         Column("expires_at", DateTime, nullable=False),
     )

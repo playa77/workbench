@@ -106,16 +106,20 @@ def _run_migrations(config) -> None:
 
     init_db(config)
 
-    asyncio.run(_run_alembic_upgrade())
+    _run_alembic_upgrade()
     asyncio.run(close_db())
 
 
-async def _run_alembic_upgrade() -> None:
+def _run_alembic_upgrade() -> None:
     from alembic.config import Config as AlembicConfig
 
     from alembic import command
 
+    # Primary: relative to the source tree (editable installs)
     root = Path(__file__).resolve().parents[2]
+    # Fallback: relative to the current working directory (Docker / pip install)
+    if not (root / "alembic.ini").exists():
+        root = Path.cwd()
     alembic_ini = root / "alembic.ini"
 
     alembic_cfg = AlembicConfig(str(alembic_ini))

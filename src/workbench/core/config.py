@@ -126,9 +126,18 @@ def _flatten_env_overrides(env_overrides: dict[str, Any]) -> dict[str, Any]:
 
 def load_config(default_path: Path | None = None) -> WorkbenchConfig:
     """Load configuration from default.toml and env vars."""
-    resolved_default = default_path or (
-        Path(__file__).resolve().parents[3] / "config" / "default.toml"
-    )
+    resolved_default = default_path
+    if resolved_default is None:
+        # Primary: relative to the source tree (useful in editable installs)
+        source_tree = Path(__file__).resolve().parents[3] / "config" / "default.toml"
+        # Fallback: relative to the current working directory (Docker / pip install)
+        cwd_config = Path("config") / "default.toml"
+        if source_tree.exists():
+            resolved_default = source_tree
+        elif cwd_config.exists():
+            resolved_default = cwd_config
+        else:
+            resolved_default = source_tree  # will fail below but preserves original behavior
 
     raw: dict[str, Any] = {}
     if resolved_default.exists():

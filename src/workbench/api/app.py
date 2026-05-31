@@ -50,14 +50,17 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
     from workbench.core.encryption import set_encrypt_reports
     set_encrypt_reports(config.encryption_encrypt_reports)
 
+    # Run migrations before starting the server (not inside lifespan)
+    # to avoid nested event loop conflicts with asyncio.run()
+    _run_alembic_upgrade()
+    logger.info("Database migrations applied")
+
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logger.info(
             "Workbench %s starting — host=%s port=%s",
             "0.1.0", config.api_host, config.api_port,
         )
-        _run_alembic_upgrade()
-        logger.info("Database migrations applied")
 
         # Start the background news scheduler (non-blocking)
         scheduler_task = _start_news_scheduler_if_agent_enabled(app)
@@ -142,7 +145,11 @@ def _run_alembic_upgrade() -> None:
 
     from alembic import command
 
+    # Primary: relative to the source tree (editable installs)
     root = Path(__file__).resolve().parents[3]
+    # Fallback: relative to the current working directory (Docker / pip install)
+    if not (root / "alembic.ini").exists():
+        root = Path.cwd()
     alembic_cfg = AlembicConfig(str(root / "alembic.ini"))
     alembic_cfg.set_main_option("script_location", str(root / "alembic"))
     command.upgrade(alembic_cfg, "head")

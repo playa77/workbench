@@ -59,7 +59,7 @@ async def get_current_user(
 
 
 async def _auth_via_cookie(token: str, session: AsyncSession) -> User | None:
-    now = datetime.now(UTC)
+    now = datetime.now(UTC).replace(tzinfo=None)
     result = await session.execute(
         select(UserSession).where(UserSession.expires_at > now)
     )
@@ -87,7 +87,7 @@ async def _auth_via_api_key(raw_key: str, session: AsyncSession) -> User | None:
 
 async def create_session(user: User, session: AsyncSession, hours: int = 24) -> str:
     raw, hashed = generate_session_token()
-    expires = datetime.now(UTC) + timedelta(hours=hours)
+    expires = (datetime.now(UTC) + timedelta(hours=hours)).replace(tzinfo=None)
     session.add(UserSession(user_id=user.id, token_hash=hashed, expires_at=expires))
     await session.commit()
     return raw

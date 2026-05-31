@@ -14,6 +14,7 @@ from sqlalchemy import (
     String,
     Text,
     UniqueConstraint,
+    text as sa_text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 
@@ -36,51 +37,51 @@ def downgrade() -> None:
 def _create_core_tables() -> None:
     op.create_table(
         "workbench_users",
-        Column("id", UUID(as_uuid=True), primary_key=True, server_default=op.f("gen_random_uuid()")),
+        Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa_text("gen_random_uuid()")),
         Column("username", String(100), nullable=False, unique=True),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
     )
 
     op.create_table(
         "workbench_api_keys",
-        Column("id", UUID(as_uuid=True), primary_key=True, server_default=op.f("gen_random_uuid()")),
+        Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa_text("gen_random_uuid()")),
         Column("user_id", UUID(as_uuid=True), ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False),
         Column("key_hash", String(120), nullable=False),
         Column("label", String(100), nullable=False, server_default="default"),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
         Column("last_used_at", DateTime, nullable=True),
     )
 
     op.create_table(
         "workbench_openrouter_keys",
-        Column("id", UUID(as_uuid=True), primary_key=True, server_default=op.f("gen_random_uuid()")),
+        Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa_text("gen_random_uuid()")),
         Column("user_id", UUID(as_uuid=True), ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False, unique=True),
         Column("encrypted_key", Text, nullable=False),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
     )
 
     op.create_table(
         "workbench_agent_settings",
-        Column("id", UUID(as_uuid=True), primary_key=True, server_default=op.f("gen_random_uuid()")),
+        Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa_text("gen_random_uuid()")),
         Column("user_id", UUID(as_uuid=True), ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False),
         Column("agent_name", String(100), nullable=False),
         Column("enabled", Boolean, nullable=False, server_default="false"),
-        Column("settings", JSONB, nullable=False, server_default=op.f("'{}'::jsonb")),
-        Column("updated_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("settings", JSONB, nullable=False, server_default=sa_text("'{}'::jsonb")),
+        Column("updated_at", DateTime, nullable=False, server_default=sa_text("now()")),
         UniqueConstraint("user_id", "agent_name", name="uq_user_agent"),
         Index("idx_agent_settings_user", "user_id"),
     )
 
     op.create_table(
         "workbench_reports",
-        Column("id", UUID(as_uuid=True), primary_key=True, server_default=op.f("gen_random_uuid()")),
+        Column("id", UUID(as_uuid=True), primary_key=True, server_default=sa_text("gen_random_uuid()")),
         Column("user_id", UUID(as_uuid=True), ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False),
         Column("agent_name", String(100), nullable=False),
         Column("title", String(500), nullable=False),
         Column("content", Text, nullable=False),
         Column("content_format", String(20), nullable=False, server_default="markdown"),
-        Column("metadata_json", JSONB, nullable=False, server_default=op.f("'{}'::jsonb")),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("metadata_json", JSONB, nullable=False, server_default=sa_text("'{}'::jsonb")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
         Index("idx_reports_user", "user_id"),
         Index("idx_reports_agent", "agent_name"),
     )
@@ -100,7 +101,7 @@ def _create_news_tables() -> None:
         Column("enable_script", Boolean, nullable=False, server_default="true"),
         Column("enable_brief", Boolean, nullable=False, server_default="true"),
         Column("enable_email", Boolean, nullable=False, server_default="true"),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
         Index("idx_news_interests_user", "user_id"),
     )
 
@@ -119,7 +120,7 @@ def _create_news_tables() -> None:
         Column("id", Integer, primary_key=True, autoincrement=True),
         Column("interest_id", Integer, ForeignKey("news_interests.id", ondelete="CASCADE"), nullable=False),
         Column("run_date", String(10), nullable=False),
-        Column("started_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("started_at", DateTime, nullable=False, server_default=sa_text("now()")),
         Column("completed_at", DateTime, nullable=True),
         Column("status", String(20), nullable=False, server_default="running"),
         Column("current_stage", String(50), nullable=True),
@@ -137,7 +138,7 @@ def _create_news_tables() -> None:
         Column("title", Text, nullable=False),
         Column("author", String(300), nullable=True),
         Column("published_at", DateTime, nullable=False),
-        Column("scraped_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("scraped_at", DateTime, nullable=False, server_default=sa_text("now()")),
         Column("excerpt", Text, nullable=True),
         Column("content", Text, nullable=True),
         Column("content_status", String(20), nullable=False, server_default="full"),
@@ -153,7 +154,7 @@ def _create_news_tables() -> None:
         Column("description", Text, nullable=False),
         Column("source_article_ids", Text, nullable=False),
         Column("order_index", Integer, nullable=False),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
     )
 
     op.create_table(
@@ -162,7 +163,7 @@ def _create_news_tables() -> None:
         Column("theme_id", Integer, ForeignKey("news_themes.id", ondelete="CASCADE"), nullable=False),
         Column("deliverable_type", String(50), nullable=False),
         Column("content", Text, nullable=False),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
     )
 
     op.create_table(
@@ -171,7 +172,7 @@ def _create_news_tables() -> None:
         Column("run_id", Integer, ForeignKey("news_runs.id", ondelete="CASCADE"), nullable=False),
         Column("content", Text, nullable=False),
         Column("word_count", Integer, nullable=False),
-        Column("created_at", DateTime, nullable=False, server_default=op.f("now()")),
+        Column("created_at", DateTime, nullable=False, server_default=sa_text("now()")),
     )
 
 

@@ -169,6 +169,7 @@ async def get_profile(
 @limiter.limit("10/minute")
 async def set_openrouter_key(
     body: OpenRouterKeyRequest,
+    request: Request,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
@@ -221,6 +222,7 @@ async def list_api_keys(
 @limiter.limit("10/minute")
 async def create_api_key(
     body: ApiKeyLabel,
+    request: Request,
     user: User = Depends(get_current_user),
     session: AsyncSession = Depends(get_session),
 ):
