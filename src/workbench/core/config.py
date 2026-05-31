@@ -15,7 +15,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from workbench.shared.config.loader import deep_merge, read_env as _read_env_prefix
+from workbench.shared.config.loader import deep_merge
+from workbench.shared.config.loader import read_env as _read_env_prefix
 
 LOGGER = logging.getLogger(__name__)
 
@@ -27,7 +28,7 @@ class WorkbenchConfig(BaseModel):
 
     log_level: str = "INFO"
     data_dir: str = "data"
-    api_host: str = "0.0.0.0"
+    api_host: str = "127.0.0.1"
     api_port: int = 8420
     api_cors_origins: list[str] = Field(default_factory=lambda: ["http://localhost:8420"])
     database_url: str = ""
@@ -37,8 +38,39 @@ class WorkbenchConfig(BaseModel):
     openrouter_timeout_seconds: int = 120
     openrouter_max_retries: int = 2
     encryption_key: str = ""
+    encryption_encrypt_reports: bool = False
     auth_api_key_prefix: str = "wb"
     auth_max_keys_per_user: int = 5
+    auth_allow_registration: bool = True
+    auth_session_expiry_hours: int = 24
+    rate_limit_enabled: bool = True
+    rate_limit_auth: str = "5/minute"
+    rate_limit_agents: str = "60/minute"
+    rate_limit_general: str = "120/minute"
+    api_csp_header: str = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data:; "
+        "connect-src 'self'; "
+        "frame-src 'self' http://localhost:3000; "
+        "frame-ancestors 'none'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+    api_strict_transport_security: str = ""
+
+    @field_validator("api_cors_origins")
+    @classmethod
+    def _validate_cors_origins(cls, v: list[str]) -> list[str]:
+        universal = "*"
+        if universal in v:
+            logger = logging.getLogger(__name__)
+            logger.warning(
+                "CORS origin set to '*' — this allows requests from any origin. "
+                "For production, set specific origins via WORKBENCH_API__CORS_ORIGINS."
+            )
+        return v
 
     @field_validator("log_level")
     @classmethod
@@ -59,6 +91,8 @@ def _flatten_env_overrides(env_overrides: dict[str, Any]) -> dict[str, Any]:
         "api.host": "api_host",
         "api.port": "api_port",
         "api.cors_origins": "api_cors_origins",
+        "api.csp_header": "api_csp_header",
+        "api.strict_transport_security": "api_strict_transport_security",
         "database.url_env": None,
         "openrouter.base_url": "openrouter_base_url",
         "openrouter.api_key_env": "openrouter_api_key_env",
@@ -66,8 +100,15 @@ def _flatten_env_overrides(env_overrides: dict[str, Any]) -> dict[str, Any]:
         "openrouter.timeout_seconds": "openrouter_timeout_seconds",
         "openrouter.max_retries": "openrouter_max_retries",
         "encryption.key_env": None,
+        "encryption.encrypt_reports": "encryption_encrypt_reports",
         "auth.api_key_prefix": "auth_api_key_prefix",
         "auth.max_keys_per_user": "auth_max_keys_per_user",
+        "auth.allow_registration": "auth_allow_registration",
+        "auth.session_expiry_hours": "auth_session_expiry_hours",
+        "rate_limit.enabled": "rate_limit_enabled",
+        "rate_limit.auth": "rate_limit_auth",
+        "rate_limit.agents": "rate_limit_agents",
+        "rate_limit.general": "rate_limit_general",
     }
     flat: dict[str, Any] = {}
     for section_key, section in env_overrides.items():
@@ -108,17 +149,19 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
     if "encryption" in raw:
         key_env = raw["encryption"].get("key_env", "ENCRYPTION_KEY") if isinstance(raw.get("encryption"), dict) else "ENCRYPTION_KEY"
         raw["encryption_key"] = os.environ.get(key_env, raw.get("encryption_key", ""))
+        if isinstance(raw.get("encryption"), dict):
+            raw["encryption_encrypt_reports"] = raw["encryption"].get("encrypt_reports", False)
 
     flat: dict[str, Any] = {}
     for key in WorkbenchConfig.model_fields:
         if key in raw:
             flat[key] = raw[key]
-    for section_name in ("general", "api", "openrouter", "auth"):
+    for section_name in ("general", "api", "openrouter", "auth", "rate_limit"):
         if section_name in raw and isinstance(raw[section_name], dict):
             section = raw[section_name]
             section_to_flat = {
                 "general": {"log_level": "log_level", "data_dir": "data_dir"},
-                "api": {"host": "api_host", "port": "api_port", "cors_origins": "api_cors_origins"},
+                "api": {"host": "api_host", "port": "api_port", "cors_origins": "api_cors_origins", "csp_header": "api_csp_header", "strict_transport_security": "api_strict_transport_security"},
                 "openrouter": {
                     "base_url": "openrouter_base_url",
                     "api_key_env": "openrouter_api_key_env",
@@ -126,7 +169,8 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
                     "timeout_seconds": "openrouter_timeout_seconds",
                     "max_retries": "openrouter_max_retries",
                 },
-                "auth": {"api_key_prefix": "auth_api_key_prefix", "max_keys_per_user": "auth_max_keys_per_user"},
+                "auth": {"api_key_prefix": "auth_api_key_prefix", "max_keys_per_user": "auth_max_keys_per_user", "allow_registration": "auth_allow_registration", "session_expiry_hours": "auth_session_expiry_hours"},
+                "rate_limit": {"enabled": "rate_limit_enabled", "auth": "rate_limit_auth", "agents": "rate_limit_agents", "general": "rate_limit_general"},
             }
             mapping = section_to_flat.get(section_name, {})
             for src, dst in mapping.items():

@@ -1,10 +1,8 @@
 """User configuration routes."""
 
 from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from workbench.core.auth import get_current_user
-from workbench.core.db import get_session
 from workbench.core.models import User
 
 router = APIRouter()

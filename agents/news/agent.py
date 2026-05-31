@@ -263,7 +263,6 @@ class InterestCreate(BaseModel):
     email_smtp_host: str = ""
     email_smtp_port: int = 587
     email_smtp_user: str = ""
-    email_smtp_password_env: str = ""
     email_sender: str = ""
     email_recipient: str = ""
 
@@ -286,7 +285,6 @@ class InterestUpdate(BaseModel):
     email_smtp_host: str | None = None
     email_smtp_port: int | None = None
     email_smtp_user: str | None = None
-    email_smtp_password_env: str | None = None
     email_sender: str | None = None
     email_recipient: str | None = None
 

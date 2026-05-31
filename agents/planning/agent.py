@@ -8,6 +8,8 @@ frameworks, and team compositions. SSE streaming for real-time generation.
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from typing import Any, ClassVar
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +23,10 @@ from workbench.core.db import get_session
 from workbench.core.models import StoredReport, User
 from workbench.shared.llm.router import OpenRouterClient
 
+logger = logging.getLogger(__name__)
+
+SESSION_TTL_SECONDS = 3600
+
 
 class PlanningAgent(AgentBase):
     name = "planning"
@@ -33,6 +39,7 @@ class PlanningAgent(AgentBase):
     icon = "target"
 
     _sessions: ClassVar[dict[str, Any]] = {}
+    _session_timestamps: ClassVar[dict[str, float]] = {}
 
     def _build_router(self) -> APIRouter:
         router = APIRouter()
@@ -94,6 +101,7 @@ class PlanningAgent(AgentBase):
 
                 result = await task
                 self._sessions[service.state.run_id] = (result, service.state)
+                self._session_timestamps[service.state.run_id] = time.monotonic()
 
                 await self._save_report(
                     user, session, body.goal, plan_type, result.content,
@@ -102,9 +110,10 @@ class PlanningAgent(AgentBase):
             except asyncio.CancelledError:
                 service.stop()
                 yield 'event: error\ndata: {"message": "Client disconnected"}\n\n'
-            except Exception as e:
+            except Exception:
+                logger.exception("Planning agent internal error")
                 service.stop()
-                yield f'event: error\ndata: {{"message": "{e!s}"}}\n\n'
+                yield 'event: error\ndata: {"message": "An internal error occurred. Check server logs."}\n\n'
             finally:
                 await client.close()
 
@@ -128,6 +137,7 @@ class PlanningAgent(AgentBase):
         run_id: str,
     ) -> None:
         try:
+            from workbench.core.encryption import encrypt_report_content
             from workbench.services.planning_service import PLAN_TYPES
             plan_name = PLAN_TYPES.get(plan_type, {}).get("name", plan_type)
             title_line = content.split("\n")[0] if content else goal
@@ -139,7 +149,7 @@ class PlanningAgent(AgentBase):
                 user_id=user.id,
                 agent_name="planning",
                 title=title,
-                content=content,
+                content=encrypt_report_content(content),
                 content_format="markdown",
                 metadata_json={
                     "run_id": run_id,
@@ -169,6 +179,7 @@ class PlanningAgent(AgentBase):
             raise HTTPException(status_code=404, detail="Plan not found")
 
         _, state = entry
+        self._session_timestamps[run_id] = time.monotonic()
         plan_info = PLAN_TYPES.get(state.plan_type, {})
         return {
             "run_id": state.run_id,
@@ -226,6 +237,7 @@ class PlanningAgent(AgentBase):
         if not entry:
             raise HTTPException(status_code=404, detail="Plan run not found")
         _result, state = entry
+        self._session_timestamps[run_id] = time.monotonic()
         return {"run_id": run_id, "status": state.status, "stopped": True}
 
     # ---- export ----
@@ -238,6 +250,7 @@ class PlanningAgent(AgentBase):
     ):
         entry = self._sessions.get(run_id)
         if entry:
+            self._session_timestamps[run_id] = time.monotonic()
             _result, state = entry
             return {
                 "run_id": state.run_id,
@@ -257,17 +270,27 @@ class PlanningAgent(AgentBase):
         )
         stored = stored_result.scalars().all()
         if stored:
+            from workbench.core.encryption import decrypt_report_content
             r = stored[0]
             return {
                 "run_id": run_id,
                 "goal": r.metadata_json.get("goal", ""),
                 "plan_type": r.metadata_json.get("plan_type", ""),
-                "content": r.content,
+                "content": decrypt_report_content(r.content),
                 "format": r.content_format,
                 "created_at": r.created_at.isoformat() if r.created_at else "",
             }
 
         raise HTTPException(status_code=404, detail="Plan not found")
+
+    @classmethod
+    def _cleanup_sessions(cls) -> None:
+        now = time.monotonic()
+        to_remove = [rid for rid, ts in list(cls._session_timestamps.items()) if now - ts > SESSION_TTL_SECONDS]
+        for rid in to_remove:
+            cls._sessions.pop(rid, None)
+            cls._session_timestamps.pop(rid, None)
+            logger.info("Cleaned up expired planning session: %s", rid)
 
     def get_frontend_tab(self) -> dict:
         return {
@@ -280,7 +303,7 @@ class PlanningAgent(AgentBase):
 
 
 class PlanRunRequest(BaseModel):
-    goal: str
+    goal: str = Field(..., max_length=10000)
     plan_type: str | None = "project_plan"
     model: str = "deepseek/deepseek-v4-pro"
     temperature: float = Field(default=0.5, ge=0.0, le=2.0)

@@ -12,6 +12,8 @@ Adapted from stoa's capabilities/deliberation/engine.py. Provides:
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from typing import Any, ClassVar
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -25,6 +27,10 @@ from workbench.core.db import get_session
 from workbench.core.models import User
 from workbench.shared.llm.router import OpenRouterClient
 
+logger = logging.getLogger(__name__)
+
+SESSION_TTL_SECONDS = 3600
+
 
 class DeliberationAgent(AgentBase):
     name = "deliberation"
@@ -37,6 +43,7 @@ class DeliberationAgent(AgentBase):
     icon = "scale"
 
     _sessions: ClassVar[dict[str, Any]] = {}
+    _session_timestamps: ClassVar[dict[str, float]] = {}
 
     def _build_router(self) -> APIRouter:
         router = APIRouter()
@@ -113,11 +120,15 @@ class DeliberationAgent(AgentBase):
                     yield event_str
 
                 result = await task
-                self._sessions[result.deliberation_id] = (result, service)
+                self._sessions[result.deliberation_id] = {
+                    "result": result, "service": service, "user_id": str(user.id),
+                }
+                self._session_timestamps[result.deliberation_id] = time.monotonic()
             except asyncio.CancelledError:
                 yield 'event: error\ndata: {"message": "Client disconnected"}\n\n'
-            except Exception as e:
-                yield f'event: error\ndata: {{"message": "{e!s}"}}\n\n'
+            except Exception:
+                logger.exception("Deliberation agent internal error")
+                yield 'event: error\ndata: {"message": "An internal error occurred. Check server logs."}\n\n'
             finally:
                 await client.close()
 
@@ -133,15 +144,19 @@ class DeliberationAgent(AgentBase):
 
     # ---- get ----
 
+    def _get_deliberation(self, deliberation_id: str, user_id: str):
+        entry = self._sessions.get(deliberation_id)
+        if not entry or entry.get("user_id") != str(user_id):
+            raise HTTPException(status_code=404, detail="Deliberation not found")
+        return entry["result"]
+
     async def get_deliberation(
         self,
         deliberation_id: str,
         user: User = Depends(get_current_user),
     ):
-        entry = self._sessions.get(deliberation_id)
-        if not entry:
-            raise HTTPException(status_code=404, detail="Deliberation not found")
-        result = entry[0]
+        result = self._get_deliberation(deliberation_id, str(user.id))
+        self._session_timestamps[deliberation_id] = time.monotonic()
         return {
             "deliberation_id": result.deliberation_id,
             "question": result.question,
@@ -186,10 +201,8 @@ class DeliberationAgent(AgentBase):
         deliberation_id: str,
         user: User = Depends(get_current_user),
     ):
-        entry = self._sessions.get(deliberation_id)
-        if not entry:
-            raise HTTPException(status_code=404, detail="Deliberation not found")
-        result = entry[0]
+        result = self._get_deliberation(deliberation_id, str(user.id))
+        self._session_timestamps[deliberation_id] = time.monotonic()
         return {
             "deliberation_id": result.deliberation_id,
             "question": result.question,
@@ -203,11 +216,18 @@ class DeliberationAgent(AgentBase):
         deliberation_id: str,
         user: User = Depends(get_current_user),
     ):
-        entry = self._sessions.get(deliberation_id)
-        if not entry:
-            raise HTTPException(status_code=404, detail="Deliberation not found")
-        result = entry[0]
+        result = self._get_deliberation(deliberation_id, str(user.id))
+        self._session_timestamps[deliberation_id] = time.monotonic()
         return result.model_dump()
+
+    @classmethod
+    def _cleanup_sessions(cls) -> None:
+        now = time.monotonic()
+        to_remove = [did for did, ts in list(cls._session_timestamps.items()) if now - ts > SESSION_TTL_SECONDS]
+        for did in to_remove:
+            cls._sessions.pop(did, None)
+            cls._session_timestamps.pop(did, None)
+            logger.info("Cleaned up expired deliberation session: %s", did)
 
     def get_frontend_tab(self) -> dict:
         return {
@@ -220,7 +240,7 @@ class DeliberationAgent(AgentBase):
 
 
 class DeliberationRunRequest(BaseModel):
-    question: str
+    question: str = Field(..., max_length=10000)
     frames: list[str] | None = None
     rounds: int = Field(default=2, ge=0, le=5)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)

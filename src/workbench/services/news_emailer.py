@@ -181,9 +181,9 @@ async def send_pipeline_results(
     run_date = run.get("run_date", "") if run else ""
     name = interest.get("name", "Interest")
 
-    smtp_password = os.environ.get(smtp_config.get("password_env", ""), "")
+    smtp_password = os.environ.get("WORKBENCH_NEWS_SMTP_PASSWORD", "")
     if not smtp_password:
-        logger.warning("SMTP password env var not set — skipping email")
+        logger.warning("WORKBENCH_NEWS_SMTP_PASSWORD env var not set — skipping email")
         return 0
 
     smtp_kwargs = {

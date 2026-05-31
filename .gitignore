@@ -23,11 +23,12 @@ sdist/
 .venv/
 venv/
 env/
-.env.*
+
 *.virtualenv
 
 # --- Secrets & credentials ---
 .env
+!.env.example
 .secret_salt
 *.pem
 *.key

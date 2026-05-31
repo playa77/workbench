@@ -39,11 +39,10 @@
     input.value = '';
     addMessage('user', msg);
 
-    const key = API.getApiKey();
     try {
       const resp = await fetch('/api/v1/agents/chat/send', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: msg }),
       });
       const data = await resp.json();

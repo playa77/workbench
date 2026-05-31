@@ -5,6 +5,7 @@ Supports PostgreSQL (via asyncpg) and SQLite (via aiosqlite) as a fallback.
 
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
@@ -21,6 +22,8 @@ if TYPE_CHECKING:
 
 _engine: AsyncEngine | None = None
 _session_factory: async_sessionmaker[AsyncSession] | None = None
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -79,6 +82,11 @@ def init_db(config: DatabaseConfig) -> None:
     if not db_url:
         import os
         db_url = os.environ.get("DATABASE_URL", "sqlite+aiosqlite:///data/workbench.db")
+        if db_url.startswith("sqlite"):
+            logger.warning(
+                "Using SQLite for database. Suitable for development only. "
+                "For production, set DATABASE_URL."
+            )
 
     config.url = db_url
     _engine = _build_engine(config)

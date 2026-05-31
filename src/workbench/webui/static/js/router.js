@@ -7,9 +7,18 @@ const Router = (() => {
   let activeTab = null;
   const tabCallbacks = {};
   const loadedScripts = {};
+  let _pendingActivation = null;
 
   function register(name, renderFn) {
     tabCallbacks[name] = renderFn;
+  }
+
+  function _activatePending() {
+    if (_pendingActivation !== null) {
+      var pending = _pendingActivation;
+      _pendingActivation = null;
+      setActive(pending);
+    }
   }
 
   function setActive(name) {
@@ -44,8 +53,9 @@ const Router = (() => {
       const script = document.createElement('script');
       script.src = jsPath;
       script.onload = () => {
-        const fallback = document.createElement('script');
-        fallback.textContent = `setTimeout(() => { Router.setActive('${name}'); }, 10);`;
+        _pendingActivation = name;
+        var fallback = document.createElement('script');
+        fallback.textContent = 'setTimeout(function() { Router._activatePending(); }, 10);';
         document.body.appendChild(fallback);
       };
       document.body.appendChild(script);
@@ -59,5 +69,5 @@ const Router = (() => {
     return activeTab;
   }
 
-  return { register, setActive, getActive };
+  return { register, setActive, getActive, _activatePending };
 })();

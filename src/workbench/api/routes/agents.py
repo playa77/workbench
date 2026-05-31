@@ -4,10 +4,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from workbench.core.agents import get_registry, get_user_agent_settings, set_user_agent_setting
 from workbench.core.auth import get_current_user
 from workbench.core.db import get_session
 from workbench.core.models import User
-from workbench.core.agents import get_registry, get_user_agent_settings, set_user_agent_setting
 
 router = APIRouter()
 

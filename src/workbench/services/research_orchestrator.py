@@ -21,6 +21,7 @@ from pydantic import BaseModel, Field
 
 from workbench.shared.errors import RouterExhaustedError
 from workbench.shared.llm.router import OpenRouterClient
+from workbench.shared.network import validate_public_url
 
 logger = logging.getLogger(__name__)
 
@@ -365,6 +366,11 @@ async def _tool_read_webpage(args: dict, state: ResearchState) -> dict:
     url = args.get("url", "")
     if not url:
         return {"error": "No URL provided."}
+
+    try:
+        validate_public_url(url)
+    except ValueError as e:
+        return {"error": str(e)}
 
     result = await _extract_with_trafilatura(url)
     if not result:

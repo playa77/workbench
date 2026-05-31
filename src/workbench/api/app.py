@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import importlib
 import logging
 from contextlib import asynccontextmanager
@@ -11,13 +12,18 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 
+from workbench.core.agents import get_registry
 from workbench.core.config import WorkbenchConfig, load_config
 from workbench.core.db import close_db, init_db
 from workbench.core.encryption import init_encryption
-from workbench.core.agents import get_registry
+from workbench.core.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
+
+SESSION_CLEANUP_INTERVAL = 300
 
 _BUILTIN_AGENTS = [
     ("agents.chat.agent", "ChatAgent"),
@@ -41,6 +47,8 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
 
     init_db(config)
     init_encryption(config)
+    from workbench.core.encryption import set_encrypt_reports
+    set_encrypt_reports(config.encryption_encrypt_reports)
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
@@ -54,6 +62,9 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
         # Start the background news scheduler (non-blocking)
         scheduler_task = _start_news_scheduler_if_agent_enabled(app)
 
+        # Start periodic session cleanup
+        cleanup_task = asyncio.create_task(_run_periodic_session_cleanup())
+
         yield
 
         logger.info("Workbench shutting down")
@@ -61,6 +72,12 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
             scheduler_task.cancel()
             try:
                 await scheduler_task
+            except Exception:
+                pass
+        if cleanup_task:
+            cleanup_task.cancel()
+            try:
+                await cleanup_task
             except Exception:
                 pass
         await close_db()
@@ -79,6 +96,20 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
         allow_headers=["*"],
     )
 
+    @app.middleware("http")
+    async def security_headers_middleware(request, call_next):
+        response = await call_next(request)
+        if config.api_csp_header:
+            response.headers["Content-Security-Policy"] = config.api_csp_header
+        if config.api_strict_transport_security:
+            response.headers["Strict-Transport-Security"] = config.api_strict_transport_security
+        return response
+
+    if config.rate_limit_enabled:
+        limiter._default_limits = [config.rate_limit_general]
+    app.state.limiter = limiter
+    app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
     app.state.config = config
 
     static_dir = Path(__file__).resolve().parent.parent / "webui" / "static"
@@ -91,9 +122,9 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
 
 
 def _register_core_routes(app: FastAPI) -> None:
+    from workbench.api.routes import agents as agent_routes
     from workbench.api.routes import auth, health
     from workbench.api.routes import config as config_routes
-    from workbench.api.routes import agents as agent_routes
 
     app.include_router(health.router, tags=["core"])
     app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
@@ -107,8 +138,9 @@ def _register_core_routes(app: FastAPI) -> None:
 
 
 def _run_alembic_upgrade() -> None:
-    from alembic import command
     from alembic.config import Config as AlembicConfig
+
+    from alembic import command
 
     root = Path(__file__).resolve().parents[3]
     alembic_cfg = AlembicConfig(str(root / "alembic.ini"))
@@ -143,9 +175,9 @@ def _auto_register_agents(app: FastAPI, registry) -> None:
 def _start_news_scheduler_if_agent_enabled(app: FastAPI):
     """Start the background news scheduler if the news agent is registered."""
     try:
+        from workbench.core.db import get_session_factory
         from workbench.services.news_scheduler import NewsScheduler
         from workbench.services.news_store import NewsStore
-        from workbench.core.db import get_session_factory
 
         session_factory = get_session_factory()
 
@@ -160,9 +192,8 @@ def _start_news_scheduler_if_agent_enabled(app: FastAPI):
                 return await store.is_interest_running(interest_id)
 
         async def run_interest(user_id: str, interest_id: int) -> None:
+
             from workbench.services.news_pipeline import NewsPipeline
-            from workbench.core.encryption import _aes_key
-            import os
 
             async with session_factory() as sess:
                 store = NewsStore(sess)
@@ -171,9 +202,10 @@ def _start_news_scheduler_if_agent_enabled(app: FastAPI):
                     return
 
                 # Get user's OpenRouter key
-                from workbench.core.models import UserOpenRouterKey
                 from sqlalchemy import select
+
                 from workbench.core import encryption
+                from workbench.core.models import UserOpenRouterKey
 
                 result = await sess.execute(
                     select(UserOpenRouterKey).where(
@@ -199,7 +231,6 @@ def _start_news_scheduler_if_agent_enabled(app: FastAPI):
             timezone="Europe/Berlin",
         )
 
-        import asyncio
         task = asyncio.create_task(scheduler.start())
 
         # Store scheduler reference for agent endpoints
@@ -214,3 +245,18 @@ def _start_news_scheduler_if_agent_enabled(app: FastAPI):
     except Exception as exc:
         logger.debug("News scheduler not started: %s", exc)
         return None
+
+
+async def _run_periodic_session_cleanup() -> None:
+    """Periodically call _cleanup_sessions on all registered agents."""
+    while True:
+        try:
+            await asyncio.sleep(SESSION_CLEANUP_INTERVAL)
+            registry = get_registry()
+            for agent in registry.list_all():
+                if hasattr(agent, "_cleanup_sessions"):
+                    agent._cleanup_sessions()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.exception("Session cleanup failed")

@@ -13,10 +13,12 @@ Adapted from MADS engine. Provides:
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
@@ -25,6 +27,9 @@ from workbench.core.db import get_session
 from workbench.core.models import User
 from workbench.shared.llm.router import OpenRouterClient
 
+logger = logging.getLogger(__name__)
+
+DEBATE_TIMEOUT_SECONDS = 600
 
 class DebateAgent(AgentBase):
     name = "debate"
@@ -34,6 +39,8 @@ class DebateAgent(AgentBase):
     icon = "users"
 
     _engines: dict[str, Any] = {}
+    _debate_tasks: dict[str, asyncio.Task] = {}
+    _last_activity: dict[str, float] = {}
 
     def _build_router(self) -> APIRouter:
         router = APIRouter()
@@ -91,20 +98,26 @@ class DebateAgent(AgentBase):
         engine.start()
 
         debate_id = f"debate_{user.id}_{len(self._engines)}"
-        self._engines[debate_id] = engine
+        self._engines[debate_id] = {"engine": engine, "user_id": str(user.id)}
+        self._last_activity[debate_id] = time.monotonic()
 
-        # Run debate turns asynchronously
-        asyncio.create_task(self._run_debate_loop(debate_id, or_key))
+        task = asyncio.create_task(self._run_debate_loop(debate_id, or_key))
+        self._debate_tasks[debate_id] = task
         return {"debate_id": debate_id, "topic": body.topic, "agents": [a.model_dump() for a in agents], "status": "RUNNING"}
+
+    def _get_debate(self, debate_id: str, user_id: str):
+        entry = self._engines.get(debate_id)
+        if not entry or entry.get("user_id") != str(user_id):
+            raise HTTPException(status_code=404, detail="Debate not found")
+        return entry["engine"]
 
     async def debate_status(
         self,
         debate_id: str,
         user: User = Depends(get_current_user),
     ):
-        engine = self._engines.get(debate_id)
-        if not engine:
-            raise HTTPException(status_code=404, detail="Debate not found")
+        engine = self._get_debate(debate_id, str(user.id))
+        self._last_activity[debate_id] = time.monotonic()
         state = engine.state
         return {
             "debate_id": debate_id,
@@ -122,12 +135,11 @@ class DebateAgent(AgentBase):
         body: InjectRequest,
         user: User = Depends(get_current_user),
     ):
-        engine = self._engines.get(debate_id)
-        if not engine:
-            raise HTTPException(status_code=404, detail="Debate not found")
+        engine = self._get_debate(debate_id, str(user.id))
         if engine.is_completed():
             raise HTTPException(status_code=400, detail="Debate is already completed")
 
+        self._last_activity[debate_id] = time.monotonic()
         engine.inject_message(body.content, body.weight)
         return {"status": "injected", "weight": body.weight}
 
@@ -136,9 +148,8 @@ class DebateAgent(AgentBase):
         debate_id: str,
         user: User = Depends(get_current_user),
     ):
-        engine = self._engines.get(debate_id)
-        if not engine:
-            raise HTTPException(status_code=404, detail="Debate not found")
+        engine = self._get_debate(debate_id, str(user.id))
+        self._last_activity[debate_id] = time.monotonic()
         engine.pause()
         return {"status": "PAUSED"}
 
@@ -148,9 +159,7 @@ class DebateAgent(AgentBase):
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
-        engine = self._engines.get(debate_id)
-        if not engine:
-            raise HTTPException(status_code=404, detail="Debate not found")
+        engine = self._get_debate(debate_id, str(user.id))
         if not engine.state.status == "PAUSED":
             raise HTTPException(status_code=400, detail="Debate is not paused")
 
@@ -158,8 +167,10 @@ class DebateAgent(AgentBase):
         if not or_key:
             raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
 
+        self._last_activity[debate_id] = time.monotonic()
         engine.resume()
-        asyncio.create_task(self._run_debate_loop(debate_id, or_key))
+        task = asyncio.create_task(self._run_debate_loop(debate_id, or_key))
+        self._debate_tasks[debate_id] = task
         return {"status": "RUNNING"}
 
     async def export_debate(
@@ -167,13 +178,14 @@ class DebateAgent(AgentBase):
         debate_id: str,
         user: User = Depends(get_current_user),
     ):
-        engine = self._engines.get(debate_id)
-        if not engine:
-            raise HTTPException(status_code=404, detail="Debate not found")
+        engine = self._get_debate(debate_id, str(user.id))
         return engine.to_dict()
 
     async def _run_debate_loop(self, debate_id: str, openrouter_key: str) -> None:
-        engine: Any = self._engines.get(debate_id)
+        entry: Any = self._engines.get(debate_id)
+        if not entry:
+            return
+        engine = entry.get("engine")
         if not engine:
             return
 
@@ -181,6 +193,12 @@ class DebateAgent(AgentBase):
 
         try:
             while engine.is_running() and not engine.is_completed():
+                if debate_id in self._last_activity:
+                    if time.monotonic() - self._last_activity[debate_id] > DEBATE_TIMEOUT_SECONDS:
+                        engine.state.status = "TIMED_OUT"
+                        logger.warning("Debate %s timed out after %ds of inactivity", debate_id, DEBATE_TIMEOUT_SECONDS)
+                        break
+
                 try:
                     system, user = engine.build_prompt_for_agent(history_limit=12)
                     agent = engine.get_current_agent()
@@ -230,6 +248,27 @@ class DebateAgent(AgentBase):
         finally:
             await client.close()
 
+    @classmethod
+    def _cleanup_sessions(cls) -> None:
+        now = time.monotonic()
+        to_remove = []
+        for debate_id, last_active in list(cls._last_activity.items()):
+            if now - last_active > DEBATE_TIMEOUT_SECONDS * 2:
+                entry = cls._engines.get(debate_id)
+                if entry:
+                    engine = entry.get("engine")
+                    if engine and engine.is_running():
+                        engine.state.status = "TIMED_OUT"
+                task = cls._debate_tasks.get(debate_id)
+                if task and not task.done():
+                    task.cancel()
+                to_remove.append(debate_id)
+        for debate_id in to_remove:
+            cls._engines.pop(debate_id, None)
+            cls._debate_tasks.pop(debate_id, None)
+            cls._last_activity.pop(debate_id, None)
+            logger.info("Cleaned up timed-out debate: %s", debate_id)
+
     def get_frontend_tab(self) -> dict:
         return {
             "id": self.name,
@@ -241,11 +280,11 @@ class DebateAgent(AgentBase):
 
 
 class DebateRequest(BaseModel):
-    topic: str
+    topic: str = Field(..., max_length=5000)
     roles: list[str] | None = None
-    max_rounds: int | None = None
+    max_rounds: int | None = Field(default=None, ge=1, le=50)
 
 
 class InjectRequest(BaseModel):
-    content: str
-    weight: float = 0.5
+    content: str = Field(..., max_length=50000)
+    weight: float = Field(default=0.5, ge=0.0, le=1.0)

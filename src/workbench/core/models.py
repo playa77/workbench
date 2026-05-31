@@ -7,7 +7,18 @@ All models inherit from the shared declarative Base.
 from datetime import datetime
 from uuid import UUID, uuid4
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func, Uuid, JSON
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    ForeignKey,
+    Index,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from workbench.shared.db.base import Base
@@ -21,6 +32,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
 
     api_keys: Mapped[list["UserApiKey"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     openrouter_key: Mapped["UserOpenRouterKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     agent_settings: Mapped[list["UserAgentSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
@@ -34,8 +46,21 @@ class UserApiKey(Base):
     label: Mapped[str] = mapped_column(String(100), nullable=False, default="default")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     user: Mapped["User"] = relationship(back_populates="api_keys")
+
+
+class UserSession(Base):
+    __tablename__ = "workbench_sessions"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(120), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+
+    user: Mapped["User"] = relationship(back_populates="sessions")
 
 
 class UserOpenRouterKey(Base):

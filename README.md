@@ -1,8 +1,8 @@
 # Workbench
 
-**Unified BYOK AI Workbench** — agent-driven infrastructure for LLM-powered tools.
+**Self-hosted BYOK AI Workbench** -- one dashboard, six LLM-powered agents, zero telemetry.
 
-Bring your own OpenRouter key. Run locally. No telemetry. One server, six agents, one web UI.
+Run locally. Bring your own OpenRouter key. Every agent lives in its own browser tab.
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -10,32 +10,28 @@ Bring your own OpenRouter key. Run locally. No telemetry. One server, six agents
 
 ---
 
-## What It Does
+## What You Can Do
 
-Workbench gives you a local, self-hosted web dashboard where each AI capability lives in its own browser tab. You supply your OpenRouter API key (encrypted at rest, never shared), and the agents do the rest.
+| Agent | Tab | Capability |
+|---|---|---|
+| **Chat** | Chat | Plain LLM conversation with any OpenRouter model. No setup required beyond pasting your key. |
+| **News Pipeline** | News | RSS feed monitoring with AI theme extraction, scheduled background runs, and email delivery. Configure interests, the pipeline fetches, scrapes, analyzes, and delivers. |
+| **Debate Arena** | Debate | Structured multi-agent debates with 12 persona roles. Use Director Mode to inject interventions, pause/resume debates, and observe how perspectives clash. |
+| **Deep Research** | Research | Autonomous web research driven by function-calling. Multiple search iterations, source gathering, contradiction detection, and a single cited report at the end. |
+| **Deliberation** | Deliberation | Multi-frame reasoning with 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...). Pairwise critique, rhetoric analysis, disagreement surface mapping, and a final synthesis. |
+| **Strategic Planning** | Planning | Generates any of 9 plan types: project plans, SWOT analyses, WBS, schedules, root cause analyses, pitch decks, governance frameworks, team compositions, or executive summaries. |
 
-**Six agents, one interface:**
-
-| Tab | Agent | What You Get |
-|-----|-------|--------------|
-| Chat | Chat | LLM chat with any OpenRouter model — plain conversation, no setup |
-| News Pipeline | News | RSS feed monitoring with AI theme extraction, multi-format briefs, scheduled runs, email delivery |
-| Debate Arena | Debate | Multi-agent debates with 12 persona roles, Director Mode for injecting interventions, pause/resume |
-| Deep Research | Research | Autonomous web research — multi-iteration search, source gathering, contradiction detection, cited reports |
-| Deliberation | Deliberation | Multi-frame reasoning with 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...), pair-wise critique, rhetoric analysis, disagreement surface mapping, synthesis |
-| Strategic Planning | Planning | 9 plan types — project plans, SWOT, WBS, schedules, RCA, pitch decks, governance frameworks, team compositions, executive summaries |
-
-Plus a **seventh tab** for **Open WebUI** — an iframe embed that connects to a local/remote Open WebUI instance (launched separately via the Electron desktop wrapper or Docker).
+An optional **seventh tab** embeds **Open WebUI** via iframe for a chat-first interface alongside the agent tabs.
 
 ---
 
-## BYOK — Bring Your Own Key
+## How It Works
 
-- You supply an **OpenRouter API key** in Settings (stored encrypted with AES-256-GCM).
-- Every API call flows through `workbench.shared.llm.router.OpenRouterClient` — there is no other LLM path.
-- 250+ models supported: DeepSeek V3, Claude 4, GPT-4o, Gemini 2.5, Llama 4, and more.
-- OpenRouter acts as a unified frontend — you get one key to many providers.
-- Workbench makes zero external calls except to OpenRouter on your behalf.
+1. You launch Workbench locally (Docker or bare-metal).
+2. You register a username and save the generated API key.
+3. You paste your OpenRouter key in Settings. It is encrypted at rest with AES-256-GCM on your machine.
+4. Each agent tab is a self-contained tool backed by an LLM agent. The backend is a FastAPI server; the frontend is vanilla JavaScript with zero build step.
+5. **Every LLM call** flows through `OpenRouterClient` -- a single, auditable code path. No other external APIs are called.
 
 ---
 
@@ -43,8 +39,8 @@ Plus a **seventh tab** for **Open WebUI** — an iframe embed that connects to a
 
 ### Prerequisites
 
-- Python 3.11 or later
-- An [OpenRouter](https://openrouter.ai) API key (free signup, pay-per-token)
+* Python 3.11 or later
+* An [OpenRouter](https://openrouter.ai) API key (free signup, pay-per-token)
 
 ### Install
 
@@ -52,42 +48,41 @@ Plus a **seventh tab** for **Open WebUI** — an iframe embed that connects to a
 git clone https://github.com/your-org/workbench.git
 cd workbench
 
-# Core install
-pip install -e . --break-system-packages
+python -m venv .venv
+source .venv/bin/activate
 
-# Run-time dependencies for specific agents
-pip install feedparser trafilatura --break-system-packages
-
-# Or install everything at once
-pip install -e ".[news,research,planning]" --break-system-packages
+# Core install (all agent runtimes)
+pip install -e ".[news,research,planning]"
 ```
 
-> On macOS/Linux outside containers, omit `--break-system-packages` or use a virtual environment.
+> On modern Linux (Ubuntu 23.04+, Debian 12+) pip enforces PEP 668. Use a virtual environment. Never `--break-system-packages`.
 
 ### Run
 
 ```bash
-# Initialize the database (runs Alembic migrations)
 workbench init-db
-
-# Start the server
 workbench serve
 ```
 
-Open **http://localhost:8420** in your browser.
+Open **http://localhost:8420**.
 
-1. Register a username (creates an account and gives you an API key — save it).
-2. Go to **Settings**, paste your OpenRouter key (`sk-or-v1-...`), and click Save.
-3. Toggle agents on/off in the Settings panel.
-4. Click any agent tab to start using it.
+### First Login
 
-### CLI Reference
+1. The registration form appears if no user exists yet. Pick a username.
+2. The API key is shown **once** -- copy it. It is your Bearer token for all API access and the web UI login.
+3. Enter it on the login screen. You are in.
+4. Open **Settings** (gear icon), paste your OpenRouter key (`sk-or-v1-...`), and click **Save**.
+5. Toggle agents on/off. Click any tab to start.
+
+### CLI Commands
 
 ```
-workbench serve       Start the API server (default: 0.0.0.0:8420)
-workbench serve --port 9000   Bind to a different port
-workbench init-db     Create/migrate database schema
-workbench version     Print version and exit
+workbench serve                         Start the server (default 127.0.0.1:8420)
+workbench serve --port 9000             Use a different port
+workbench serve --host 0.0.0.0          Listen on all interfaces
+workbench init-db                       Run Alembic migrations
+workbench create-user <username>        Create a new user and generate an API key
+workbench version                       Print version
 ```
 
 ---
@@ -95,136 +90,125 @@ workbench version     Print version and exit
 ## Docker
 
 ```bash
+cp .env.example .env
+# Fill in POSTGRES_PASSWORD and ENCRYPTION_KEY
 docker compose up -d
 ```
 
-Starts:
-- **PostgreSQL 16** with pgvector (port 5432)
-- **Workbench** on port 8420
-- **Open WebUI** on port 3000 (disabled by default — add `--profile openwebui`)
+This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and an optional Open WebUI container on port 3000.
 
 ```bash
 # With Open WebUI
 docker compose --profile openwebui up -d
 ```
 
+For full production deployment instructions see [DEPLOYMENT.md](DEPLOYMENT.md).
+
 ---
 
 ## Configuration
 
-Workbench loads configuration from three sources in priority order:
+Workbench loads config in this priority order (lowest to highest):
 
-| Priority | Source | Example |
-|----------|--------|---------|
-| Lowest | `config/default.toml` | `api.port = 8420` |
-| Medium | `.env` file | `DATABASE_URL=...` |
-| Highest | `WORKBENCH_*` env vars | `WORKBENCH_API__PORT=9000` |
+1. `config/default.toml` -- shipped defaults
+2. `.env` -- environment file variables
+3. `WORKBENCH_*` -- environment variable overrides (use `__` for nesting: `WORKBENCH_API__PORT=9000`)
 
-### Environment Variables
+### Key Environment Variables
+
+| Variable | Purpose | Required |
+|---|---|---|
+| `DATABASE_URL` | Database connection string (defaults to SQLite at `data/workbench.db`) | For Postgres |
+| `ENCRYPTION_KEY` | 64 hex chars for AES-256-GCM at-rest encryption | Yes |
+| `OPENROUTER_API_KEY` | Server-wide fallback OpenRouter key | No |
+| `WORKBENCH_API__HOST` | Bind address (default `127.0.0.1`) | No |
+| `WORKBENCH_API__PORT` | Listen port (default `8420`) | No |
+| `WORKBENCH_API__CORS_ORIGINS` | JSON array of allowed origins | For remote access |
+
+### Generate an Encryption Key
 
 ```bash
-# Database (defaults to SQLite at data/workbench.db)
-DATABASE_URL=postgresql+asyncpg://user:pass@localhost:5432/workbench
-
-# Encryption key for at-rest secrets (generate with: python -c "import secrets; print(secrets.token_hex(32))")
-ENCRYPTION_KEY=your-64-char-hex-key
-
-# Optional server-wide OpenRouter fallback key
-OPENROUTER_API_KEY=sk-or-v1-...
-
-# Bind address and port (override via CLI or env)
-WORKBENCH_API__HOST=0.0.0.0
-WORKBENCH_API__PORT=8420
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
+
+### Full Config Reference
+
+All settings in `config/default.toml` can be overridden via environment variables. See the file for every option.
 
 ---
 
 ## Agent Architecture
 
-Every agent follows the same pattern:
+Every agent follows the same structure:
 
 ```
-Agent (agents/{name}/agent.py)    Service (src/workbench/services/{name}_service.py)
-┌─────────────────────────────┐    ┌──────────────────────────────────────┐
-│ name, display_name, icon     │    │ Pure business logic                   │
-│ _build_router() → endpoints  │────│ Called by agent endpoints             │
-│ get_frontend_tab() → tab     │    │ SSE event generation                  │
-└─────────────────────────────┘    └──────────────────────────────────────┘
-              │                                      │
-              ▼                                      ▼
-     OpenRouterClient (shared LLM router)     Pydantic v2 models
+agents/{name}/agent.py          ->   FastAPI router with endpoints
+services/{name}_service.py      ->   Pure business logic (SSE, state machines)
+shared/llm/router.py            ->   Single LLM call path (OpenRouterClient)
 ```
 
-**Rules:**
-1. All LLM calls go through `workbench.shared.llm.router.OpenRouterClient`
-2. All DB models inherit from `workbench.shared.db.base.Base`
-3. Config loading uses `workbench.shared.config.loader` (deep_merge, read_env)
-4. Agents subclass `AgentBase` from `agents/base.py`
-5. Agents are registered in `src/workbench/api/app.py` under `_BUILTIN_AGENTS`
-6. Each frontend tab has a lazy-loaded JS component in `src/workbench/webui/static/js/components/`
+Rules enforced across all agents:
+1. All LLM calls go through `OpenRouterClient` -- no other code path exists.
+2. All database models inherit from `workbench.shared.db.base.Base`.
+3. All config uses `workbench.shared.config.loader` (deep_merge, read_env).
+4. Every agent subclasses `AgentBase` and registers via `_BUILTIN_AGENTS` in `app.py`.
+5. Every frontend tab is a lazy-loaded vanilla JS component in `webui/static/js/components/`.
 
 ### Adding a New Agent
 
-1. Create `agents/{name}/agent.py` with a class that extends `AgentBase`
-2. Set `name`, `display_name`, `description`, `version`, `icon`
-3. Define `_build_router()` returning a FastAPI `APIRouter` with your endpoints
-4. Define `get_frontend_tab()` returning tab metadata (including JS path)
-5. Register it in `_BUILTIN_AGENTS` in `src/workbench/api/app.py`
-6. Create `src/workbench/webui/static/js/components/{name}-tab.js` — a self-registering component using `Router.register(name, renderFn)`
-
-```python
-# agents/myagent/agent.py
-from agents.base import AgentBase
-from fastapi import APIRouter
-
-class MyAgent(AgentBase):
-    name = "myagent"
-    display_name = "My Agent"
-    description = "Does something useful"
-    version = "0.1.0"
-    icon = "zap"
-
-    def _build_router(self) -> APIRouter:
-        router = APIRouter()
-        router.add_api_route("/run", self.run, methods=["POST"])
-        return router
-
-    async def run(self, ...):
-        ...
-```
+1. Create `agents/{name}/agent.py` -- subclass `AgentBase`, set `name`, `display_name`, `description`, `version`, `icon`.
+2. Implement `_build_router()` returning a FastAPI `APIRouter`.
+3. Implement `get_frontend_tab()` returning tab metadata.
+4. Register in `_BUILTIN_AGENTS` in `src/workbench/api/app.py`.
+5. Create `webui/static/js/components/{name}-tab.js` using `Router.register(name, renderFn)`.
 
 ### SSE Streaming
 
-Agents that run long operations (research, deliberation, planning) use SSE (Server-Sent Events). The pattern:
-
-1. Service class has an `asyncio.Queue` for events and an `event_stream()` async generator
-2. Agent endpoint returns `StreamingResponse(media_type="text/event-stream")`
-3. Frontend tab reads the response body with `ReadableStream` and dispatches events
-4. Stop support via a separate `POST /{id}/stop` endpoint + `asyncio.Event`
+Long-running agents (Research, Deliberation, Planning) stream progress via Server-Sent Events. The pattern: `asyncio.Queue` + `async generator` + `StreamingResponse(text/event-stream)` on the backend; `ReadableStream` on the frontend. All support stop via `POST /{id}/stop`.
 
 ---
 
 ## Frontend
 
-The web UI is a **vanilla JavaScript SPA** at `src/workbench/webui/static/`. No framework, no build step.
+The web UI is a vanilla JavaScript SPA at `src/workbench/webui/static/`. No framework, no build step.
 
-| Component | Purpose |
-|-----------|---------|
-| `api.js` | Centralized HTTP client with Bearer token auth |
-| `utils.js` | HTML escaping and helpers |
-| `theme.js` | Light/dark toggle, persisted to localStorage |
-| `router.js` | Tab router with lazy script loading |
+| File | Role |
+|---|---|
+| `api.js` | Centralized HTTP client (Bearer token auth, JSON + SSE) |
 | `app.js` | Boot sequence, auth flow, settings, agent list, tab rendering |
+| `router.js` | Tab router with lazy script loading |
+| `theme.js` | Light/dark toggle, persisted to localStorage |
+| `utils.js` | HTML escaping and helpers |
+| `css/base.css` | Layout, cards, buttons, forms, toggles |
+| `css/theme-light.css` / `css/theme-dark.css` | CSS custom property theme variants |
 | `components/chat-tab.js` | Chat agent UI |
-| `components/news-tab.js` | News pipeline with interests CRUD, runs, status |
-| `components/debate-tab.js` | Debate arena with polling, Director Mode, pause/resume |
-| `components/research-tab.js` | SSE streaming research with live progress and markdown report |
-| `components/deliberation-tab.js` | Frame selection, SSE phase tracking, multi-section results |
-| `components/planning-tab.js` | 9 plan types, SSE generation, rendered output |
-| `components/owui-tab.js` | Open WebUI health check + iframe embed |
-| `css/base.css` | Layout, cards, buttons, forms, toggles, status indicators |
-| `css/theme-dark.css` | Dark theme CSS custom properties |
-| `css/theme-light.css` | Light theme CSS custom properties |
+| `components/news-tab.js` | News pipeline: interests CRUD, runs, status |
+| `components/debate-tab.js` | Debate arena: polling, Director Mode, pause/resume |
+| `components/research-tab.js` | SSE streaming research with live progress |
+| `components/deliberation-tab.js` | Frame selection, SSE phase tracking |
+| `components/planning-tab.js` | 9 plan types, SSE generation |
+| `components/owui-tab.js` | Open WebUI health check + iframe |
+
+---
+
+## Development
+
+```bash
+pip install -e ".[dev]"
+```
+
+### Commands
+
+```bash
+pytest tests/ -v              # 46 tests, SQLite in-memory -- no external DB needed
+ruff check src/workbench/ agents/    # Lint
+mypy src/ agents/                   # Type check
+```
+
+### Lint Exceptions
+
+* **B008** -- FastAPI's `Depends()` in function signatures is by-design, not a bug.
+* **E501** -- some long string literals and template strings exceed 100 characters intentionally.
 
 ---
 
@@ -232,105 +216,65 @@ The web UI is a **vanilla JavaScript SPA** at `src/workbench/webui/static/`. No 
 
 ```
 workbench/
-├── agents/                    # Agent packages (one directory per agent)
-│   ├── base.py                # AgentBase — shared base class
-│   ├── chat/agent.py          # Chat agent
-│   ├── news/agent.py          # News pipeline agent
-│   ├── debate/agent.py        # Debate arena agent
-│   ├── research/agent.py      # Deep research agent
-│   ├── deliberation/agent.py  # Multi-frame deliberation agent
-│   └── planning/agent.py      # Strategic planning agent
+├── agents/                          # Agent implementations (one per directory)
+│   ├── base.py                      # AgentBase -- shared ABC
+│   ├── chat/    debate/    deliberation/
+│   ├── news/    planning/  research/
 │
-├── src/workbench/             # Core infrastructure
-│   ├── main.py                # CLI entry point (workbench serve|init-db|version)
-│   ├── api/app.py             # FastAPI application factory, agent registry, middleware
-│   ├── core/                  # Config, DB, auth, models, encryption, agent registry
-│   ├── shared/                # Canonical shared primitives
-│   │   ├── llm/router.py      # OpenRouterClient (all LLM calls, SSE, embeddings)
-│   │   ├── config/loader.py   # deep_merge, read_env, expand_paths
-│   │   ├── db/session.py      # PG + SQLite, DatabaseConfig, lazy init_db
-│   │   ├── db/base.py         # Single DeclarativeBase
-│   │   └── errors.py          # RouterExhaustedError, EmbeddingError, etc.
-│   ├── services/              # Domain logic (one file per concern)
-│   │   ├── debate_engine.py
-│   │   ├── deliberation_service.py
-│   │   ├── news_emailer.py
-│   │   ├── news_pipeline.py
-│   │   ├── news_scheduler.py
-│   │   ├── news_store.py
-│   │   ├── planning_service.py
-│   │   └── research_orchestrator.py
-│   └── webui/static/          # Frontend SPA (vanilla JS + CSS)
-│       ├── index.html
-│       ├── js/ (api.js, app.js, router.js, theme.js, utils.js)
-│       ├── js/components/ (7 tab components)
-│       └── css/ (base.css, theme-dark.css, theme-light.css)
+├── src/workbench/                   # Core infrastructure
+│   ├── main.py                      # CLI entry point
+│   ├── api/                         # FastAPI app, routes, dependency injection
+│   ├── core/                        # Config, DB, auth, models, encryption, agent registry
+│   ├── shared/                      # Canonical shared primitives (LLM router, config loader, DB session)
+│   ├── services/                    # Domain logic (debate engine, news pipeline, research orchestrator, etc.)
+│   └── webui/static/                # Vanilla JS SPA frontend
 │
-├── config/default.toml        # Default configuration
-├── alembic/                   # Database migrations (current: 002)
-├── alembic.ini
-├── tests/                     # Test suite (46 tests, pytest)
-├── docker-compose.yml         # Docker deployment (PG + Workbench + optional Open WebUI)
-├── Dockerfile
-├── pyproject.toml             # Build config, dependencies, tool settings
-│
-├── citizen/                   # EXCLUDED ARCHIVE — German legal reasoning engine
-│                               # (pgvector RAG, 9-stage pipeline, SGB II arithmetic)
-│                               # DO NOT TOUCH — precision would be destroyed by integration
-│
-├── ai_news_scraper/           # Original sub-project (now integrated as news agent)
-├── MADS/                      # Original sub-project (now integrated as debate agent)
-├── PResearch/                 # Original sub-project (now integrated as research agent)
-├── stoa/                      # Original sub-project (now integrated as deliberation agent)
-├── PlanExe/                   # Original sub-project (now integrated as planning agent)
-└── open-webui-wrapper/        # Electron desktop wrapper for Open WebUI (separate app)
+├── config/default.toml              # Default configuration
+├── alembic/                         # Database migrations (3 versions)
+├── tests/                           # pytest suite (46 tests)
+├── docker-compose.yml               # Docker deployment (PG + Workbench + optional Open WebUI)
+├── Dockerfile                       # python:3.12-slim, news+research extras
+├── pyproject.toml                   # Build, dependencies, tool configs
+└── DEPLOYMENT.md                    # Production deployment guide
 ```
 
 ---
 
-## Sub-Project Origins
+## Troubleshooting
 
-Each agent was adapted from a standalone project. The originals remain in the repo as reference:
+**"ENCRYPTION_KEY is required" in Docker logs**
+Generate one: `python -c "import secrets; print(secrets.token_hex(32))"` and add it to `.env`.
 
-| Agent | Origin | Key Adaptation |
-|-------|--------|----------------|
-| Debate | MADS/ | State machine extracted from CLI to `debate_engine.py` service |
-| News | ai_news_scraper/ | Flask server replaced with FastAPI endpoints, scheduler integrated |
-| Research | PResearch/ | WebSocket replaced with SSE streaming, tools preserved |
-| Deliberation | stoa/ | SkillRegistry removed, 8 skill bodies embedded directly |
-| Planning | PlanExe/ | Luigi DAG + llama-index + subprocess model replaced with single-LLM-call pipeline |
-| citizen | citizen/ | **Excluded** — pgvector RAG + legal pipeline would lose precision if flattened to LLM prompts |
+**OpenRouter API returns 401**
+Verify your key starts with `sk-or-v1-`. Check it in Settings. Re-save if needed.
+
+**Database connection refused (Docker)**
+Wait for PostgreSQL health check to pass. The workbench container waits for `pg_isready` before starting.
+
+**Agent tab shows nothing**
+Check that the agent is toggled on in Settings. Each agent only activates when enabled.
+
+**Rate limited (429)**
+Default limits are 5/min for auth, 60/min for agents, 120/min general. Adjust via `config/default.toml` or environment variables.
+
+**The server won't start on port 8420**
+The port is already in use. Change it: `workbench serve --port 9000`.
 
 ---
 
-## Development
+## Security
 
-```bash
-pip install -e ".[dev]" --break-system-packages
-```
+* OpenRouter keys are encrypted at rest with AES-256-GCM (key derived from `ENCRYPTION_KEY`).
+* API keys and session tokens are bcrypt-hashed. Sessions are httponly, samesite=strict cookies with 24-hour expiry.
+* Rate limiting on all endpoints (configurable per category).
+* Anti-SSRF validation on outbound URLs (blocks private/internal IP ranges).
+* Content-Security-Policy and CORS headers configured by default.
+* No telemetry, no analytics, no phoning home.
 
-### Commands
-
-```bash
-# Run tests (46 tests, SQLite in-memory)
-pytest tests/ -v
-
-# Lint
-ruff check src/workbench/ agents/
-
-# Type check
-mypy src/ agents/
-```
-
-### Notes
-
-- Tests use SQLite in-memory — no external database needed.
-- Ruff has two intentional rule exceptions at project level:
-  - **B008** (FastAPI `Depends()` in signatures) — FastAPI's documented pattern, not a bug
-  - **E501** (line length) — some string literals and template strings exceed 100 chars
+For production hardening, see the security checklist in [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT -- see [LICENSE](LICENSE).

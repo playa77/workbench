@@ -7,11 +7,13 @@ multi-source web research via function-calling, and produces cited reports.
 from __future__ import annotations
 
 import asyncio
+import logging
+import time
 from typing import Any, ClassVar
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
@@ -19,6 +21,10 @@ from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
 from workbench.core.models import StoredReport, User
 from workbench.shared.llm.router import OpenRouterClient
+
+logger = logging.getLogger(__name__)
+
+SESSION_TTL_SECONDS = 3600
 
 
 class ResearchAgent(AgentBase):
@@ -29,6 +35,7 @@ class ResearchAgent(AgentBase):
     icon = "search"
 
     _sessions: ClassVar[dict[str, Any]] = {}
+    _session_timestamps: ClassVar[dict[str, float]] = {}
 
     def _build_router(self) -> APIRouter:
         router = APIRouter()
@@ -73,7 +80,8 @@ class ResearchAgent(AgentBase):
             state=state,
             brave_api_key=brave_key,
         )
-        self._sessions[run_id] = orchestrator
+        self._sessions[run_id] = {"orchestrator": orchestrator, "user_id": str(user.id)}
+        self._session_timestamps[run_id] = time.monotonic()
 
         async def generate_sse():
             try:
@@ -90,9 +98,10 @@ class ResearchAgent(AgentBase):
             except asyncio.CancelledError:
                 orchestrator.stop()
                 yield 'event: error\ndata: {"message": "Client disconnected"}\n\n'
-            except Exception as e:
+            except Exception:
+                logger.exception("Research agent internal error")
                 orchestrator.stop()
-                yield f'event: error\ndata: {{"message": "{e!s}"}}\n\n'
+                yield 'event: error\ndata: {"message": "An internal error occurred. Check server logs."}\n\n'
             finally:
                 await client.close()
 
@@ -116,12 +125,13 @@ class ResearchAgent(AgentBase):
         state: Any,
     ) -> None:
         try:
+            from workbench.core.encryption import encrypt_report_content
             title = question[:200] if len(question) <= 200 else question[:197] + "..."
             stored = StoredReport(
                 user_id=user.id,
                 agent_name="research",
                 title=title,
-                content=report,
+                content=encrypt_report_content(report),
                 content_format="markdown",
                 metadata_json={
                     "run_id": run_id,
@@ -138,14 +148,19 @@ class ResearchAgent(AgentBase):
 
     # ---- stop ----
 
+    def _get_research(self, run_id: str, user_id: str):
+        entry = self._sessions.get(run_id)
+        if not entry or entry.get("user_id") != str(user_id):
+            raise HTTPException(status_code=404, detail="Research session not found")
+        return entry["orchestrator"]
+
     async def stop_query(
         self,
         run_id: str,
         user: User = Depends(get_current_user),
     ):
-        orchestrator = self._sessions.get(run_id)
-        if not orchestrator:
-            raise HTTPException(status_code=404, detail="Research session not found")
+        orchestrator = self._get_research(run_id, str(user.id))
+        self._session_timestamps[run_id] = time.monotonic()
         orchestrator.stop()
         return {"status": "STOPPED", "run_id": run_id}
 
@@ -156,9 +171,8 @@ class ResearchAgent(AgentBase):
         run_id: str,
         user: User = Depends(get_current_user),
     ):
-        orchestrator = self._sessions.get(run_id)
-        if not orchestrator:
-            raise HTTPException(status_code=404, detail="Research session not found")
+        orchestrator = self._get_research(run_id, str(user.id))
+        self._session_timestamps[run_id] = time.monotonic()
         state = orchestrator.state
         return {
             "run_id": run_id,
@@ -196,18 +210,19 @@ class ResearchAgent(AgentBase):
         stored = result.scalars().all()
 
         if stored:
+            from workbench.core.encryption import decrypt_report_content
             report = stored[0]
             return {
                 "run_id": run_id,
                 "title": report.title,
-                "content": report.content,
+                "content": decrypt_report_content(report.content),
                 "format": report.content_format,
                 "created_at": report.created_at.isoformat() if report.created_at else "",
             }
 
         orchestrator = self._sessions.get(run_id)
-        if orchestrator:
-            state = orchestrator.state
+        if orchestrator and orchestrator.get("user_id") == str(user.id):
+            state = orchestrator["orchestrator"].state
             return {
                 "run_id": run_id,
                 "title": state.query,
@@ -217,6 +232,15 @@ class ResearchAgent(AgentBase):
             }
 
         raise HTTPException(status_code=404, detail="Report not found")
+
+    @classmethod
+    def _cleanup_sessions(cls) -> None:
+        now = time.monotonic()
+        to_remove = [rid for rid, ts in list(cls._session_timestamps.items()) if now - ts > SESSION_TTL_SECONDS]
+        for rid in to_remove:
+            cls._sessions.pop(rid, None)
+            cls._session_timestamps.pop(rid, None)
+            logger.info("Cleaned up expired research session: %s", rid)
 
     def get_frontend_tab(self) -> dict:
         return {
@@ -229,6 +253,6 @@ class ResearchAgent(AgentBase):
 
 
 class ResearchRequest(BaseModel):
-    question: str
+    question: str = Field(..., max_length=10000)
     max_iterations: int | None = None
     brave_api_key: str | None = None

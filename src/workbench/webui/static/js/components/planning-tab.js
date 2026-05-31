@@ -158,7 +158,7 @@
         break;
       case 'phase':
         var phaseLabel = document.getElementById('pl-phase-label');
-        if (phaseLabel && data.message) phaseLabel.textContent = Utils.escapeHtml(data.message);
+        if (phaseLabel && data.message) phaseLabel.textContent = data.message;
         break;
       case 'completed':
         setPhase('Completed');

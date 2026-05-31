@@ -166,8 +166,8 @@
         logEvent('Started deliberation: ' + Utils.escapeHtml((data.question || '').substring(0, 80)));
         break;
       case 'phase':
-        setPhase(Utils.escapeHtml(data.phase || data.message || ''));
-        if (data.message) logEvent(data.message);
+        setPhase(data.phase || data.message || '');
+        if (data.message) logEvent(Utils.escapeHtml(data.message));
         break;
       case 'frame_start':
         logEvent('[' + Utils.escapeHtml(data.label || data.frame_id) + '] Generating position (' + data.index + '/' + data.total + ')...');
@@ -276,8 +276,21 @@
       + rhetoricHtml
       + surfaceHtml
       + (data.synthesis_available ? '<div class="card"><div class="card-header">Synthesis</div><p style="font-size:12px;color:var(--text-muted)">Synthesis available — use Export for full details.</p>'
-        +   '<button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="window.deliberationExport(\'' + (activeDeliberationId || '') + '\')">Export JSON</button></div>' : '')
-      + '<button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="Router.setActive(\'deliberation\')">New Deliberation</button>';
+        +   '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-export" data-deliberation-id="' + Utils.escapeHtml(activeDeliberationId || '') + '">Export JSON</button></div>' : '')
+      + '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-new">New Deliberation</button>';
+
+    var exportBtn = output.querySelector('[data-action="deliberation-export"]');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function () {
+        window.deliberationExport(exportBtn.dataset.deliberationId);
+      });
+    }
+    var newBtn = output.querySelector('[data-action="deliberation-new"]');
+    if (newBtn) {
+      newBtn.addEventListener('click', function () {
+        Router.setActive('deliberation');
+      });
+    }
 
     var btn = document.getElementById('btn-start-deliberation');
     if (btn) resetDeliberation(btn);

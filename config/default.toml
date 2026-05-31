@@ -6,7 +6,7 @@ log_level = "INFO"
 data_dir = "data"
 
 [api]
-host = "0.0.0.0"
+host = "127.0.0.1"
 port = 8420
 cors_origins = ["http://localhost:8420", "http://localhost:3000"]
 
@@ -26,3 +26,11 @@ key_env = "ENCRYPTION_KEY"
 [auth]
 api_key_prefix = "wb"
 max_keys_per_user = 5
+allow_registration = true
+session_expiry_hours = 24
+
+[rate_limit]
+enabled = true
+auth = "5/minute"
+agents = "60/minute"
+general = "120/minute"

@@ -1,7 +1,7 @@
 """Chat Agent — LLM chat with the workbench infrastructure."""
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
@@ -55,7 +55,7 @@ class ChatAgent(AgentBase):
 
 
 class ChatRequest(BaseModel):
-    message: str
+    message: str = Field(..., max_length=10000)
     model: str | None = None
     temperature: float = 0.7
     max_tokens: int | None = None
