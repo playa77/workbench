@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 from abc import ABC
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, FastAPI
@@ -53,6 +54,9 @@ class AgentBase(ABC):
             "icon": self.icon,
             "component": f"agent-{self.name}",
         }
+
+    def get_static_dir(self) -> Path | None:
+        return None
 
     async def on_enable(self, user_id: str, session: AsyncSession) -> None:
         pass

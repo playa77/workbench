@@ -111,7 +111,8 @@
       headerTabs.innerHTML = tabs.map(function (t) {
         var iconSvg = getIcon(t.icon || 'puzzle');
         return '<button class="tab-btn" data-tab="' + Utils.escapeHtml(t.id) + '" data-component="' +
-          Utils.escapeHtml(t.component || '') + '" data-js="' + Utils.escapeHtml(t.js || '') + '">' +
+          Utils.escapeHtml(t.component || '') + '" data-js="' + Utils.escapeHtml(t.js || '') +
+          '" data-css="' + Utils.escapeHtml(t.css || '') + '">' +
           iconSvg + ' ' + Utils.escapeHtml(t.displayName) + '</button>';
       }).join('');
 
@@ -231,7 +232,7 @@
       var grid = document.getElementById('agent-list');
       if (!grid) return;
       grid.innerHTML = agents.map(function (p) {
-        return '<div class="agent-card">' +
+        return '<div class="agent-card" data-agent-card="' + Utils.escapeHtml(p.name) + '">' +
           '<div class="agent-card-header">' +
           '<span class="agent-card-name">' + getIcon(p.icon) + ' ' + Utils.escapeHtml(p.display_name) + '</span>' +
           '<label class="toggle">' +
@@ -241,6 +242,7 @@
           '</div>' +
           '<p class="agent-card-desc">' + Utils.escapeHtml(p.description) + '</p>' +
           '<p class="agent-card-version">v' + Utils.escapeHtml(p.version) + '</p>' +
+          '<div class="agent-settings-form" id="agent-form-' + Utils.escapeHtml(p.name) + '"></div>' +
           '</div>';
       }).join('');
 
@@ -248,6 +250,78 @@
         cb.addEventListener('change', function () {
           window.toggleAgent(cb.dataset.agentName, cb.checked);
         });
+      });
+
+      agents.forEach(function (p) {
+        if (p.enabled) loadAgentSettingsForm(p.name);
+      });
+    } catch (e) { /* silently fail */ }
+  }
+
+  async function loadAgentSettingsForm(agentName) {
+    try {
+      var data = await API.getAgentSettings(agentName);
+      var schema = data.settings_schema || {};
+      var props = schema.properties || {};
+      var current = data.current_settings || {};
+      var formEl = document.getElementById('agent-form-' + Utils.escapeHtml(agentName));
+      if (!formEl || Object.keys(props).length === 0) return;
+
+      var html = '<div class="settings-form-divider"></div>' +
+        '<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px">Plugin Settings</div>';
+
+      Object.keys(props).forEach(function (key) {
+        var prop = props[key];
+        var val = current[key] !== undefined ? current[key] : (prop.default !== undefined ? prop.default : '');
+        html += '<div class="form-group" style="margin-bottom:10px">' +
+          '<label>' + Utils.escapeHtml(prop.title || key) + '</label>';
+        if (prop.enum) {
+          html += '<select class="form-input" id="form-' + Utils.escapeHtml(agentName) + '-' + Utils.escapeHtml(key) + '" style="font-size:12px;padding:6px 10px">';
+          prop.enum.forEach(function (opt) {
+            var label = prop.enumLabels ? (prop.enumLabels[opt] || opt) : opt;
+            html += '<option value="' + Utils.escapeHtml(opt) + '" ' + (String(val) === String(opt) ? 'selected' : '') + '>' + Utils.escapeHtml(label) + '</option>';
+          });
+          html += '</select>';
+        } else if (prop.type === 'boolean') {
+          html += '<label class="toggle" style="justify-content:flex-start">' +
+            '<input type="checkbox" id="form-' + Utils.escapeHtml(agentName) + '-' + Utils.escapeHtml(key) + '" ' + (val ? 'checked' : '') + '>' +
+            '<span class="toggle-switch"></span></label>';
+        } else if (prop.type === 'number' || prop.type === 'integer') {
+          html += '<input class="form-input" type="number" id="form-' + Utils.escapeHtml(agentName) + '-' + Utils.escapeHtml(key) + '" value="' + Utils.escapeHtml(String(val)) + '" style="font-size:12px;padding:6px 10px" />';
+        } else {
+          html += '<input class="form-input" type="text" id="form-' + Utils.escapeHtml(agentName) + '-' + Utils.escapeHtml(key) + '" value="' + Utils.escapeHtml(String(val)) + '" style="font-size:12px;padding:6px 10px" />';
+        }
+        if (prop.description) html += '<span style="font-size:10px;color:var(--text-muted)">' + Utils.escapeHtml(prop.description) + '</span>';
+        html += '</div>';
+      });
+
+      html += '<button class="btn btn-primary btn-sm" id="btn-save-' + Utils.escapeHtml(agentName) + '" style="margin-top:4px">Save Settings</button>' +
+        '<span id="save-status-' + Utils.escapeHtml(agentName) + '" style="margin-left:8px;font-size:11px;color:var(--success)"></span>';
+
+      formEl.innerHTML = html;
+
+      document.getElementById('btn-save-' + agentName).addEventListener('click', async function () {
+        var sett = {};
+        Object.keys(props).forEach(function (key) {
+          var el = document.getElementById('form-' + agentName + '-' + key);
+          var schema = props[key];
+          if (!el || !schema) return;
+          if (schema.type === 'boolean') {
+            sett[key] = el.checked;
+          } else if (schema.type === 'number' || schema.type === 'integer') {
+            sett[key] = parseFloat(el.value);
+          } else {
+            sett[key] = el.value;
+          }
+        });
+        try {
+          await API.updateAgentSettings(agentName, { settings: sett });
+          var status = document.getElementById('save-status-' + agentName);
+          if (status) { status.textContent = 'Saved'; setTimeout(function () { status.textContent = ''; }, 2000); }
+        } catch (e) {
+          var status = document.getElementById('save-status-' + agentName);
+          if (status) { status.textContent = 'Error: ' + e.message; }
+        }
       });
     } catch (e) { /* silently fail */ }
   }

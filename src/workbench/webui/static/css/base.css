@@ -401,6 +401,15 @@ pre code {
   margin-top: 8px;
 }
 
+.agent-settings-form {
+  margin-top: 12px;
+}
+
+.settings-form-divider {
+  border-top: 1px solid var(--border-color);
+  margin-bottom: 10px;
+}
+
 /* Settings page */
 .settings-section {
   margin-bottom: 32px;

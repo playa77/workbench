@@ -1,12 +1,13 @@
 /* ==========================================
    Workbench — Tab Router
-   Lazy-loads tab component scripts on demand
+   Lazy-loads tab component scripts and styles on demand
    ========================================== */
 
 const Router = (() => {
   let activeTab = null;
   const tabCallbacks = {};
   const loadedScripts = {};
+  const loadedStyles = {};
   let _pendingActivation = null;
 
   function register(name, renderFn) {
@@ -39,7 +40,16 @@ const Router = (() => {
 
     const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
     const jsPath = btn ? btn.dataset.js : null;
+    const cssPath = btn ? btn.dataset.css : null;
     const container = document.getElementById('active-tab-content');
+
+    if (cssPath && !loadedStyles[cssPath]) {
+      loadedStyles[cssPath] = true;
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = cssPath;
+      document.head.appendChild(link);
+    }
 
     if (tabCallbacks[name]) {
       tabCallbacks[name](container);

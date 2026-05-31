@@ -8,17 +8,20 @@ import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from workbench.core.agents import get_registry
+from workbench.core.agents import get_registry, get_user_agent_settings
+from workbench.core.auth import get_current_user
 from workbench.core.config import WorkbenchConfig, load_config
-from workbench.core.db import close_db, init_db
+from workbench.core.db import close_db, get_session, init_db
 from workbench.core.encryption import init_encryption
+from workbench.core.models import User
 from workbench.core.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
@@ -32,6 +35,7 @@ _BUILTIN_AGENTS = [
     ("agents.research.agent", "ResearchAgent"),
     ("agents.deliberation.agent", "DeliberationAgent"),
     ("agents.planning.agent", "PlanningAgent"),
+    ("agents.math_tutor.agent", "MathTutorAgent"),
 ]
 
 
@@ -165,6 +169,20 @@ def _auto_register_agents(app: FastAPI, registry) -> None:
         except Exception as exc:
             logger.debug("Agent %s not available: %s", class_name, exc)
 
+    for agent in registry.list_all():
+        static_dir = agent.get_static_dir()
+        if static_dir and static_dir.exists():
+            mount_path = f"/static/plugins/{agent.name}"
+            app.mount(
+                mount_path,
+                StaticFiles(directory=str(static_dir)),
+                name=f"static-plugin-{agent.name}",
+            )
+            logger.info(
+                "Mounted plugin static dir for '%s': %s -> %s",
+                agent.name, static_dir, mount_path,
+            )
+
     static_dir = Path(__file__).resolve().parent.parent / "webui" / "static"
     index_html = static_dir / "index.html"
 
@@ -175,8 +193,17 @@ def _auto_register_agents(app: FastAPI, registry) -> None:
         return HTMLResponse("<h1>Workbench API</h1><p>Frontend not found.</p>")
 
     @app.get("/api/v1/tabs")
-    async def list_tabs():
-        return {"tabs": get_registry().get_tabs()}
+    async def list_tabs(
+        user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_session),
+    ):
+        user_settings = await get_user_agent_settings(str(user.id), session)
+        tabs = []
+        for agent in get_registry().list_all():
+            agent_config = user_settings.get(agent.name, {})
+            if agent_config.get("enabled", False):
+                tabs.append(agent.get_frontend_tab())
+        return {"tabs": tabs}
 
 
 def _start_news_scheduler_if_agent_enabled(app: FastAPI):
