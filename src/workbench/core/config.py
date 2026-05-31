@@ -1,10 +1,12 @@
 """Workbench core configuration.
 
 Layered config: default.toml -> .env -> WORKBENCH_* env vars -> per-user DB overrides.
+
+Now uses shared config loader primitives from workbench.shared.config.loader.
 """
+
 from __future__ import annotations
 
-import json
 import logging
 import os
 import tomllib
@@ -12,6 +14,8 @@ from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from workbench.shared.config.loader import deep_merge, read_env as _read_env_prefix
 
 LOGGER = logging.getLogger(__name__)
 
@@ -44,30 +48,8 @@ class WorkbenchConfig(BaseModel):
         return v.upper()
 
 
-def _deep_merge(base: dict[str, Any], override: dict[str, Any]) -> dict[str, Any]:
-    result = dict(base)
-    for key, value in override.items():
-        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
-            result[key] = _deep_merge(result[key], value)
-        else:
-            result[key] = value
-    return result
-
-
 def _read_env() -> dict[str, Any]:
-    result: dict[str, Any] = {}
-    for key, value in os.environ.items():
-        if not key.startswith("WORKBENCH_"):
-            continue
-        nested = key[10:].lower().split("__")
-        cursor = result
-        for part in nested[:-1]:
-            cursor = cursor.setdefault(part, {})
-        try:
-            cursor[nested[-1]] = json.loads(value)
-        except (json.JSONDecodeError, TypeError):
-            cursor[nested[-1]] = value
-    return result
+    return _read_env_prefix("WORKBENCH_")
 
 
 def _flatten_env_overrides(env_overrides: dict[str, Any]) -> dict[str, Any]:
@@ -112,7 +94,7 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
         raw = tomllib.loads(resolved_default.read_text())
 
     env_raw = _read_env()
-    raw = _deep_merge(raw, env_raw)
+    raw = deep_merge(raw, env_raw)
 
     flat_overrides = _flatten_env_overrides(raw)
     raw.update(flat_overrides)
@@ -130,8 +112,6 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
     flat: dict[str, Any] = {}
     for key in WorkbenchConfig.model_fields:
         if key in raw:
-            flat[key] = raw[key]
-        elif key in raw:
             flat[key] = raw[key]
     for section_name in ("general", "api", "openrouter", "auth"):
         if section_name in raw and isinstance(raw[section_name], dict):

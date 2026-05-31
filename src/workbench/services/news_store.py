@@ -49,12 +49,15 @@ class NewsStore:
             text(
                 """INSERT INTO news_interests
                    (user_id, name, start_time, interval_hours, target_summary_words,
-                    target_script_words, enable_summary, enable_script,
-                    enable_brief, enable_email)
+                    target_script_words, target_script_de_words, target_brief_words,
+                    enable_summary, enable_script, enable_script_de,
+                    enable_brief, enable_email, input_data_length_mode, input_word_count)
                    VALUES (:uid, :name, :start_time, :interval_hours,
                            :target_summary_words, :target_script_words,
-                           :enable_summary, :enable_script,
-                           :enable_brief, :enable_email)
+                           :target_script_de_words, :target_brief_words,
+                           :enable_summary, :enable_script, :enable_script_de,
+                           :enable_brief, :enable_email,
+                           :input_data_length_mode, :input_word_count)
                    RETURNING *"""
             ),
             {
@@ -64,10 +67,15 @@ class NewsStore:
                 "interval_hours": data.get("interval_hours", 24),
                 "target_summary_words": data.get("target_summary_words", 750),
                 "target_script_words": data.get("target_script_words", 1250),
+                "target_script_de_words": data.get("target_script_de_words", 1250),
+                "target_brief_words": data.get("target_brief_words", 600),
                 "enable_summary": data.get("enable_summary", True),
                 "enable_script": data.get("enable_script", True),
+                "enable_script_de": data.get("enable_script_de", False),
                 "enable_brief": data.get("enable_brief", True),
-                "enable_email": data.get("enable_email", True),
+                "enable_email": data.get("enable_email", False),
+                "input_data_length_mode": data.get("input_data_length_mode", "full_article"),
+                "input_word_count": data.get("input_word_count", 256),
             },
         )
         await self._s.commit()
@@ -320,3 +328,94 @@ class NewsStore:
         if r is None:
             return None
         return dict(r._mapping)
+
+    # ---- Deliverable helpers ----
+    async def get_deliverables_for_theme(self, theme_id: int) -> list[dict[str, Any]]:
+        rows = await self._s.execute(
+            text(
+                "SELECT * FROM news_deliverables "
+                "WHERE theme_id = :tid ORDER BY deliverable_type"
+            ),
+            {"tid": theme_id},
+        )
+        return [dict(r._mapping) for r in rows]
+
+    async def update_interest(self, user_id: str, interest_id: int, data: dict[str, Any]) -> dict[str, Any] | None:
+        interest = await self.get_interest(user_id, interest_id)
+        if interest is None:
+            return None
+
+        updatable = {
+            "name", "start_time", "interval_hours",
+            "target_summary_words", "target_script_words",
+            "target_script_de_words", "target_brief_words",
+            "enable_summary", "enable_script", "enable_script_de",
+            "enable_brief", "enable_email",
+            "input_data_length_mode", "input_word_count",
+        }
+        updates = {k: v for k, v in data.items() if k in updatable and v is not None}
+        if not updates:
+            return interest
+
+        set_clauses = ", ".join(f"{k} = :{k}" for k in updates)
+        updates["iid"] = interest_id
+        updates["uid"] = user_id
+        await self._s.execute(
+            text(
+                f"UPDATE news_interests SET {set_clauses} "
+                f"WHERE id = :iid AND user_id = :uid"
+            ),
+            updates,
+        )
+        await self._s.commit()
+        return await self.get_interest(user_id, interest_id)
+
+    async def update_feed(self, user_id: str, interest_id: int, feed_id: int, data: dict[str, Any]) -> dict[str, Any] | None:
+        interest = await self.get_interest(user_id, interest_id)
+        if not interest:
+            return None
+
+        updatable = {"url", "name", "category"}
+        updates = {k: v for k, v in data.items() if k in updatable and v is not None}
+        if not updates:
+            rows = await self._s.execute(
+                text(
+                    "SELECT * FROM news_feeds WHERE id = :fid AND interest_id = :iid"
+                ),
+                {"fid": feed_id, "iid": interest_id},
+            )
+            r = rows.first()
+            return dict(r._mapping) if r else None
+
+        set_clauses = ", ".join(f"{k} = :{k}" for k in updates)
+        updates["fid"] = feed_id
+        updates["iid"] = interest_id
+        result = await self._s.execute(
+            text(
+                f"UPDATE news_feeds SET {set_clauses} "
+                f"WHERE id = :fid AND interest_id = :iid "
+                f"RETURNING *"
+            ),
+            updates,
+        )
+        await self._s.commit()
+        r = result.first()
+        return dict(r._mapping) if r else None
+
+    async def is_interest_running(self, interest_id: int) -> bool:
+        """Check if there's an active (running) pipeline for an interest."""
+        row = await self._s.execute(
+            text(
+                "SELECT 1 FROM news_runs "
+                "WHERE interest_id = :iid AND status = 'running' LIMIT 1"
+            ),
+            {"iid": interest_id},
+        )
+        return row.first() is not None
+
+    async def list_all_interests_global(self) -> list[dict[str, Any]]:
+        """List all interests across all users (for scheduler)."""
+        rows = await self._s.execute(
+            text("SELECT * FROM news_interests ORDER BY name")
+        )
+        return [dict(r._mapping) for r in rows]

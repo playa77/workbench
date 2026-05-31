@@ -1,36 +1,55 @@
-"""Research Agent — autonomous deep research agent.
+"""Research Agent — autonomous deep research agent with SSE streaming.
 
-Adapted from PResearch. Takes research questions, conducts multi-source web research,
-and produces publication-quality reports with citations.
+Adapted from PResearch/orchestrator.py. Takes research questions, conducts
+multi-source web research via function-calling, and produces cited reports.
 """
 
+from __future__ import annotations
+
+import asyncio
+from typing import Any, ClassVar
+
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
-from workbench.core.models import User
-from workbench.core.router import OpenRouterClient
+from workbench.core.models import StoredReport, User
+from workbench.shared.llm.router import OpenRouterClient
 
 
 class ResearchAgent(AgentBase):
     name = "research"
     display_name = "Deep Research"
     description = "Autonomous web research agent — produce cited, publication-quality reports"
-    version = "0.1.0"
+    version = "0.2.0"
     icon = "search"
+
+    _sessions: ClassVar[dict[str, Any]] = {}
 
     def _build_router(self) -> APIRouter:
         router = APIRouter()
-        router.add_api_route("/query", self.query, methods=["POST"])
-        router.add_api_route("/reports", self.list_reports, methods=["GET"])
+        router.add_api_route("/query", self.start_query, methods=["POST"])
+        router.add_api_route("/query/{run_id}/stop", self.stop_query, methods=["POST"])
+        router.add_api_route("/query/{run_id}/status", self.get_status, methods=["GET"])
+        router.add_api_route("/reports/{run_id}/export", self.export_report, methods=["GET"])
         return router
 
-    async def query(
+    @staticmethod
+    def _parse_query_params(body: ResearchRequest) -> tuple[str, int, str | None]:
+        """Extract research parameters from the request."""
+        max_iter = body.max_iterations or 20
+        brave_key = body.brave_api_key or None
+        return body.question, max_iter, brave_key
+
+    # ---- SSE: start research query ----
+
+    async def start_query(
         self,
-        body: "ResearchRequest",
+        body: ResearchRequest,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
@@ -38,68 +57,166 @@ class ResearchAgent(AgentBase):
         if not or_key:
             raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
 
+        question, max_iter, brave_key = self._parse_query_params(body)
+
+        from workbench.services.research_orchestrator import (
+            ResearchOrchestrator,
+            ResearchState,
+        )
+
+        state = ResearchState.create(question, max_iterations=max_iter)
+        run_id = state.run_id
+
         client = OpenRouterClient(api_key=or_key)
+        orchestrator = ResearchOrchestrator(
+            client=client,
+            state=state,
+            brave_api_key=brave_key,
+        )
+        self._sessions[run_id] = orchestrator
+
+        async def generate_sse():
+            try:
+                task = asyncio.create_task(orchestrator.run(question))
+
+                async for event_str in orchestrator.event_stream():
+                    if task.done() and event_str.startswith("event: ping"):
+                        continue
+                    yield event_str
+
+                await task
+                report = task.result()
+                await self._save_report(user, session, question, report, run_id, state)
+            except asyncio.CancelledError:
+                orchestrator.stop()
+                yield 'event: error\ndata: {"message": "Client disconnected"}\n\n'
+            except Exception as e:
+                orchestrator.stop()
+                yield f'event: error\ndata: {{"message": "{e!s}"}}\n\n'
+            finally:
+                await client.close()
+
+        return StreamingResponse(
+            generate_sse(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    @staticmethod
+    async def _save_report(
+        user: User,
+        session: AsyncSession,
+        question: str,
+        report: str,
+        run_id: str,
+        state: Any,
+    ) -> None:
         try:
-            plan_prompt = (
-                f"Research question: {body.question}\n\n"
-                "Plan a research approach. List 3-5 subtopics to investigate. Use numbered list."
+            title = question[:200] if len(question) <= 200 else question[:197] + "..."
+            stored = StoredReport(
+                user_id=user.id,
+                agent_name="research",
+                title=title,
+                content=report,
+                content_format="markdown",
+                metadata_json={
+                    "run_id": run_id,
+                    "iterations": state.iteration,
+                    "sources": state.mind_map.source_count(),
+                    "input_tokens": state.token_usage.input_tokens,
+                    "output_tokens": state.token_usage.output_tokens,
+                },
             )
-            plan = await client.chat_completion(
-                messages=[
-                    {"role": "system", "content": "You are a research planner. Plan a thorough investigation."},
-                    {"role": "user", "content": plan_prompt},
-                ],
-                model="deepseek/deepseek-v4-pro",
-                temperature=0.3,
-                max_tokens=800,
-            )
+            session.add(stored)
+            await session.commit()
+        except Exception:
+            pass
 
-            synth_prompt = (
-                f"Research question: {body.question}\n\n"
-                f"Research plan:\n{plan}\n\n"
-                "Write a comprehensive research report covering the planned subtopics. "
-                "Use markdown formatting. Include a summary section and key findings. "
-                "Be thorough and well-structured."
-            )
-            report = await client.chat_completion(
-                messages=[
-                    {"role": "system", "content": "You are an expert researcher. Write comprehensive, well-cited research reports."},
-                    {"role": "user", "content": synth_prompt},
-                ],
-                model="deepseek/deepseek-v4-pro",
-                temperature=0.4,
-                max_tokens=4000,
-            )
+    # ---- stop ----
 
-            return {"question": body.question, "plan": plan, "report": report}
-        finally:
-            await client.close()
-
-    async def list_reports(
+    async def stop_query(
         self,
+        run_id: str,
+        user: User = Depends(get_current_user),
+    ):
+        orchestrator = self._sessions.get(run_id)
+        if not orchestrator:
+            raise HTTPException(status_code=404, detail="Research session not found")
+        orchestrator.stop()
+        return {"status": "STOPPED", "run_id": run_id}
+
+    # ---- status ----
+
+    async def get_status(
+        self,
+        run_id: str,
+        user: User = Depends(get_current_user),
+    ):
+        orchestrator = self._sessions.get(run_id)
+        if not orchestrator:
+            raise HTTPException(status_code=404, detail="Research session not found")
+        state = orchestrator.state
+        return {
+            "run_id": run_id,
+            "query": state.query,
+            "status": state.status,
+            "iteration": state.iteration,
+            "max_iterations": state.max_iterations,
+            "sources": state.mind_map.source_count(),
+            "input_tokens": state.token_usage.input_tokens,
+            "output_tokens": state.token_usage.output_tokens,
+            "actions": [
+                {"tool": a.tool, "summary": a.result_summary, "time": a.timestamp}
+                for a in state.actions_log
+            ],
+            "mind_map_summary": state.mind_map.get_summary(),
+            "error": state.error,
+        }
+
+    # ---- export ----
+
+    async def export_report(
+        self,
+        run_id: str,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         from sqlalchemy import select
 
-        from workbench.core.models import StoredReport
-
         result = await session.execute(
             select(StoredReport).where(
-                StoredReport.user_id == user.id, StoredReport.agent_name == "research"
+                StoredReport.metadata_json["run_id"].astext == run_id,
+                StoredReport.user_id == user.id,
             )
         )
-        reports = result.scalars().all()
-        return {
-            "reports": [
-                {
-                    "id": str(r.id),
-                    "title": r.title,
-                    "created_at": r.created_at.isoformat() if r.created_at else "",
-                }
-                for r in reports
-            ]
-        }
+        stored = result.scalars().all()
+
+        if stored:
+            report = stored[0]
+            return {
+                "run_id": run_id,
+                "title": report.title,
+                "content": report.content,
+                "format": report.content_format,
+                "created_at": report.created_at.isoformat() if report.created_at else "",
+            }
+
+        orchestrator = self._sessions.get(run_id)
+        if orchestrator:
+            state = orchestrator.state
+            return {
+                "run_id": run_id,
+                "title": state.query,
+                "content": state.report or state.mind_map.get_summary(),
+                "format": "markdown",
+                "created_at": "",
+            }
+
+        raise HTTPException(status_code=404, detail="Report not found")
 
     def get_frontend_tab(self) -> dict:
         return {
@@ -113,3 +230,5 @@ class ResearchAgent(AgentBase):
 
 class ResearchRequest(BaseModel):
     question: str
+    max_iterations: int | None = None
+    brave_api_key: str | None = None

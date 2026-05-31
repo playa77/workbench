@@ -1,1 +1,0 @@
-"""Legal agent package (placeholder)."""

@@ -104,6 +104,15 @@
       headerTabs.querySelectorAll('.tab-btn').forEach(btn => {
         btn.addEventListener('click', () => Router.setActive(btn.dataset.tab));
       });
+
+      // Open WebUI tab — not agent-registered, embedded SPA
+      const owuiBtn = document.createElement('button');
+      owuiBtn.className = 'tab-btn';
+      owuiBtn.dataset.tab = 'owui';
+      owuiBtn.dataset.js = '/static/js/components/owui-tab.js';
+      owuiBtn.innerHTML = getIcon('globe') + ' LLMs';
+      owuiBtn.addEventListener('click', () => Router.setActive('owui'));
+      headerTabs.appendChild(owuiBtn);
     } catch (e) {
       headerTabs.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">No agents</span>';
     }
@@ -268,6 +277,7 @@
       users: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
       search: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
       target: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+      globe: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></svg>',
     };
     return icons[name] || icons.puzzle;
   }

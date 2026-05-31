@@ -1,11 +1,9 @@
 """Test fixtures for Workbench core."""
 
-import os
 import secrets
 import sys
 from collections.abc import AsyncGenerator
 from pathlib import Path
-from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
@@ -63,10 +61,15 @@ def _create_all_tables(connection):
             interval_hours INTEGER NOT NULL DEFAULT 24,
             target_summary_words INTEGER NOT NULL DEFAULT 750,
             target_script_words INTEGER NOT NULL DEFAULT 1250,
+            target_script_de_words INTEGER NOT NULL DEFAULT 1250,
+            target_brief_words INTEGER NOT NULL DEFAULT 600,
             enable_summary INTEGER NOT NULL DEFAULT 1,
             enable_script INTEGER NOT NULL DEFAULT 1,
+            enable_script_de INTEGER NOT NULL DEFAULT 0,
             enable_brief INTEGER NOT NULL DEFAULT 1,
-            enable_email INTEGER NOT NULL DEFAULT 1,
+            enable_email INTEGER NOT NULL DEFAULT 0,
+            input_data_length_mode TEXT NOT NULL DEFAULT 'full_article',
+            input_word_count INTEGER NOT NULL DEFAULT 256,
             created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )"""
     ))

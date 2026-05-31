@@ -1,18 +1,16 @@
 """Core database models for Workbench.
 
 Uses generic SQLAlchemy types that work with both PostgreSQL and SQLite.
-For production use with PostgreSQL + pgvector.
+All models inherit from the shared declarative Base.
 """
 
 from datetime import datetime
 from uuid import UUID, uuid4
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, String, Text, UniqueConstraint, func, Uuid, JSON
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-
-class Base(DeclarativeBase):
-    pass
+from workbench.shared.db.base import Base
 
 
 class User(Base):

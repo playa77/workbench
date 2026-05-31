@@ -1,45 +1,63 @@
-"""Deliberation Agent — multi-frame deliberation engine.
+"""Deliberation Agent — multi-frame reasoning with critique and synthesis.
 
-Adapted from stoa's capabilities/deliberation.
+Adapted from stoa's capabilities/deliberation/engine.py. Provides:
+- Multi-frame deliberation with 8 built-in skill frames
+- Multi-round critique (pair-wise frame evaluation)
+- Rhetoric analysis (devices, biases, inconsistencies, cross-frame contradictions)
+- Disagreement surface mapping (agreements, disagreements, open questions)
+- Synthesis with uncertainty awareness
+- SSE streaming for real-time progress
 """
 
+from __future__ import annotations
+
+import asyncio
+from typing import Any, ClassVar
+
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
 from workbench.core.models import User
-from workbench.core.router import OpenRouterClient
+from workbench.shared.llm.router import OpenRouterClient
 
 
 class DeliberationAgent(AgentBase):
     name = "deliberation"
     display_name = "Deliberation"
-    description = "Multi-frame AI deliberation engine — explore topics from multiple perspectives"
-    version = "0.1.0"
+    description = (
+        "Multi-frame AI deliberation engine — explore topics from "
+        "multiple perspectives with rigorous critique"
+    )
+    version = "0.2.0"
     icon = "scale"
+
+    _sessions: ClassVar[dict[str, Any]] = {}
 
     def _build_router(self) -> APIRouter:
         router = APIRouter()
-        router.add_api_route("/analyze", self.analyze, methods=["POST"])
-        router.add_api_route("/frames", self.get_frames, methods=["GET"])
+        router.add_api_route("/frames", self.list_frames, methods=["GET"])
+        router.add_api_route("/run", self.run_deliberation, methods=["POST"])
+        router.add_api_route("/{deliberation_id}", self.get_deliberation, methods=["GET"])
+        router.add_api_route("/{deliberation_id}/surface", self.get_surface, methods=["GET"])
+        router.add_api_route("/{deliberation_id}/export", self.export_deliberation, methods=["GET"])
         return router
 
-    async def get_frames(self):
-        return {
-            "frames": [
-                {"id": "pro_con", "name": "Pro / Con"},
-                {"id": "swot", "name": "SWOT Analysis"},
-                {"id": "forces", "name": "Driving Forces"},
-                {"id": "stakeholder", "name": "Stakeholder Perspectives"},
-            ]
-        }
+    # ---- frames ----
 
-    async def analyze(
+    async def list_frames(self):
+        from workbench.services.deliberation_service import get_available_frames as frames
+        return {"frames": frames()}
+
+    # ---- run (SSE) ----
+
+    async def run_deliberation(
         self,
-        body: "DeliberationRequest",
+        body: DeliberationRunRequest,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
@@ -47,28 +65,149 @@ class DeliberationAgent(AgentBase):
         if not or_key:
             raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
 
-        frame = body.frame or "pro_con"
-        client = OpenRouterClient(api_key=or_key)
-        try:
-            if frame == "pro_con":
-                prompt = f"Analyze this topic from both pro and con perspectives. First the PRO case, then the CON case, then a balanced synthesis:\n\n{body.question}"
-            elif frame == "swot":
-                prompt = f"Perform a SWOT analysis of this topic. Cover Strengths, Weaknesses, Opportunities, and Threats:\n\n{body.question}"
-            else:
-                prompt = f"Analyze this topic from multiple perspectives, providing a structured, balanced analysis:\n\n{body.question}"
+        frame_ids = body.frames or ["pro_con", "swot"]
+        if len(frame_ids) < 2:
+            raise HTTPException(status_code=400, detail="Need at least 2 frames")
+        if len(frame_ids) > 6:
+            raise HTTPException(status_code=400, detail="Maximum 6 frames")
 
-            response = await client.chat_completion(
-                messages=[
-                    {"role": "system", "content": "You are an expert analyst. Provide thorough, balanced, structured analysis."},
-                    {"role": "user", "content": prompt},
-                ],
-                model="deepseek/deepseek-v4-pro",
-                temperature=0.5,
-                max_tokens=3000,
+        from workbench.services.deliberation_service import (
+            DeliberationService,
+            FrameConfig,
+            get_available_frames,
+        )
+
+        known_frames = {f["frame_id"] for f in get_available_frames()}
+        invalid = [fid for fid in frame_ids if fid not in known_frames]
+        if invalid:
+            raise HTTPException(status_code=400, detail=f"Unknown frames: {', '.join(invalid)}")
+
+        frame_names = {f["frame_id"]: f["label"] for f in get_available_frames()}
+        frame_configs = [
+            FrameConfig(
+                frame_id=fid,
+                label=frame_names.get(fid, fid),
+                temperature=body.temperature,
             )
-            return {"frame": frame, "analysis": response}
-        finally:
-            await client.close()
+            for fid in frame_ids
+        ]
+
+        client = OpenRouterClient(api_key=or_key)
+        service = DeliberationService(client)
+
+        async def generate_sse():
+            task = asyncio.create_task(
+                service.deliberate(
+                    question=body.question,
+                    frame_configs=frame_configs,
+                    rounds=body.rounds,
+                    include_rhetoric_analysis=body.include_rhetoric_analysis,
+                    include_synthesis=body.include_synthesis,
+                )
+            )
+
+            try:
+                async for event_str in service.event_stream():
+                    if task.done() and event_str.startswith("event: ping"):
+                        continue
+                    yield event_str
+
+                result = await task
+                self._sessions[result.deliberation_id] = (result, service)
+            except asyncio.CancelledError:
+                yield 'event: error\ndata: {"message": "Client disconnected"}\n\n'
+            except Exception as e:
+                yield f'event: error\ndata: {{"message": "{e!s}"}}\n\n'
+            finally:
+                await client.close()
+
+        return StreamingResponse(
+            generate_sse(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+                "X-Accel-Buffering": "no",
+            },
+        )
+
+    # ---- get ----
+
+    async def get_deliberation(
+        self,
+        deliberation_id: str,
+        user: User = Depends(get_current_user),
+    ):
+        entry = self._sessions.get(deliberation_id)
+        if not entry:
+            raise HTTPException(status_code=404, detail="Deliberation not found")
+        result = entry[0]
+        return {
+            "deliberation_id": result.deliberation_id,
+            "question": result.question,
+            "status": result.status,
+            "elapsed_seconds": result.elapsed_seconds,
+            "frames": [
+                {
+                    "frame_id": f.frame_id,
+                    "label": f.label,
+                    "position": f.position,
+                    "critique_count": len(f.critiques),
+                }
+                for f in result.frames
+            ],
+            "rhetoric_summary": (
+                {
+                    "devices": len(result.rhetoric_analysis.devices),
+                    "biases": len(result.rhetoric_analysis.biases),
+                    "inconsistencies": len(
+                        result.rhetoric_analysis.inconsistencies
+                    ),
+                    "cross_frame_contradictions": len(
+                        result.rhetoric_analysis.cross_frame_contradictions
+                    ),
+                }
+                if result.rhetoric_analysis
+                else None
+            ),
+            "surface_summary": {
+                "agreements": len(result.disagreement_surface.agreements),
+                "disagreements": len(result.disagreement_surface.disagreements),
+                "open_questions": len(result.disagreement_surface.open_questions),
+            },
+            "synthesis_available": result.synthesis is not None,
+            "error": result.error,
+        }
+
+    # ---- surface ----
+
+    async def get_surface(
+        self,
+        deliberation_id: str,
+        user: User = Depends(get_current_user),
+    ):
+        entry = self._sessions.get(deliberation_id)
+        if not entry:
+            raise HTTPException(status_code=404, detail="Deliberation not found")
+        result = entry[0]
+        return {
+            "deliberation_id": result.deliberation_id,
+            "question": result.question,
+            "surface": result.disagreement_surface.model_dump(),
+        }
+
+    # ---- export ----
+
+    async def export_deliberation(
+        self,
+        deliberation_id: str,
+        user: User = Depends(get_current_user),
+    ):
+        entry = self._sessions.get(deliberation_id)
+        if not entry:
+            raise HTTPException(status_code=404, detail="Deliberation not found")
+        result = entry[0]
+        return result.model_dump()
 
     def get_frontend_tab(self) -> dict:
         return {
@@ -80,6 +219,10 @@ class DeliberationAgent(AgentBase):
         }
 
 
-class DeliberationRequest(BaseModel):
+class DeliberationRunRequest(BaseModel):
     question: str
-    frame: str | None = "pro_con"
+    frames: list[str] | None = None
+    rounds: int = Field(default=2, ge=0, le=5)
+    temperature: float = Field(default=0.7, ge=0.0, le=2.0)
+    include_rhetoric_analysis: bool = True
+    include_synthesis: bool = True

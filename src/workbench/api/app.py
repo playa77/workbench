@@ -44,11 +44,25 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(app: FastAPI):
-        logger.info("Workbench %s starting — host=%s port=%s", "0.1.0", config.api_host, config.api_port)
+        logger.info(
+            "Workbench %s starting — host=%s port=%s",
+            "0.1.0", config.api_host, config.api_port,
+        )
         _run_alembic_upgrade()
         logger.info("Database migrations applied")
+
+        # Start the background news scheduler (non-blocking)
+        scheduler_task = _start_news_scheduler_if_agent_enabled(app)
+
         yield
+
         logger.info("Workbench shutting down")
+        if scheduler_task:
+            scheduler_task.cancel()
+            try:
+                await scheduler_task
+            except Exception:
+                pass
         await close_db()
 
     app = FastAPI(
@@ -103,12 +117,6 @@ def _run_alembic_upgrade() -> None:
 
 
 def _auto_register_agents(app: FastAPI, registry) -> None:
-    """Auto-discover and register built-in agents with lazy importing.
-
-    Agents are imported on first request, not at startup, to reduce memory
-    when multiple browser tabs are open. The registry stores agent instances.
-    """
-
     for module_path, class_name in _BUILTIN_AGENTS:
         try:
             mod = importlib.import_module(module_path)
@@ -130,3 +138,79 @@ def _auto_register_agents(app: FastAPI, registry) -> None:
     @app.get("/api/v1/tabs")
     async def list_tabs():
         return {"tabs": get_registry().get_tabs()}
+
+
+def _start_news_scheduler_if_agent_enabled(app: FastAPI):
+    """Start the background news scheduler if the news agent is registered."""
+    try:
+        from workbench.services.news_scheduler import NewsScheduler
+        from workbench.services.news_store import NewsStore
+        from workbench.core.db import get_session_factory
+
+        session_factory = get_session_factory()
+
+        async def get_interests():
+            async with session_factory() as sess:
+                store = NewsStore(sess)
+                return await store.list_all_interests_global()
+
+        async def is_running(interest_id: int) -> bool:
+            async with session_factory() as sess:
+                store = NewsStore(sess)
+                return await store.is_interest_running(interest_id)
+
+        async def run_interest(user_id: str, interest_id: int) -> None:
+            from workbench.services.news_pipeline import NewsPipeline
+            from workbench.core.encryption import _aes_key
+            import os
+
+            async with session_factory() as sess:
+                store = NewsStore(sess)
+                interest = await store.get_interest(user_id, interest_id)
+                if not interest:
+                    return
+
+                # Get user's OpenRouter key
+                from workbench.core.models import UserOpenRouterKey
+                from sqlalchemy import select
+                from workbench.core import encryption
+
+                result = await sess.execute(
+                    select(UserOpenRouterKey).where(
+                        UserOpenRouterKey.user_id == user_id
+                    )
+                )
+                or_key_row = result.scalar_one_or_none()
+                if not or_key_row:
+                    logger.warning(
+                        "Skipping scheduled run for interest %d: user %s has no OpenRouter key",
+                        interest_id, user_id,
+                    )
+                    return
+
+                api_key = encryption.decrypt(or_key_row.encrypted_key)
+                pipeline = NewsPipeline(store, sess)
+                await pipeline.run(user_id, interest, api_key)
+
+        scheduler = NewsScheduler(
+            get_interests=get_interests,
+            is_running=is_running,
+            run_interest=run_interest,
+            timezone="Europe/Berlin",
+        )
+
+        import asyncio
+        task = asyncio.create_task(scheduler.start())
+
+        # Store scheduler reference for agent endpoints
+        try:
+            from agents.news.agent import set_scheduler
+            set_scheduler(scheduler)
+        except Exception:
+            pass
+
+        logger.info("News scheduler started in background")
+        return task
+    except Exception as exc:
+        logger.debug("News scheduler not started: %s", exc)
+        return None
