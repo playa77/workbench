@@ -23,6 +23,8 @@ dependencies = [
     "slowapi>=0.1.9",
     "openai>=1.50.0",
     "jinja2>=3.1.0",
+    "chromadb>=0.6.0",
+    "PyMuPDF>=1.24",
 ]
 
 [project.optional-dependencies]
@@ -34,7 +36,6 @@ news = [
 ]
 legal = [
     "pdfplumber>=0.11",
-    "PyMuPDF>=1.24",
     "pytesseract>=0.3",
     "Pillow>=10.0",
     "beautifulsoup4>=4.12",

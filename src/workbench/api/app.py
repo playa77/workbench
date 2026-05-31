@@ -36,6 +36,7 @@ _BUILTIN_AGENTS = [
     ("agents.deliberation.agent", "DeliberationAgent"),
     ("agents.planning.agent", "PlanningAgent"),
     ("agents.math_tutor.agent", "MathTutorAgent"),
+    ("agents.knowledge.agent", "KnowledgeBaseAgent"),
 ]
 
 
