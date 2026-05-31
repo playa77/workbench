@@ -1,2 +1,0 @@
-This is a sample text file for ingestion testing.
-It contains enough words to verify chunking and retrieval.

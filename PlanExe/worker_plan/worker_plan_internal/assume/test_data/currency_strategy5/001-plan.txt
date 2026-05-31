@@ -1,7 +1,0 @@
-Plan:
-I'm envisioning a streamlined global language—free of archaic features like gendered terms and excessive suffixes, taking cues from LLM tokenization. Some regions might only choose to adopt certain parts of this modern language. Would humanity ultimately benefit more from preserving many distinct languages, or uniting around a single, optimized one?
-
-Today's date:
-2025-Mar-01
-
-Project start ASAP

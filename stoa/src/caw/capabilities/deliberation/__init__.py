@@ -1,1 +1,0 @@
-"""Deliberation capability pillar."""

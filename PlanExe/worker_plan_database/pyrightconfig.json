@@ -1,8 +1,0 @@
-{
-  "pythonVersion": "3.13",
-  "extraPaths": [
-    "../worker_plan",
-    "..",
-    ".venv/lib/python3.13/site-packages"
-  ]
-}
