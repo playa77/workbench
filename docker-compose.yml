@@ -58,8 +58,6 @@ services:
       OPENAI_API_BASE_URL: https://openrouter.ai/api/v1
     volumes:
       - openwebui_data:/app/backend/data
-    profiles:
-      - openwebui
 
 volumes:
   pgdata:

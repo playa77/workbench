@@ -1,6 +1,6 @@
 /* ==========================================
    Workbench — Tab Router
-   Lazy-loads tab component scripts and styles on demand
+   Persistent tab containers — show/hide instead of re-render
    ========================================== */
 
 const Router = (() => {
@@ -8,78 +8,113 @@ const Router = (() => {
   const tabCallbacks = {};
   const loadedScripts = {};
   const loadedStyles = {};
-  let _pendingActivation = null;
+  const tabPanels = {};
 
   function register(name, renderFn) {
     tabCallbacks[name] = renderFn;
+    if (activeTab === name && !tabPanels[name]) {
+      _createAndRender(name);
+    }
   }
 
-  function _activatePending() {
-    if (_pendingActivation !== null) {
-      var pending = _pendingActivation;
-      _pendingActivation = null;
-      setActive(pending);
+  function _getOrCreatePanel(name) {
+    if (!tabPanels[name]) {
+      var panel = document.createElement('div');
+      panel.id = 'tab-panel-' + name;
+      panel.className = 'tab-panel';
+      panel.style.display = 'none';
+      var container = document.getElementById('active-tab-content');
+      container.appendChild(panel);
+      tabPanels[name] = panel;
+    }
+    return tabPanels[name];
+  }
+
+  function _createAndRender(name) {
+    var panel = _getOrCreatePanel(name);
+    panel.innerHTML = '';
+    if (tabCallbacks[name]) {
+      tabCallbacks[name](panel);
     }
   }
 
   function setActive(name) {
     activeTab = name;
-    const tabs = document.querySelectorAll('.tab-btn');
-    tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+
+    var tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(function (t) {
+      t.classList.toggle('active', t.dataset.tab === name);
+    });
 
     var ws = document.getElementById('welcome-screen');
     if (ws) ws.style.display = 'none';
-    document.getElementById('settings-panel').style.display = 'none';
+    var sp = document.getElementById('settings-panel');
+    sp.style.display = 'none';
+
+    var container = document.getElementById('active-tab-content');
+    container.style.display = 'block';
+
+    Object.keys(tabPanels).forEach(function (k) {
+      tabPanels[k].style.display = 'none';
+    });
 
     if (name === 'settings') {
       document.getElementById('settings-panel').style.display = 'block';
-      document.getElementById('active-tab-content').style.display = 'none';
+      container.style.display = 'none';
       if (tabCallbacks[name]) {
         tabCallbacks[name](document.getElementById('settings-panel'));
       }
       return;
     }
 
-    document.getElementById('active-tab-content').style.display = 'block';
+    if (tabPanels[name]) {
+      tabPanels[name].style.display = 'block';
+      return;
+    }
 
-    const btn = document.querySelector(`.tab-btn[data-tab="${name}"]`);
-    const jsPath = btn ? btn.dataset.js : null;
-    const cssPath = btn ? btn.dataset.css : null;
-    const container = document.getElementById('active-tab-content');
+    var btn = document.querySelector('.tab-btn[data-tab="' + name + '"]');
+    var jsPath = btn ? btn.dataset.js : null;
+    var cssPath = btn ? btn.dataset.css : null;
 
     if (cssPath && !loadedStyles[cssPath]) {
       loadedStyles[cssPath] = true;
-      const link = document.createElement('link');
+      var link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = cssPath;
       document.head.appendChild(link);
     }
 
     if (tabCallbacks[name]) {
-      tabCallbacks[name](container);
+      _createAndRender(name);
+      var panel = _getOrCreatePanel(name);
+      panel.style.display = 'block';
       return;
     }
 
-    container.innerHTML = '<div class="spinner" style="margin:40px auto"></div>';
+    var panel = _getOrCreatePanel(name);
+    panel.style.display = 'block';
+    panel.innerHTML = '<div class="spinner" style="margin:40px auto"></div>';
 
     if (jsPath && !loadedScripts[jsPath]) {
       loadedScripts[jsPath] = true;
-      const script = document.createElement('script');
+      var script = document.createElement('script');
       script.src = jsPath;
-      script.onload = () => {
-        _pendingActivation = name;
-        setTimeout(() => { setActive(name); }, 10);
+      script.onload = function () {
+        if (tabCallbacks[name]) {
+          _createAndRender(name);
+          panel.style.display = 'block';
+        }
       };
       document.body.appendChild(script);
       return;
     }
 
-    container.innerHTML = `<div class="card"><p>Agent "${name}" has no UI yet.</p></div>`;
+    panel.innerHTML = '<div class="card"><p>Agent "' + Utils.escapeHtml(name) + '" has no UI yet.</p></div>';
   }
 
   function getActive() {
     return activeTab;
   }
 
-  return { register, setActive, getActive, _activatePending };
+  return { register, setActive, getActive, _getOrCreatePanel };
 })();

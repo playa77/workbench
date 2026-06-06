@@ -139,6 +139,8 @@
   function renderMain() {
     Router.register('settings', renderSettings);
 
+    Router.register('owui', null);
+
     var settingsBtn = document.createElement('button');
     settingsBtn.className = 'tab-btn';
     settingsBtn.dataset.tab = 'settings';

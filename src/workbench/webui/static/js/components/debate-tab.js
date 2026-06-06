@@ -1,5 +1,6 @@
 /** Debate Agent Tab Component
  * Multi-agent AI debate with Director Mode and real-time polling.
+ * State persists across tab switches via persistent tab panels.
  */
 
 (function () {
@@ -9,7 +10,19 @@
   Router.register("debate", renderDebateTab);
 
   function renderDebateTab(container) {
-    stopPolling();
+    if (activeDebateId) {
+      var savedId = activeDebateId;
+      container.innerHTML = '<div style="max-width:900px;margin:0 auto" id="debate-restored"><div class="spinner" style="margin:40px auto"></div></div>';
+      fetchDebateStatusOnce(savedId).then(function (data) {
+        var out = document.getElementById('debate-restored');
+        if (out && data) {
+          out.outerHTML = renderDebatePanel(data);
+          if (data.status === 'RUNNING') startPolling();
+          bindDebateButtons(data.debate_id);
+        }
+      });
+      return;
+    }
 
     container.innerHTML = ''
       + '<div style="max-width:900px;margin:0 auto">'
@@ -109,7 +122,6 @@
 
   function stopPolling() {
     if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
-    activeDebateId = null;
   }
 
   function fetchDebateStatus() {
@@ -122,7 +134,6 @@
         updateDebatePanel(data);
         if (data.status === 'COMPLETED' || data.status === 'PAUSED') {
           stopPolling();
-          activeDebateId = data.debate_id;
           resetDebateButton();
         }
       })
@@ -132,10 +143,28 @@
       });
   }
 
+  function fetchDebateStatusOnce(debateId) {
+    return fetch('/api/v1/agents/debate/debate/' + debateId + '/status', {
+      headers: authHeaders(),
+    })
+      .then(function (r) { return r.json(); })
+      .catch(function () { return null; });
+  }
+
+  function renderDebatePanel(data) {
+    var topic = data.topic || '';
+    var maxRounds = data.max_rounds || 0;
+    var roundsCompleted = data.rounds_completed || 0;
+    var status = data.status || 'IDLE';
+    return renderProgressPanel(topic, roundsCompleted, maxRounds, status);
+  }
+
   function renderProgressPanel(topic, roundsCompleted, maxRounds, status) {
     var statusClass = status === 'COMPLETED' ? 'active' : (status === 'PAUSED' ? 'inactive' : 'active');
     var progressPct = maxRounds > 0 ? Math.round((roundsCompleted / maxRounds) * 100) : 0;
     return ''
+      + '<div style="max-width:900px;margin:0 auto" id="debate-active-panel">'
+      + '<h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Debate Arena</h2>'
       + '<div class="card">'
       +   '<div class="card-header" style="display:flex;justify-content:space-between;align-items:center">'
       +     '<span>' + Utils.escapeHtml(topic) + '</span>'
@@ -155,7 +184,7 @@
       +   '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
       +     '<button class="btn btn-warning btn-sm" id="btn-pause-debate" onclick="window.debatePause()">Pause</button>'
       +     '<button class="btn btn-success btn-sm" id="btn-resume-debate" onclick="window.debateResume()" disabled>Resume</button>'
-      +     '<button class="btn btn-secondary btn-sm" onclick="Router.setActive(\'debate\')">New Debate</button>'
+      +     '<button class="btn btn-danger btn-sm" id="btn-end-debate" onclick="window.debateEnd()">End Debate</button>'
       +   '</div>'
       +   '<div id="debate-director-panel" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-color)">'
       +     '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Director Mode</div>'
@@ -168,7 +197,12 @@
       +       '<button class="btn btn-primary btn-sm" onclick="window.debateInject()">Inject</button>'
       +     '</div>'
       +   '</div>'
+      + '</div>'
       + '</div>';
+  }
+
+  function bindDebateButtons(debateId) {
+    activeDebateId = debateId;
   }
 
   function updateDebatePanel(data) {
@@ -194,7 +228,6 @@
     if (!transcript || !data.history) return;
 
     var html = '';
-    var prevSender = null;
     data.history.forEach(function (msg) {
       if (msg.is_injection) {
         html += '<div style="padding:8px 12px;margin-bottom:8px;background:var(--warning-bg);border-left:3px solid var(--warning);border-radius:var(--radius-sm)">'
@@ -216,7 +249,9 @@
 
   window.debateInject = function () {
     if (!activeDebateId) return;
-    var content = document.getElementById('inject-content').value.trim();
+    var content = document.getElementById('inject-content');
+    if (!content) return;
+    content = content.value.trim();
     if (!content) return;
     var weight = parseFloat(document.getElementById('inject-weight').value) || 0.5;
     fetch('/api/v1/agents/debate/debate/' + activeDebateId + '/inject', {
@@ -246,6 +281,12 @@
     }).then(function () {
       startPolling();
     }).catch(function () {});
+  };
+
+  window.debateEnd = function () {
+    stopPolling();
+    activeDebateId = null;
+    Router.setActive('debate');
   };
 
   function resetDebateButton() {
