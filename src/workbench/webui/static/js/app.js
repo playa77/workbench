@@ -16,8 +16,12 @@
   async function boot() {
     try {
       currentUser = await API.me();
-      renderTabs();
+      await renderTabs();
       renderMain();
+      var firstTab = document.querySelector('#header-tabs .tab-btn');
+      if (firstTab) {
+        Router.setActive(firstTab.dataset.tab);
+      }
     } catch (e) {
       if (e.status === 401 || e.status === 403) {
         renderAuth();
@@ -124,7 +128,7 @@
       owuiBtn.className = 'tab-btn';
       owuiBtn.dataset.tab = 'owui';
       owuiBtn.dataset.js = '/static/js/components/owui-tab.js';
-      owuiBtn.innerHTML = getIcon('globe') + ' LLMs';
+      owuiBtn.innerHTML = getIcon('globe') + ' OpenWebUI';
       owuiBtn.addEventListener('click', function () { Router.setActive('owui'); });
       headerTabs.appendChild(owuiBtn);
     } catch (e) {

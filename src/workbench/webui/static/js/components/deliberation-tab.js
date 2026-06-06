@@ -50,9 +50,14 @@
     document.getElementById('btn-start-deliberation').addEventListener('click', startDeliberation);
   }
 
+  function authHeaders() {
+    var key = typeof API.getApiKey === 'function' ? API.getApiKey() : '';
+    return key ? { 'Authorization': 'Bearer ' + key } : {};
+  }
+
   function loadFrames() {
     fetch('/api/v1/agents/deliberation/frames', {
-      headers: { 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: authHeaders(),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -61,10 +66,9 @@
         var el = document.getElementById('dl-frames');
         if (!el) return;
         el.innerHTML = frames.map(function (f) {
-          return '<label class="toggle" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px" title="' + Utils.escapeHtml(f.description || '') + '">'
-            + '<input type="checkbox" class="dl-frame-cb" value="' + Utils.escapeHtml(f.frame_id) + '" ' + (defaults.indexOf(f.frame_id) !== -1 ? 'checked' : '') + '>'
-            + '<span class="toggle-switch"></span>'
-            + '<span class="toggle-label">' + Utils.escapeHtml(f.label) + '</span>'
+          return '<label style="display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer" title="' + Utils.escapeHtml(f.description || '') + '">'
+            + '<input type="checkbox" class="dl-frame-cb" value="' + Utils.escapeHtml(f.frame_id) + '" ' + (defaults.indexOf(f.frame_id) !== -1 ? 'checked' : '') + ' style="flex-shrink:0;accent-color:var(--accent)">'
+            + '<span style="font-size:13px;color:var(--text-primary)">' + Utils.escapeHtml(f.label) + '</span>'
             + '</label>';
         }).join('');
       })
@@ -108,7 +112,7 @@
 
     fetch('/api/v1/agents/deliberation/run', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
       body: JSON.stringify({
         question: question,
         frames: selected,
@@ -219,7 +223,7 @@
   function loadDeliberationResults(did) {
     if (!did) return;
     fetch('/api/v1/agents/deliberation/' + did, {
-      headers: { 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: authHeaders(),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -299,7 +303,7 @@
   window.deliberationExport = function (did) {
     if (!did) return;
     fetch('/api/v1/agents/deliberation/' + did + '/export', {
-      headers: { 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: authHeaders(),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {

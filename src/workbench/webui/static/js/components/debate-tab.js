@@ -37,9 +37,14 @@
     document.getElementById('btn-start-debate').addEventListener('click', startDebate);
   }
 
+  function authHeaders() {
+    var key = typeof API.getApiKey === 'function' ? API.getApiKey() : '';
+    return key ? { 'Authorization': 'Bearer ' + key } : {};
+  }
+
   function loadRoles() {
     fetch('/api/v1/agents/debate/roles', {
-      headers: { 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: authHeaders(),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -48,10 +53,9 @@
         var el = document.getElementById('debate-roles');
         if (!el) return;
         el.innerHTML = roles.map(function (r) {
-          return '<label class="toggle" style="background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px">'
-            + '<input type="checkbox" class="debate-role-cb" value="' + Utils.escapeHtml(r.id) + '" ' + (defaults.indexOf(r.id) !== -1 ? 'checked' : '') + '>'
-            + '<span class="toggle-switch"></span>'
-            + '<span class="toggle-label" title="' + Utils.escapeHtml(r.description || '') + '">' + Utils.escapeHtml(r.name) + '</span>'
+          return '<label style="display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer" title="' + Utils.escapeHtml(r.description || '') + '">'
+            + '<input type="checkbox" class="debate-role-cb" value="' + Utils.escapeHtml(r.id) + '" ' + (defaults.indexOf(r.id) !== -1 ? 'checked' : '') + ' style="flex-shrink:0;accent-color:var(--accent)">'
+            + '<span style="font-size:13px;color:var(--text-primary)">' + Utils.escapeHtml(r.name) + '</span>'
             + '</label>';
         }).join('');
       })
@@ -80,7 +84,7 @@
 
     fetch('/api/v1/agents/debate/start', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
       body: JSON.stringify({ topic: topic, roles: selected, max_rounds: maxRounds }),
     })
       .then(function (resp) { return resp.json(); })
@@ -111,7 +115,7 @@
   function fetchDebateStatus() {
     if (!activeDebateId) return;
     fetch('/api/v1/agents/debate/debate/' + activeDebateId + '/status', {
-      headers: { 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: authHeaders(),
     })
       .then(function (r) { return r.json(); })
       .then(function (data) {
@@ -217,7 +221,7 @@
     var weight = parseFloat(document.getElementById('inject-weight').value) || 0.5;
     fetch('/api/v1/agents/debate/debate/' + activeDebateId + '/inject', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
       body: JSON.stringify({ content: content, weight: weight }),
     })
       .then(function () { document.getElementById('inject-content').value = ''; })
@@ -228,7 +232,7 @@
     if (!activeDebateId) return;
     fetch('/api/v1/agents/debate/debate/' + activeDebateId + '/pause', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: authHeaders(),
     }).then(function () {
       fetchDebateStatus();
     }).catch(function () {});
@@ -238,7 +242,7 @@
     if (!activeDebateId) return;
     fetch('/api/v1/agents/debate/debate/' + activeDebateId + '/resume', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + API.getApiKey() },
+      headers: authHeaders(),
     }).then(function () {
       startPolling();
     }).catch(function () {});
