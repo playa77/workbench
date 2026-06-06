@@ -120,6 +120,8 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
 
     app.state.config = config
 
+    _auto_register_agents(app, get_registry())
+
     static_dir = Path(__file__).resolve().parent.parent / "webui" / "static"
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
@@ -138,8 +140,6 @@ def _register_core_routes(app: FastAPI) -> None:
     app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
     app.include_router(config_routes.router, prefix="/api/v1", tags=["config"])
     app.include_router(agent_routes.router, prefix="/api/v1", tags=["agents"])
-
-    _auto_register_agents(app, get_registry())
 
     agent_registry = get_registry()
     agent_registry.mount_all(app)
@@ -202,7 +202,7 @@ def _auto_register_agents(app: FastAPI, registry) -> None:
         tabs = []
         for agent in get_registry().list_all():
             agent_config = user_settings.get(agent.name, {})
-            if agent_config.get("enabled", False):
+            if agent_config.get("enabled", True):
                 tabs.append(agent.get_frontend_tab())
         return {"tabs": tabs}
 

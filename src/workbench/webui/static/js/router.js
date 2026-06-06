@@ -27,7 +27,8 @@ const Router = (() => {
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
 
-    document.getElementById('welcome-screen').style.display = 'none';
+    var ws = document.getElementById('welcome-screen');
+    if (ws) ws.style.display = 'none';
     document.getElementById('settings-panel').style.display = 'none';
 
     if (name === 'settings') {

@@ -1,6 +1,6 @@
 # Workbench
 
-**Self-hosted BYOK AI Workbench** -- one dashboard, six LLM-powered agents plus Open WebUI, zero telemetry.
+**Self-hosted BYOK AI Workbench** -- one dashboard, eight LLM-powered agents plus Open WebUI, zero telemetry.
 
 Run locally. Bring your own OpenRouter key. Every agent lives in its own browser tab.
 
@@ -20,6 +20,8 @@ Run locally. Bring your own OpenRouter key. Every agent lives in its own browser
 | **Deep Research** | Research | Autonomous web research driven by function-calling. Multiple search iterations, source gathering, contradiction detection, and a single cited report at the end. |
 | **Deliberation** | Deliberation | Multi-frame reasoning with 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...). Pairwise critique, rhetoric analysis, disagreement surface mapping, and a final synthesis. |
 | **Strategic Planning** | Planning | Generates any of 9 plan types: project plans, SWOT analyses, WBS, schedules, root cause analyses, pitch decks, governance frameworks, team compositions, or executive summaries. |
+| **Math Tutor** | Math | Step-by-step problem solving with LaTeX rendering. Explains reasoning, not just answers. |
+| **Knowledge Base** | Knowledge | Create document collections, upload files, and query them with RAG-style retrieval. |
 | **Open WebUI** | Open WebUI | Full chat-first LLM interface with model management, RAG, and multimodality. Runs alongside the agent tabs in its own iframe, proxied through nginx. |
 
 ---
@@ -181,6 +183,8 @@ The web UI is a vanilla JavaScript SPA at `src/workbench/webui/static/`. No fram
 | `components/research-tab.js` | SSE streaming research with live progress |
 | `components/deliberation-tab.js` | Frame selection, SSE phase tracking |
 | `components/planning-tab.js` | 9 plan types, SSE generation |
+| `components/math-tutor-tab.js` | Math tutor with LaTeX equation builder |
+| `components/knowledge-tab.js` | Knowledge base management: collections, uploads, queries |
 | `components/owui-tab.js` | Open WebUI health check + iframe |
 
 ---
@@ -212,8 +216,8 @@ mypy src/ agents/                   # Type check
 workbench/
 ├── agents/                          # Agent implementations (one per directory)
 │   ├── base.py                      # AgentBase -- shared ABC
-│   ├── chat/    debate/    deliberation/
-│   ├── news/    planning/  research/
+│   ├── chat/    debate/    deliberation/    knowledge/
+│   ├── math_tutor/    news/    planning/    research/
 │
 ├── src/workbench/                   # Core infrastructure
 │   ├── main.py                      # CLI entry point
@@ -222,6 +226,24 @@ workbench/
 │   ├── shared/                      # Canonical shared primitives (LLM router, config loader, DB session)
 │   ├── services/                    # Domain logic (debate engine, news pipeline, research orchestrator, etc.)
 │   └── webui/static/                # Vanilla JS SPA frontend
+│       ├── css/base.css             # Layout, cards, buttons, forms, toggles
+│       ├── css/theme-light.css      # Light theme
+│       ├── css/theme-dark.css       # Dark theme
+│       ├── js/api.js                # HTTP + SSE client
+│       ├── js/app.js                # Boot, auth, settings, tabs
+│       ├── js/router.js             # Lazy tab loading
+│       ├── js/theme.js              # Light/dark toggle
+│       ├── js/utils.js              # Helpers
+│       └── js/components/
+│           ├── chat-tab.js          # Chat UI
+│           ├── debate-tab.js        # Debate arena
+│           ├── deliberation-tab.js  # Deliberation UI
+│           ├── knowledge-tab.js     # Knowledge base management
+│           ├── math-tutor-tab.js    # Math tutor with LaTeX rendering
+│           ├── news-tab.js          # News pipeline
+│           ├── owui-tab.js          # Open WebUI iframe
+│           ├── planning-tab.js      # Planning UI
+│           └── research-tab.js      # Research UI
 │
 ├── config/default.toml              # Default configuration
 ├── alembic/                         # Database migrations (3 versions)

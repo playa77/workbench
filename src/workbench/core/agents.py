@@ -138,7 +138,7 @@ async def set_user_agent_setting(
         row = UserAgentSettings(
             user_id=UUID(user_id) if isinstance(user_id, str) else user_id,
             agent_name=agent_name,
-            enabled=enabled if enabled is not None else False,
+            enabled=enabled if enabled is not None else True,
             settings=settings or {},
         )
         session.add(row)

@@ -833,6 +833,30 @@ This is a known limitation of the `sub_filter` approach — SvelteKit's client-s
 * Open the browser's developer console (F12) and check for JavaScript errors.
 * Verify CORS settings if accessing from a different host.
 
+### sub_filter causes "unexpected /" nginx config error
+
+On some nginx versions (observed on Ubuntu 24.04 / nginx 1.24.0), the single-quoted `sub_filter` directives in the Open WebUI location block can cause `nginx -t` to fail with:
+
+```
+nginx: [emerg] unexpected "/" in /etc/nginx/sites-enabled/workbench:...
+```
+
+**Quick fix:** Remove the `sub_filter` block from the `/open-webui/` location entirely. The Open WebUI iframe will still load, though some static assets (CSS/JS/images) may not resolve correctly under the sub-path. The iframe approach works best when Open WebUI is served at a subdomain (the approach recommended by Open WebUI maintainers).
+
+**Alternative:** Replace single-quoted `sub_filter` directives with double-quoted variants:
+```nginx
+sub_filter "href=/" "href=/open-webui/";
+sub_filter "'/_app/" "'/open-webui/_app/";
+```
+Test with `sudo nginx -t` after making changes.
+
+### Agent tabs not showing after first login
+
+Workbench enables all agent tabs by default for new users. If no tabs appear:
+* Verify the JavaScript console (F12) for errors — a missing `#welcome-screen` element crash indicates an outdated `router.js`.
+* Ensure the `GET /api/v1/tabs` endpoint returns agents with `"enabled": true`.
+* If you modified the default enabled state in code, restart the workbench container and create a fresh user.
+
 ### 413 Request Entity Too Large
 
 Long texts (e.g., pasting large documents) may exceed the default request size limit. Add to the nginx server block:

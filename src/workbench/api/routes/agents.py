@@ -43,7 +43,7 @@ async def list_agents(
                 description=agent.description,
                 version=agent.version,
                 icon=agent.icon,
-                enabled=agent_config.get("enabled", False),
+                enabled=agent_config.get("enabled", True),
             )
         )
     return agents
@@ -65,7 +65,7 @@ async def get_agent_settings(
 
     return {
         "agent_name": agent_name,
-        "enabled": agent_config.get("enabled", False),
+        "enabled": agent_config.get("enabled", True),
         "settings_schema": agent.get_settings_schema(),
         "current_settings": agent_config.get("settings", agent.get_default_settings()),
     }

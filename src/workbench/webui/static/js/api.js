@@ -31,6 +31,7 @@ const API = (() => {
     getAgentSettings: function(name) { return request('GET', '/api/v1/agents/' + name + '/settings'); },
     updateAgentSettings: function(name, data) { return request('PUT', '/api/v1/agents/' + name + '/settings', data); },
     listTabs: function() { return request('GET', '/api/v1/tabs'); },
+    getApiKey: function () { return ''; },
     health: function() { return request('GET', '/health'); },
   };
 })();
