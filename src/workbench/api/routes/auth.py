@@ -81,7 +81,26 @@ async def login(
     response: Response,
     session: AsyncSession = Depends(get_session),
 ):
+    import hashlib
+
     raw_key = body.api_key
+    lookup = hashlib.sha256(raw_key.encode()).hexdigest()
+    result = await session.execute(
+        select(UserApiKey).where(UserApiKey.key_lookup == lookup)
+    )
+    key_row = result.scalar_one_or_none()
+    if key_row is not None and verify_api_key(raw_key, key_row.key_hash):
+        user = await session.get(User, key_row.user_id)
+        if user is None:
+            raise HTTPException(status_code=401, detail="User not found")
+        token = await create_session(user, session, hours=24)
+        _set_session_cookie(request, response, token)
+        return {
+            "user_id": str(user.id),
+            "username": user.username,
+            "message": "Login successful",
+        }
+
     keys_result = await session.execute(select(UserApiKey))
     for key_row in keys_result.scalars().all():
         if verify_api_key(raw_key, key_row.key_hash):
@@ -106,12 +125,25 @@ async def logout(
 ):
     cookie_token = request.cookies.get("workbench_session")
     if cookie_token:
-        result = await session.execute(select(UserSession))
-        for row in result.scalars().all():
-            if verify_api_key(cookie_token, row.token_hash):
-                await session.delete(row)
-                await session.commit()
-                break
+        import hashlib
+
+        from workbench.core.auth import verify_api_key
+
+        token_hash = hashlib.sha256(cookie_token.encode()).hexdigest()
+        result = await session.execute(
+            select(UserSession).where(UserSession.token_hash == token_hash)
+        )
+        row = result.scalar_one_or_none()
+        if row is not None:
+            await session.delete(row)
+            await session.commit()
+        else:
+            result = await session.execute(select(UserSession))
+            for row in result.scalars().all():
+                if verify_api_key(cookie_token, row.token_hash):
+                    await session.delete(row)
+                    await session.commit()
+                    break
     response.delete_cookie("workbench_session", path="/")
     return {"status": "ok", "message": "Logged out"}
 
@@ -140,8 +172,8 @@ async def register_user(
     session.add(user)
     await session.flush()
 
-    raw_key, hashed = generate_api_key()
-    session.add(UserApiKey(user_id=user.id, key_hash=hashed, label="default"))
+    raw_key, hashed, lookup = generate_api_key()
+    session.add(UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, label="default"))
     await session.commit()
 
     return RegisterResponse(
@@ -234,8 +266,8 @@ async def create_api_key(
     if current_count >= 5:
         raise HTTPException(status_code=400, detail="Maximum of 5 API keys reached")
 
-    raw_key, hashed = generate_api_key()
-    key = UserApiKey(user_id=user.id, key_hash=hashed, label=body.label)
+    raw_key, hashed, lookup = generate_api_key()
+    key = UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, label=body.label)
     session.add(key)
     await session.commit()
     await session.refresh(key)

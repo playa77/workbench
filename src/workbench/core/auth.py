@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
 
@@ -20,19 +21,24 @@ security_scheme = HTTPBearer(auto_error=False)
 _SESSION_COOKIE = "workbench_session"
 
 
-def generate_api_key(prefix: str = "wb", expiry_days: int | None = None) -> tuple[str, str]:
+def generate_api_key(prefix: str = "wb", expiry_days: int | None = None) -> tuple[str, str, str]:
     raw = f"{prefix}-{secrets.token_urlsafe(32)}"
     hashed = bcrypt.hashpw(raw.encode(), bcrypt.gensalt()).decode()
-    return raw, hashed
+    lookup = _hash_token(raw)
+    return raw, hashed, lookup
 
 
 def verify_api_key(raw_key: str, hashed: str) -> bool:
     return bcrypt.checkpw(raw_key.encode(), hashed.encode())
 
 
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
 def generate_session_token() -> tuple[str, str]:
     raw = secrets.token_urlsafe(32)
-    hashed = bcrypt.hashpw(raw.encode(), bcrypt.gensalt()).decode()
+    hashed = _hash_token(raw)
     return raw, hashed
 
 
@@ -60,6 +66,18 @@ async def get_current_user(
 
 async def _auth_via_cookie(token: str, session: AsyncSession) -> User | None:
     now = datetime.now(UTC).replace(tzinfo=None)
+    token_hash = _hash_token(token)
+    result = await session.execute(
+        select(UserSession).where(
+            UserSession.token_hash == token_hash,
+            UserSession.expires_at > now,
+        )
+    )
+    row = result.scalar_one_or_none()
+    if row is not None:
+        user = await session.get(User, row.user_id)
+        return user
+
     result = await session.execute(
         select(UserSession).where(UserSession.expires_at > now)
     )
@@ -71,6 +89,22 @@ async def _auth_via_cookie(token: str, session: AsyncSession) -> User | None:
 
 
 async def _auth_via_api_key(raw_key: str, session: AsyncSession) -> User | None:
+    lookup = _hash_token(raw_key)
+    result = await session.execute(
+        select(UserApiKey).where(UserApiKey.key_lookup == lookup)
+    )
+    key_row = result.scalar_one_or_none()
+    if key_row is not None:
+        if verify_api_key(raw_key, key_row.key_hash):
+            if key_row.expires_at is not None and key_row.expires_at < datetime.now(UTC).replace(tzinfo=None):
+                return None
+            key_row.last_used_at = datetime.now(UTC).replace(tzinfo=None)
+            await session.commit()
+            user = await session.get(User, key_row.user_id)
+            if user is None:
+                raise HTTPException(status_code=401, detail="User not found")
+            return user
+
     keys_result = await session.execute(select(UserApiKey))
     for key_row in keys_result.scalars().all():
         if verify_api_key(raw_key, key_row.key_hash):

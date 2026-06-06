@@ -43,6 +43,7 @@ class UserApiKey(Base):
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(120), nullable=False)
+    key_lookup: Mapped[str | None] = mapped_column(String(64), nullable=True)
     label: Mapped[str] = mapped_column(String(100), nullable=False, default="default")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)

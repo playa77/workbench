@@ -87,8 +87,8 @@ async def _create_user_only(username: str) -> None:
         session.add(user)
         await session.flush()
 
-        raw_key, hashed = generate_api_key()
-        session.add(UserApiKey(user_id=user.id, key_hash=hashed, label="default"))
+        raw_key, hashed, lookup = generate_api_key()
+        session.add(UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, label="default"))
         await session.commit()
 
         print(f"User created: {user.id}")
