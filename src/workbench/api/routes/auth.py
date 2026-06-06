@@ -60,13 +60,14 @@ class UserProfile(BaseModel):
     has_openrouter_key: bool
 
 
-def _set_session_cookie(response: Response, token: str, hours: int = 24) -> None:
+def _set_session_cookie(request: Request, response: Response, token: str, hours: int = 24) -> None:
+    is_https = request.headers.get("X-Forwarded-Proto", "") == "https" or request.url.scheme == "https"
     response.set_cookie(
         key="workbench_session",
         value=token,
         max_age=hours * 3600,
         httponly=True,
-        secure=False,
+        secure=is_https,
         samesite="strict",
         path="/",
     )
@@ -88,7 +89,7 @@ async def login(
             if user is None:
                 raise HTTPException(status_code=401, detail="User not found")
             token = await create_session(user, session, hours=24)
-            _set_session_cookie(response, token)
+            _set_session_cookie(request, response, token)
             return {
                 "user_id": str(user.id),
                 "username": user.username,
