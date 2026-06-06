@@ -30,8 +30,11 @@ def main() -> None:
     sub.add_parser("init-db", help="Initialize database schema (runs Alembic)")
     sub.add_parser("version", help="Print version and exit")
 
-    create_user_parser = sub.add_parser("create-user", help="Create a new user and API key")
-    create_user_parser.add_argument("username", help="Username for the new user")
+    create_user_parser = sub.add_parser("create-user", help="Create a new user")
+    create_user_parser.add_argument("--username", required=True, help="Username for the new user")
+    create_user_parser.add_argument("--email", required=True, help="Email address")
+    create_user_parser.add_argument("--password", required=True, help="Password")
+    create_user_parser.add_argument("--admin", action="store_true", default=False, help="Grant admin privileges")
 
     args = parser.parse_args()
 
@@ -48,9 +51,11 @@ def main() -> None:
 
     if args.command == "create-user":
         config = load_config()
+        if not config.smtp_host:
+            print("WARNING: SMTP is not configured. Email features will not work.")
         from workbench.core.db import init_db as _init_db
         _init_db(config)
-        asyncio.run(_create_user_only(args.username))
+        asyncio.run(_create_user_only(args.username, args.email, args.password, args.admin))
         return
 
     if args.command == "serve":
@@ -65,12 +70,12 @@ def main() -> None:
     parser.print_help()
 
 
-async def _create_user_only(username: str) -> None:
+async def _create_user_only(username: str, email: str, password: str, is_admin: bool = False) -> None:
     from sqlalchemy import select
 
-    from workbench.core.auth import generate_api_key
+    from workbench.core.auth import hash_password
     from workbench.core.db import close_db, get_engine, get_session_factory
-    from workbench.core.models import Base, User, UserApiKey
+    from workbench.core.models import Base, User
 
     engine = get_engine()
     async with engine.begin() as conn:
@@ -78,25 +83,29 @@ async def _create_user_only(username: str) -> None:
 
     factory = get_session_factory()
     async with factory() as session:
-        existing = await session.execute(select(User).where(User.username == username))
+        existing = await session.execute(
+            select(User).where((User.username == username) | (User.email == email))
+        )
         if existing.scalar_one_or_none() is not None:
-            print(f"User '{username}' already exists.")
+            print(f"User with username '{username}' or email '{email}' already exists.")
             return
 
-        user = User(username=username)
+        user = User(
+            username=username,
+            email=email,
+            password_hash=hash_password(password),
+            is_admin=is_admin,
+        )
         session.add(user)
-        await session.flush()
-
-        raw_key, hashed, lookup = generate_api_key()
-        session.add(UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, label="default"))
         await session.commit()
 
+        role = "admin" if is_admin else "user"
         print(f"User created: {user.id}")
         print(f"Username: {username}")
-        print(f"API Key: {raw_key}")
+        print(f"Email: {email}")
+        print(f"Role: {role}")
         print()
-        print("Save this API key — it will not be shown again.")
-        print("Login at the web UI with this key, or use it as a Bearer token.")
+        print("Login at the web UI with your email/username and password.")
 
     await close_db()
 

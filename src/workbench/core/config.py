@@ -41,8 +41,13 @@ class WorkbenchConfig(BaseModel):
     encryption_encrypt_reports: bool = False
     auth_api_key_prefix: str = "wb"
     auth_max_keys_per_user: int = 5
-    auth_allow_registration: bool = True
     auth_session_expiry_hours: int = 24
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from_address: str = ""
+    smtp_use_tls: bool = True
     rate_limit_enabled: bool = True
     rate_limit_auth: str = "5/minute"
     rate_limit_agents: str = "60/minute"
@@ -103,8 +108,13 @@ def _flatten_env_overrides(env_overrides: dict[str, Any]) -> dict[str, Any]:
         "encryption.encrypt_reports": "encryption_encrypt_reports",
         "auth.api_key_prefix": "auth_api_key_prefix",
         "auth.max_keys_per_user": "auth_max_keys_per_user",
-        "auth.allow_registration": "auth_allow_registration",
         "auth.session_expiry_hours": "auth_session_expiry_hours",
+        "smtp.host": "smtp_host",
+        "smtp.port": "smtp_port",
+        "smtp.user": "smtp_user",
+        "smtp.password": "smtp_password",
+        "smtp.from_address": "smtp_from_address",
+        "smtp.use_tls": "smtp_use_tls",
         "rate_limit.enabled": "rate_limit_enabled",
         "rate_limit.auth": "rate_limit_auth",
         "rate_limit.agents": "rate_limit_agents",
@@ -165,7 +175,7 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
     for key in WorkbenchConfig.model_fields:
         if key in raw:
             flat[key] = raw[key]
-    for section_name in ("general", "api", "openrouter", "auth", "rate_limit"):
+    for section_name in ("general", "api", "openrouter", "auth", "rate_limit", "smtp"):
         if section_name in raw and isinstance(raw[section_name], dict):
             section = raw[section_name]
             section_to_flat = {
@@ -178,8 +188,9 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
                     "timeout_seconds": "openrouter_timeout_seconds",
                     "max_retries": "openrouter_max_retries",
                 },
-                "auth": {"api_key_prefix": "auth_api_key_prefix", "max_keys_per_user": "auth_max_keys_per_user", "allow_registration": "auth_allow_registration", "session_expiry_hours": "auth_session_expiry_hours"},
+                "auth": {"api_key_prefix": "auth_api_key_prefix", "max_keys_per_user": "auth_max_keys_per_user", "session_expiry_hours": "auth_session_expiry_hours"},
                 "rate_limit": {"enabled": "rate_limit_enabled", "auth": "rate_limit_auth", "agents": "rate_limit_agents", "general": "rate_limit_general"},
+                "smtp": {"host": "smtp_host", "port": "smtp_port", "user": "smtp_user", "password": "smtp_password", "from_address": "smtp_from_address", "use_tls": "smtp_use_tls"},
             }
             mapping = section_to_flat.get(section_name, {})
             for src, dst in mapping.items():

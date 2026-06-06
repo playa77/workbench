@@ -23,86 +23,243 @@
         Router.setActive(firstTab.dataset.tab);
       }
     } catch (e) {
-      if (e.status === 401 || e.status === 403) {
-        renderAuth();
+      try {
+        var setupStatus = await API.setupStatus();
+        if (setupStatus.needs_setup) {
+          renderSetup();
+          return;
+        }
+      } catch (_) {}
+      var params = new URLSearchParams(window.location.search);
+      var path = window.location.pathname;
+      if (path.indexOf('/setup') !== -1 && params.get('token')) {
+        renderAcceptInvite(params.get('token'));
+      } else if (path.indexOf('/reset-password') !== -1 && params.get('token')) {
+        renderResetPassword(params.get('token'));
       } else {
-        renderAuth();
+        renderLogin();
       }
     }
   }
 
   /* ---- Auth flow ---- */
-  function renderAuth() {
+  function renderLogin() {
     var container = document.getElementById('active-tab-content');
     container.innerHTML = '<div class="welcome-screen"><div class="welcome-card">' +
       '<h2>Workbench</h2>' +
       '<p>Unified BYOK AI Workbench</p>' +
       '<div class="card" style="margin-top:24px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">' +
       '<div class="card-header">Sign In</div>' +
-      '<div id="auth-section"></div></div></div></div>';
+      '<div id="login-section"></div></div></div></div>';
 
-    var authSection = document.getElementById('auth-section');
-    authSection.innerHTML =
+    var loginSection = document.getElementById('login-section');
+    loginSection.innerHTML =
       '<div class="form-group">' +
-      '<label>Username</label>' +
-      '<input class="form-input" id="reg-username" placeholder="Choose a username" />' +
+      '<label>Email or Username</label>' +
+      '<input class="form-input" id="login-email-or-username" placeholder="Enter your email or username" />' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-register" style="width:100%">Register</button>' +
-      '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border-color)">' +
+      '<div class="form-group">' +
+      '<label>Password</label>' +
+      '<input class="form-input" id="login-password" type="password" placeholder="Enter your password" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-login-password" style="width:100%">Sign In</button>' +
+      '<div style="margin-top:8px;text-align:center">' +
+      '<a href="#" id="link-forgot-password" style="font-size:12px;color:var(--text-muted)">Forgot password?</a>' +
+      '</div>' +
+      '<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border-color)">' +
       '<div class="form-group">' +
       '<label>API Key</label>' +
-      '<input class="form-input" id="auth-key" placeholder="Paste your API key to sign in" />' +
+      '<input class="form-input" id="login-api-key" placeholder="Or paste your API key to sign in" />' +
       '</div>' +
-      '<button class="btn btn-secondary" id="btn-login" style="width:100%">Sign In with API Key</button>' +
-      '</div>';
+      '<button class="btn btn-secondary" id="btn-login-apikey" style="width:100%">Sign In with API Key</button>' +
+      '</div>' +
+      '<div id="login-message" style="margin-top:12px"></div>';
 
-    document.getElementById('btn-register').addEventListener('click', async function () {
-      var username = document.getElementById('reg-username').value.trim();
-      if (!username) return;
+    document.getElementById('btn-login-password').addEventListener('click', async function () {
+      var emailOrUsername = document.getElementById('login-email-or-username').value.trim();
+      var password = document.getElementById('login-password').value;
+      if (!emailOrUsername || !password) return;
       try {
-        var result = await API.register(username);
-        if (result.api_key) {
-          renderApiKeyReveal(result.api_key);
-        } else {
-          alert(result.message || 'Registration processed.');
-        }
+        await API.passwordLogin(emailOrUsername, password);
+        boot();
       } catch (e) {
-        if (e.status === 403) {
-          alert('Registration is currently disabled. Contact your administrator for an account.');
-        } else {
-          alert('Registration failed: ' + e.message);
-        }
+        document.getElementById('login-message').innerHTML = '<div class="alert alert-error">Invalid credentials</div>';
       }
     });
 
-    document.getElementById('btn-login').addEventListener('click', async function () {
-      var key = document.getElementById('auth-key').value.trim();
+    document.getElementById('btn-login-apikey').addEventListener('click', async function () {
+      var key = document.getElementById('login-api-key').value.trim();
       if (!key) return;
       try {
-        await API.login(key);
+        await API.apiKeyLogin(key);
         boot();
       } catch (e) {
-        alert('Login failed: ' + e.message);
+        document.getElementById('login-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+      }
+    });
+
+    document.getElementById('link-forgot-password').addEventListener('click', function (e) {
+      e.preventDefault();
+      renderForgotPassword();
+    });
+  }
+
+  function renderForgotPassword() {
+    var container = document.getElementById('active-tab-content');
+    container.innerHTML = '<div class="welcome-screen"><div class="welcome-card">' +
+      '<h2>Workbench</h2>' +
+      '<div class="card" style="margin-top:24px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">' +
+      '<div class="card-header">Forgot Password</div>' +
+      '<div class="form-group">' +
+      '<label>Email</label>' +
+      '<input class="form-input" id="forgot-email" type="email" placeholder="Enter your email address" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-send-reset-link" style="width:100%">Send Reset Link</button>' +
+      '<div style="margin-top:12px;text-align:center">' +
+      '<a href="#" id="link-back-to-login" style="font-size:12px;color:var(--text-muted)">Back to Sign In</a>' +
+      '</div>' +
+      '<div id="forgot-message" style="margin-top:12px"></div>' +
+      '</div></div></div>';
+
+    document.getElementById('btn-send-reset-link').addEventListener('click', async function () {
+      var email = document.getElementById('forgot-email').value.trim();
+      if (!email) return;
+      try {
+        await API.forgotPassword(email);
+        document.getElementById('forgot-message').innerHTML = '<div class="alert alert-success">If an account with that email exists, a reset link has been sent.</div>';
+      } catch (e) {
+        document.getElementById('forgot-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+      }
+    });
+
+    document.getElementById('link-back-to-login').addEventListener('click', function (e) {
+      e.preventDefault();
+      renderLogin();
+    });
+  }
+
+  function renderSetup() {
+    var container = document.getElementById('active-tab-content');
+    container.innerHTML = '<div class="welcome-screen"><div class="welcome-card">' +
+      '<h2>Workbench</h2>' +
+      '<p>First-run setup</p>' +
+      '<div class="card" style="margin-top:24px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">' +
+      '<div class="card-header">Create Admin Account</div>' +
+      '<div class="form-group">' +
+      '<label>Username</label>' +
+      '<input class="form-input" id="setup-username" placeholder="Choose a username" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Email</label>' +
+      '<input class="form-input" id="setup-email" type="email" placeholder="admin@example.com" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Password</label>' +
+      '<input class="form-input" id="setup-password" type="password" placeholder="Min 8 characters" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Confirm Password</label>' +
+      '<input class="form-input" id="setup-confirm-password" type="password" placeholder="Re-enter password" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-setup" style="width:100%">Create Account</button>' +
+      '<div id="setup-message" style="margin-top:12px"></div>' +
+      '</div></div></div>';
+
+    document.getElementById('btn-setup').addEventListener('click', async function () {
+      var username = document.getElementById('setup-username').value.trim();
+      var email = document.getElementById('setup-email').value.trim();
+      var password = document.getElementById('setup-password').value;
+      var confirmPassword = document.getElementById('setup-confirm-password').value;
+      if (!username || !email || !password) return;
+      if (password.length < 8) {
+        document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
+        return;
+      }
+      if (password !== confirmPassword) {
+        document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
+        return;
+      }
+      try {
+        await API.setup(username, email, password);
+        boot();
+      } catch (e) {
+        document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       }
     });
   }
 
-  function renderApiKeyReveal(rawKey) {
-    var authSection = document.getElementById('auth-section');
-    authSection.innerHTML =
-      '<div class="alert alert-success">Account created</div>' +
+  function renderAcceptInvite(token) {
+    var container = document.getElementById('active-tab-content');
+    container.innerHTML = '<div class="welcome-screen"><div class="welcome-card">' +
+      '<h2>Workbench</h2>' +
+      '<div class="card" style="margin-top:24px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">' +
+      '<div class="card-header">Set Up Your Account</div>' +
       '<div class="form-group">' +
-      '<label>Your API Key (save it — visible only once)</label>' +
-      '<div class="api-key-display" style="cursor:pointer" onclick="navigator.clipboard.writeText(this.textContent)">' +
-      Utils.escapeHtml(rawKey) + '</div></div>' +
-      '<button class="btn btn-primary" id="btn-auto-login" style="width:100%">Sign In &amp; Continue</button>';
+      '<label>Password</label>' +
+      '<input class="form-input" id="invite-password" type="password" placeholder="Min 8 characters" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Confirm Password</label>' +
+      '<input class="form-input" id="invite-confirm-password" type="password" placeholder="Re-enter password" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-accept-invite" style="width:100%">Create Account</button>' +
+      '<div id="invite-message" style="margin-top:12px"></div>' +
+      '</div></div></div>';
 
-    document.getElementById('btn-auto-login').addEventListener('click', async function () {
+    document.getElementById('btn-accept-invite').addEventListener('click', async function () {
+      var password = document.getElementById('invite-password').value;
+      var confirmPassword = document.getElementById('invite-confirm-password').value;
+      if (password.length < 8) {
+        document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
+        return;
+      }
+      if (password !== confirmPassword) {
+        document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
+        return;
+      }
       try {
-        await API.login(rawKey);
+        await API.acceptInvite(token, password);
         boot();
       } catch (e) {
-        alert('Login failed: ' + e.message);
+        document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+      }
+    });
+  }
+
+  function renderResetPassword(token) {
+    var container = document.getElementById('active-tab-content');
+    container.innerHTML = '<div class="welcome-screen"><div class="welcome-card">' +
+      '<h2>Workbench</h2>' +
+      '<div class="card" style="margin-top:24px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">' +
+      '<div class="card-header">Reset Your Password</div>' +
+      '<div class="form-group">' +
+      '<label>New Password</label>' +
+      '<input class="form-input" id="reset-password" type="password" placeholder="Min 8 characters" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Confirm Password</label>' +
+      '<input class="form-input" id="reset-confirm-password" type="password" placeholder="Re-enter password" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-reset-password" style="width:100%">Reset Password</button>' +
+      '<div id="reset-message" style="margin-top:12px"></div>' +
+      '</div></div></div>';
+
+    document.getElementById('btn-reset-password').addEventListener('click', async function () {
+      var password = document.getElementById('reset-password').value;
+      var confirmPassword = document.getElementById('reset-confirm-password').value;
+      if (password.length < 8) {
+        document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
+        return;
+      }
+      if (password !== confirmPassword) {
+        document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
+        return;
+      }
+      try {
+        await API.resetPassword(token, password);
+        boot();
+      } catch (e) {
+        document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       }
     });
   }
@@ -161,9 +318,45 @@
       '<div class="settings-section">' +
       '<h3>Profile</h3>' +
       (currentUser
-        ? '<p>Logged in as <strong>' + Utils.escapeHtml(currentUser.username) + '</strong></p>'
+        ? '<p>Logged in as <strong>' + Utils.escapeHtml(currentUser.username) + '</strong></p>' +
+          (currentUser.email ? '<p>Email: ' + Utils.escapeHtml(currentUser.email) + '</p>' : '')
         : '') +
       '</div>';
+
+    if (currentUser && currentUser.has_password) {
+      content.innerHTML +=
+        '<div class="settings-section">' +
+        '<h3>Change Password</h3>' +
+        '<div class="form-group">' +
+        '<label>Current Password</label>' +
+        '<input class="form-input" id="change-password-current" type="password" placeholder="Current password" />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>New Password</label>' +
+        '<input class="form-input" id="change-password-new" type="password" placeholder="New password (min 8 chars)" />' +
+        '</div>' +
+        '<button class="btn btn-primary" id="btn-change-password">Save Password</button>' +
+        '<div id="change-password-message" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+        '</div>';
+    }
+
+    if (currentUser && currentUser.is_admin) {
+      content.innerHTML +=
+        '<div class="settings-section">' +
+        '<h3>Invite Users</h3>' +
+        '<div class="form-group">' +
+        '<label>Email</label>' +
+        '<input class="form-input" id="invite-email" type="email" placeholder="user@example.com" />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>Username</label>' +
+        '<input class="form-input" id="invite-username" placeholder="username" />' +
+        '</div>' +
+        '<button class="btn btn-primary" id="btn-send-invite">Send Invite</button>' +
+        '<div id="invite-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+        '<div id="invite-list" style="margin-top:16px"></div>' +
+        '</div>';
+    }
 
     var hasKey = currentUser && currentUser.has_openrouter_key;
     content.innerHTML +=
@@ -194,7 +387,7 @@
 
     content.innerHTML +=
       '<div class="settings-section">' +
-      '<h3>API Keys</h3>' +
+      '<h3>API Keys' + (currentUser ? ' <span style="font-weight:400;font-size:12px;color:var(--text-muted)">for ' + Utils.escapeHtml(currentUser.username) + '</span>' : '') + '</h3>' +
       '<div id="api-keys-section"></div>' +
       '</div>';
 
@@ -227,6 +420,43 @@
       currentUser = null;
       location.reload();
     });
+
+    document.getElementById('btn-change-password') && document.getElementById('btn-change-password').addEventListener('click', async function () {
+      var current = document.getElementById('change-password-current').value;
+      var newPass = document.getElementById('change-password-new').value;
+      if (!current || !newPass) return;
+      if (newPass.length < 8) {
+        document.getElementById('change-password-message').textContent = 'New password must be at least 8 characters.';
+        return;
+      }
+      try {
+        await API.changePassword(current, newPass);
+        document.getElementById('change-password-message').textContent = 'Password changed.';
+        document.getElementById('change-password-current').value = '';
+        document.getElementById('change-password-new').value = '';
+      } catch (e) {
+        document.getElementById('change-password-message').textContent = 'Error: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-send-invite') && document.getElementById('btn-send-invite').addEventListener('click', async function () {
+      var email = document.getElementById('invite-email').value.trim();
+      var username = document.getElementById('invite-username').value.trim();
+      if (!email || !username) return;
+      try {
+        await API.createInvite(email, username);
+        document.getElementById('invite-email').value = '';
+        document.getElementById('invite-username').value = '';
+        document.getElementById('invite-status').textContent = 'Invite sent.';
+        loadInviteList();
+      } catch (e) {
+        document.getElementById('invite-status').textContent = 'Error: ' + e.message;
+      }
+    });
+
+    if (currentUser && currentUser.is_admin) {
+      loadInviteList();
+    }
 
     loadAgentList();
     loadApiKeys();
@@ -337,25 +567,40 @@
       var keys = await API.listApiKeys();
       var section = document.getElementById('api-keys-section');
       if (!section) return;
-      section.innerHTML = keys.map(function (k) {
-        var created = k.created_at ? k.created_at.split('T')[0] : '';
-        var lastUsed = k.last_used_at ? 'Last used ' + k.last_used_at.split('T')[0] : '';
-        return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">' +
-          '<div>' +
-          '<span style="font-weight:500;font-size:13px">' + Utils.escapeHtml(k.label) + '</span>' +
-          '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Created ' + created + '</span>' +
-          (lastUsed ? '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + lastUsed + '</span>' : '') +
-          '</div>' +
-          '<button class="btn btn-danger btn-sm" data-delete-key="' + Utils.escapeHtml(k.id) + '">Delete</button>' +
-          '</div>';
-      }).join('');
 
-      section.innerHTML +=
-        '<div style="margin-top:12px;display:flex;gap:8px">' +
-        '<input class="form-input" id="new-key-label" placeholder="Key label" />' +
-        '<button class="btn btn-primary btn-sm" id="btn-create-key">Create Key</button>' +
+      var listHtml = keys.length === 0
+        ? '<p style="font-size:13px;color:var(--text-muted);text-align:center;padding:16px 0">No API keys yet. Create your first one below.</p>'
+        : keys.map(function (k) {
+          var created = k.created_at ? k.created_at.split('T')[0] : '';
+          var lastUsed = k.last_used_at ? 'Last used ' + k.last_used_at.split('T')[0] : '';
+          var fp = k.key_fingerprint
+            ? '<span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">' + Utils.escapeHtml(k.key_fingerprint) + '</span>'
+            : '';
+          return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">' +
+            '<div>' +
+            '<span style="font-weight:500;font-size:13px">' + Utils.escapeHtml(k.label) + '</span>' +
+            (fp ? ' <span style="margin-left:6px">' + fp + '</span>' : '') +
+            '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Created ' + created + '</span>' +
+            (lastUsed ? '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + lastUsed + '</span>' : '') +
+            '</div>' +
+            '<button class="btn btn-danger btn-sm" data-delete-key="' + Utils.escapeHtml(k.id) + '">Delete</button>' +
+            '</div>';
+        }).join('');
+
+      var formHtml =
+        '<div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-color)">' +
+        '<label style="font-size:12px;font-weight:600;color:var(--text-secondary);display:block;margin-bottom:8px">Create New Key</label>' +
+        '<div style="display:flex;gap:8px;align-items:flex-end">' +
+        '<div style="flex:1">' +
+        '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Key Name</label>' +
+        '<input class="form-input" id="new-key-label" placeholder="e.g. production, staging, personal" style="margin:0" />' +
         '</div>' +
-        '<div id="new-key-display" style="margin-top:8px"></div>';
+        '<button class="btn btn-primary btn-sm" id="btn-create-key" style="flex-shrink:0">Create Key</button>' +
+        '</div>' +
+        '<div id="new-key-display" style="margin-top:8px"></div>' +
+        '</div>';
+
+      section.innerHTML = listHtml + formHtml;
 
       section.querySelectorAll('[data-delete-key]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
@@ -365,14 +610,76 @@
       });
 
       document.getElementById('btn-create-key') && document.getElementById('btn-create-key').addEventListener('click', async function () {
-        var label = document.getElementById('new-key-label').value.trim() || 'default';
+        var label = document.getElementById('new-key-label').value.trim();
+        if (!label) { alert('Please enter a name for the key.'); return; }
         try {
           var result = await API.createApiKey(label);
+          await loadApiKeys();
           document.getElementById('new-key-display').innerHTML =
-            '<div class="alert alert-success">New key: <code style="word-break:break-all">' +
-            Utils.escapeHtml(result.api_key) + '</code> — save it now!</div>';
-          loadApiKeys();
+            '<div class="alert alert-success">' +
+            '<div style="display:flex;align-items:center;justify-content:space-between">' +
+            '<span>Key <strong>' + Utils.escapeHtml(label) + '</strong> created</span>' +
+            '<button class="btn btn-sm btn-secondary" id="btn-copy-key" style="font-size:11px;padding:2px 8px">Copy</button>' +
+            '</div>' +
+            '<code style="display:block;word-break:break-all;margin-top:4px;font-family:var(--font-mono);font-size:11px">' +
+            Utils.escapeHtml(result.api_key) + '</code>' +
+            '<span style="font-size:11px;color:var(--text-muted);display:block;margin-top:4px">Save this key &mdash; it won\'t be shown again.</span>' +
+            '</div>';
+          document.getElementById('btn-copy-key').addEventListener('click', function () {
+            navigator.clipboard.writeText(result.api_key);
+            this.textContent = 'Copied!';
+            var self = this;
+            setTimeout(function () { self.textContent = 'Copy'; }, 2000);
+          });
         } catch (e) { alert(e.message); }
+      });
+    } catch (e) { /* silently fail */ }
+  }
+
+  async function loadInviteList() {
+    try {
+      var invites = await API.listInvites();
+      var listEl = document.getElementById('invite-list');
+      if (!listEl) return;
+      if (invites.length === 0) {
+        listEl.innerHTML = '<p style="font-size:13px;color:var(--text-muted);padding:8px 0">No invites yet.</p>';
+        return;
+      }
+      listEl.innerHTML = '<div style="font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:8px">Existing Invites</div>';
+      invites.forEach(function (inv) {
+        var status = inv.is_revoked ? 'Revoked' : (inv.accepted_at ? 'Accepted' : 'Pending');
+        var statusClass = 'status-dot ';
+        if (status === 'Accepted') statusClass += 'active';
+        else if (status === 'Revoked') statusClass += 'error';
+        else statusClass += 'inactive';
+        var createdDate = inv.created_at ? inv.created_at.split('T')[0] : '';
+        var expiresDate = inv.expires_at ? inv.expires_at.split('T')[0] : '';
+        listEl.innerHTML +=
+          '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">' +
+          '<div style="display:flex;align-items:center;gap:8px">' +
+          '<span class="' + statusClass + '"></span>' +
+          '<div>' +
+          '<span style="font-weight:500;font-size:13px">' + Utils.escapeHtml(inv.email) + '</span>' +
+          '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + Utils.escapeHtml(inv.username) + '</span>' +
+          '<br><span style="font-size:10px;color:var(--text-muted)">' +
+          'Created ' + createdDate + ' | Expires ' + expiresDate +
+          '</span>' +
+          '</div>' +
+          '</div>' +
+          (status !== 'Revoked' && status !== 'Accepted'
+            ? '<button class="btn btn-danger btn-sm" data-revoke-invite="' + Utils.escapeHtml(inv.id) + '">Revoke</button>'
+            : '<span style="font-size:11px;color:var(--text-muted)">' + Utils.escapeHtml(status) + '</span>') +
+          '</div>';
+      });
+      listEl.querySelectorAll('[data-revoke-invite]').forEach(function (btn) {
+        btn.addEventListener('click', async function () {
+          try {
+            await API.deleteInvite(btn.dataset.revokeInvite);
+            loadInviteList();
+          } catch (e) {
+            document.getElementById('invite-status').textContent = 'Error: ' + e.message;
+          }
+        });
       });
     } catch (e) { /* silently fail */ }
   }

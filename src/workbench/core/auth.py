@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
+from typing import TypeVar
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, Security
@@ -14,7 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from workbench.core import encryption
 from workbench.core.db import get_session
-from workbench.core.models import User, UserApiKey, UserOpenRouterKey, UserSession
+from workbench.core.models import User, UserApiKey, UserInvite, UserOpenRouterKey, UserSession
+
+_T = TypeVar("_T")
 
 security_scheme = HTTPBearer(auto_error=False)
 
@@ -30,6 +33,35 @@ def generate_api_key(prefix: str = "wb", expiry_days: int | None = None) -> tupl
 
 def verify_api_key(raw_key: str, hashed: str) -> bool:
     return bcrypt.checkpw(raw_key.encode(), hashed.encode())
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password: str, hashed: str) -> bool:
+    return bcrypt.checkpw(password.encode(), hashed.encode())
+
+
+def generate_token() -> tuple[str, str]:
+    raw = secrets.token_urlsafe(32)
+    hashed = _hash_token(raw)
+    return raw, hashed
+
+
+async def consume_token(
+    token_hash: str,
+    session: AsyncSession,
+    model_cls: type[_T],
+    token_field: str = "token_hash",
+    expiry_field: str | None = "expires_at",
+) -> _T | None:
+    now = datetime.now(UTC).replace(tzinfo=None)
+    conditions = [getattr(model_cls, token_field) == token_hash]
+    if expiry_field and hasattr(model_cls, expiry_field):
+        conditions.append(getattr(model_cls, expiry_field) > now)
+    result = await session.execute(select(model_cls).where(*conditions))
+    return result.scalar_one_or_none()
 
 
 def _hash_token(token: str) -> str:

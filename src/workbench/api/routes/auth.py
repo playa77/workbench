@@ -1,4 +1,6 @@
-"""Authentication routes — login, logout, registration, API key management."""
+"""Authentication routes — login, logout, password management, API key management."""
+
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -7,33 +9,66 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from workbench.core.auth import (
+    consume_token,
     create_session,
     generate_api_key,
+    generate_token,
     get_current_user,
     get_user_openrouter_key,
+    hash_password,
     set_user_openrouter_key,
     verify_api_key,
+    verify_password,
+    _hash_token,
 )
 from workbench.core.db import get_session
-from workbench.core.models import User, UserApiKey, UserOpenRouterKey, UserSession
+from workbench.core.email import (
+    send_invite_accepted_email,
+    send_password_changed_email,
+    send_reset_email,
+    send_welcome_email,
+)
+from workbench.core.models import User, UserApiKey, UserInvite, UserOpenRouterKey, UserSession
 from workbench.core.rate_limiter import limiter
 
 router = APIRouter()
 
-
-class RegisterRequest(BaseModel):
-    username: str = Field(..., min_length=2, max_length=100)
-
-
-class RegisterResponse(BaseModel):
-    user_id: str
-    username: str
-    api_key: str
-    message: str
+_REQUEST_TIMEOUT = timedelta(hours=1)
+_INVITE_TIMEOUT = timedelta(days=7)
 
 
-class LoginRequest(BaseModel):
+class PasswordLoginRequest(BaseModel):
+    email_or_username: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=1)
+
+
+class ApiKeyLoginRequest(BaseModel):
     api_key: str = Field(..., min_length=1)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=1)
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=8)
+
+
+class AcceptInviteRequest(BaseModel):
+    token: str = Field(..., min_length=1)
+    password: str = Field(..., min_length=8)
+
+
+class SetupRequest(BaseModel):
+    username: str = Field(..., min_length=2, max_length=100)
+    email: str = Field(..., min_length=3)
+    password: str = Field(..., min_length=8)
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1)
+    new_password: str = Field(..., min_length=8)
 
 
 class ApiKeyLabel(BaseModel):
@@ -43,6 +78,7 @@ class ApiKeyLabel(BaseModel):
 class ApiKeyResponse(BaseModel):
     id: str
     label: str
+    key_fingerprint: str | None = None
     created_at: str
     last_used_at: str | None
     expires_at: str | None = None
@@ -56,6 +92,9 @@ class OpenRouterKeyRequest(BaseModel):
 class UserProfile(BaseModel):
     id: str
     username: str
+    email: str | None = None
+    is_admin: bool = False
+    has_password: bool = False
     created_at: str
     has_openrouter_key: bool
 
@@ -73,17 +112,93 @@ def _set_session_cookie(request: Request, response: Response, token: str, hours:
     )
 
 
-@router.post("/auth/login")
-@limiter.limit("10/minute")
-async def login(
-    body: LoginRequest,
+def _login_response(user: User) -> dict:
+    return {
+        "user_id": str(user.id),
+        "username": user.username,
+        "email": user.email,
+        "is_admin": user.is_admin,
+        "message": "Login successful",
+    }
+
+
+@router.get("/auth/setup-status")
+async def setup_status(
+    session: AsyncSession = Depends(get_session),
+):
+    result = await session.execute(select(func.count(User.id)))
+    count = result.scalar() or 0
+    return {"needs_setup": count == 0}
+
+
+@router.post("/auth/setup")
+@limiter.limit("3/minute")
+async def setup(
+    body: SetupRequest,
     request: Request,
     response: Response,
     session: AsyncSession = Depends(get_session),
 ):
+    result = await session.execute(select(func.count(User.id)))
+    count = result.scalar() or 0
+    if count > 0:
+        raise HTTPException(status_code=403, detail="Setup already completed")
+
+    user = User(
+        username=body.username.strip(),
+        email=body.email.strip().lower(),
+        password_hash=hash_password(body.password),
+        is_admin=True,
+    )
+    session.add(user)
+    await session.commit()
+
+    token = await create_session(user, session, hours=24)
+    _set_session_cookie(request, response, token)
+    return _login_response(user)
+
+
+@router.post("/auth/login")
+@limiter.limit("10/minute")
+async def login(
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+):
+    content_type = request.headers.get("content-type", "")
+    body = await request.json()
+
+    if "api_key" in body:
+        return await _api_key_login(body["api_key"], request, response, session)
+
+    return await _password_login(body, request, response, session)
+
+
+async def _password_login(body: dict, request: Request, response: Response, session: AsyncSession):
+    identifier = (body.get("email_or_username") or "").strip()
+    password = (body.get("password") or "").strip()
+    if not identifier or not password:
+        raise HTTPException(status_code=400, detail="email_or_username and password are required")
+
+    result = await session.execute(
+        select(User).where(
+            (User.email == identifier) | (User.username == identifier)
+        )
+    )
+    user = result.scalar_one_or_none()
+    if user is None or not user.password_hash:
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    if not verify_password(password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    token = await create_session(user, session, hours=24)
+    _set_session_cookie(request, response, token)
+    return _login_response(user)
+
+
+async def _api_key_login(raw_key: str, request: Request, response: Response, session: AsyncSession):
     import hashlib
 
-    raw_key = body.api_key
     lookup = hashlib.sha256(raw_key.encode()).hexdigest()
     result = await session.execute(
         select(UserApiKey).where(UserApiKey.key_lookup == lookup)
@@ -95,11 +210,7 @@ async def login(
             raise HTTPException(status_code=401, detail="User not found")
         token = await create_session(user, session, hours=24)
         _set_session_cookie(request, response, token)
-        return {
-            "user_id": str(user.id),
-            "username": user.username,
-            "message": "Login successful",
-        }
+        return _login_response(user)
 
     keys_result = await session.execute(select(UserApiKey))
     for key_row in keys_result.scalars().all():
@@ -109,11 +220,7 @@ async def login(
                 raise HTTPException(status_code=401, detail="User not found")
             token = await create_session(user, session, hours=24)
             _set_session_cookie(request, response, token)
-            return {
-                "user_id": str(user.id),
-                "username": user.username,
-                "message": "Login successful",
-            }
+            return _login_response(user)
     raise HTTPException(status_code=401, detail="Invalid API key")
 
 
@@ -125,11 +232,7 @@ async def logout(
 ):
     cookie_token = request.cookies.get("workbench_session")
     if cookie_token:
-        import hashlib
-
-        from workbench.core.auth import verify_api_key
-
-        token_hash = hashlib.sha256(cookie_token.encode()).hexdigest()
+        token_hash = _hash_token(cookie_token)
         result = await session.execute(
             select(UserSession).where(UserSession.token_hash == token_hash)
         )
@@ -148,40 +251,107 @@ async def logout(
     return {"status": "ok", "message": "Logged out"}
 
 
-@router.post("/register", response_model=RegisterResponse)
-@limiter.limit("5/minute")
-async def register_user(
-    body: RegisterRequest,
+@router.post("/auth/forgot-password")
+@limiter.limit("3/minute")
+async def forgot_password(
+    body: ForgotPasswordRequest,
     request: Request,
     session: AsyncSession = Depends(get_session),
 ):
     config = request.app.state.config
-    if not config.auth_allow_registration:
-        raise HTTPException(status_code=403, detail="Registration is disabled")
-
-    existing = await session.execute(select(User).where(User.username == body.username))
-    if existing.scalar_one_or_none() is not None:
-        return RegisterResponse(
-            user_id="",
-            username=body.username,
-            api_key="",
-            message="Registration processed. If this username is available, your account has been created.",
+    email = body.email.strip().lower()
+    result = await session.execute(select(User).where(User.email == email))
+    user = result.scalar_one_or_none()
+    if user is not None and user.password_hash:
+        token, token_hash = generate_token()
+        expires = datetime.now(UTC).replace(tzinfo=None) + _REQUEST_TIMEOUT
+        invite = UserInvite(
+            email=email,
+            username=user.username,
+            token_hash=token_hash,
+            invited_by=None,
+            expires_at=expires,
         )
+        session.add(invite)
+        await session.commit()
+        origin = str(request.base_url).rstrip("/")
+        reset_url = f"{origin}/reset-password?token={token}"
+        await send_reset_email(config, email, reset_url)
+    return {"status": "ok", "message": "If an account with that email exists, a reset link has been sent."}
 
-    user = User(username=body.username)
+
+@router.post("/auth/reset-password")
+@limiter.limit("5/minute")
+async def reset_password(
+    body: ResetPasswordRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+):
+    config = request.app.state.config
+    token_hash = _hash_token(body.token)
+    row = await consume_token(token_hash, session, UserInvite, token_field="token_hash", expiry_field="expires_at")
+    if row is None or row.is_revoked:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    result = await session.execute(select(User).where(User.username == row.username))
+    user = result.scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status_code=400, detail="User not found")
+
+    user.password_hash = hash_password(body.password)
+    await session.delete(row)
+    await session.commit()
+
+    token = await create_session(user, session, hours=24)
+    _set_session_cookie(request, response, token)
+    await send_password_changed_email(config, user.email or row.email, user.username)
+    return _login_response(user)
+
+
+@router.post("/auth/accept-invite")
+@limiter.limit("5/minute")
+async def accept_invite(
+    body: AcceptInviteRequest,
+    request: Request,
+    response: Response,
+    session: AsyncSession = Depends(get_session),
+):
+    config = request.app.state.config
+    token_hash = _hash_token(body.token)
+    row = await consume_token(token_hash, session, UserInvite, token_field="token_hash", expiry_field="expires_at")
+    if row is None or row.is_revoked or row.accepted_at is not None:
+        raise HTTPException(status_code=400, detail="Invalid or expired invite token")
+
+    existing = await session.execute(
+        select(User).where((User.email == row.email) | (User.username == row.username))
+    )
+    if existing.scalar_one_or_none() is not None:
+        raise HTTPException(status_code=400, detail="Username or email already taken")
+
+    user = User(
+        username=row.username,
+        email=row.email,
+        password_hash=hash_password(body.password),
+        is_admin=False,
+    )
     session.add(user)
     await session.flush()
 
-    raw_key, hashed, lookup = generate_api_key()
-    session.add(UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, label="default"))
+    row.accepted_at = datetime.now(UTC).replace(tzinfo=None)
     await session.commit()
 
-    return RegisterResponse(
-        user_id=str(user.id),
-        username=user.username,
-        api_key=raw_key,
-        message="Save this API key — it will not be shown again.",
-    )
+    origin = str(request.base_url).rstrip("/")
+    await send_welcome_email(config, row.email, user.username, origin)
+    if row.invited_by:
+        admin_result = await session.execute(select(User).where(User.id == row.invited_by))
+        admin = admin_result.scalar_one_or_none()
+        if admin and admin.email:
+            await send_invite_accepted_email(config, admin.email, admin.username, user.username, user.email or "")
+
+    token = await create_session(user, session, hours=24)
+    _set_session_cookie(request, response, token)
+    return _login_response(user)
 
 
 @router.get("/me", response_model=UserProfile)
@@ -193,9 +363,30 @@ async def get_profile(
     return UserProfile(
         id=str(user.id),
         username=user.username,
+        email=user.email,
+        is_admin=user.is_admin,
+        has_password=user.password_hash is not None,
         created_at=user.created_at.isoformat() if user.created_at else "",
         has_openrouter_key=has_key is not None,
     )
+
+
+@router.post("/me/change-password")
+@limiter.limit("5/minute")
+async def change_password(
+    body: ChangePasswordRequest,
+    request: Request,
+    user: User = Depends(get_current_user),
+    session: AsyncSession = Depends(get_session),
+):
+    if not user.password_hash or not verify_password(body.current_password, user.password_hash):
+        raise HTTPException(status_code=400, detail="Current password is incorrect")
+    user.password_hash = hash_password(body.new_password)
+    await session.commit()
+    config = request.app.state.config
+    if user.email:
+        await send_password_changed_email(config, user.email, user.username)
+    return {"status": "ok", "message": "Password changed"}
 
 
 @router.post("/me/openrouter-key")
@@ -243,6 +434,7 @@ async def list_api_keys(
         ApiKeyResponse(
             id=str(k.id),
             label=k.label,
+            key_fingerprint=k.key_lookup[:8] if k.key_lookup else None,
             created_at=k.created_at.isoformat() if k.created_at else "",
             last_used_at=k.last_used_at.isoformat() if k.last_used_at else None,
             expires_at=k.expires_at.isoformat() if k.expires_at else None,
@@ -263,8 +455,10 @@ async def create_api_key(
         select(func.count(UserApiKey.id)).where(UserApiKey.user_id == user.id)
     )
     current_count = count_result.scalar() or 0
-    if current_count >= 5:
-        raise HTTPException(status_code=400, detail="Maximum of 5 API keys reached")
+    config = request.app.state.config
+    max_keys = config.auth_max_keys_per_user
+    if current_count >= max_keys:
+        raise HTTPException(status_code=400, detail=f"Maximum of {max_keys} API keys reached")
 
     raw_key, hashed, lookup = generate_api_key()
     key = UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, label=body.label)
@@ -275,6 +469,7 @@ async def create_api_key(
     return ApiKeyResponse(
         id=str(key.id),
         label=key.label,
+        key_fingerprint=lookup[:8],
         created_at=key.created_at.isoformat() if key.created_at else "",
         last_used_at=None,
         api_key=raw_key,

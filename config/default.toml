@@ -26,8 +26,15 @@ key_env = "ENCRYPTION_KEY"
 [auth]
 api_key_prefix = "wb"
 max_keys_per_user = 5
-allow_registration = true
 session_expiry_hours = 24
+
+[smtp]
+host = ""
+port = 587
+user = ""
+password = ""
+from_address = ""
+use_tls = true
 
 [rate_limit]
 enabled = true
