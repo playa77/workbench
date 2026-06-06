@@ -2,7 +2,7 @@
 
 **Self-hosted BYOK AI Workbench** -- one dashboard, eight LLM-powered agents plus Open WebUI, zero telemetry.
 
-Run locally. Bring your own OpenRouter key. Every agent lives in its own browser tab.
+Run locally or deploy to a VPS with full HTTPS (Let's Encrypt + nginx). Bring your own OpenRouter key. Every agent lives in its own browser tab.
 
 [![Python](https://img.shields.io/badge/Python-3.11%2B-blue)](https://python.org)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -96,9 +96,9 @@ cp .env.example .env
 docker compose --profile openwebui up -d
 ```
 
-This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and Open WebUI on port 3000.
+This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and Open WebUI on port 3000. All bind to `127.0.0.1` only.
 
-For full production deployment instructions see [DEPLOYMENT.md](DEPLOYMENT.md).
+For production deployment -- nginx reverse proxy, Let's Encrypt TLS, CORS, HSTS -- see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ---
 
@@ -119,7 +119,8 @@ Workbench loads config in this priority order (lowest to highest):
 | `OPENROUTER_API_KEY` | Server-wide fallback OpenRouter key | No |
 | `WORKBENCH_API__HOST` | Bind address (default `127.0.0.1`) | No |
 | `WORKBENCH_API__PORT` | Listen port (default `8420`) | No |
-| `WORKBENCH_API__CORS_ORIGINS` | JSON array of allowed origins | For remote access |
+| `WORKBENCH_API__CORS_ORIGINS` | JSON array of allowed origins (e.g. `["https://your-domain.com"]`) | For remote access |
+| `WORKBENCH_API__STRICT_TRANSPORT_SECURITY` | HSTS header value (e.g. `max-age=31536000`) | For HTTPS deploy |
 
 ### Generate an Encryption Key
 
@@ -280,6 +281,7 @@ The port is already in use. Change it: `workbench serve --port 9000`.
 
 ## Security
 
+* **HTTPS enforced** in production via Let's Encrypt + nginx reverse proxy with HSTS and automatic certificate renewal.
 * OpenRouter keys are encrypted at rest with AES-256-GCM (key derived from `ENCRYPTION_KEY`).
 * API keys and session tokens are bcrypt-hashed. Sessions are httponly, samesite=strict cookies with 24-hour expiry.
 * Rate limiting on all endpoints (configurable per category).

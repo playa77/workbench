@@ -126,7 +126,7 @@ Create `/etc/nginx/sites-available/workbench`:
 ```nginx
 server {
     listen 80;
-    server_name _;
+    server_name _;  # for TLS, replace with your domain (see Reverse Proxy with TLS below)
 
     # Workbench application (default route)
     location / {
@@ -299,103 +299,76 @@ sudo nginx -t
 
 For public access with HTTPS, extend the nginx config with Let's Encrypt.
 
+### Prerequisites
+
+- A domain name with an A record pointing to your server's IP (e.g. Cloudflare DNS).
+- The domain must resolve publicly before running certbot. Check with `dig +short your-domain.com A`.
+
 ### Install certbot
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
 ```
 
-### Update nginx config
+### Update nginx config for domain
 
-Replace `/etc/nginx/sites-available/workbench`:
+Update `/etc/nginx/sites-available/workbench` to use your domain name instead of `_`:
 
-```nginx
-# HTTP — redirect to HTTPS
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-# HTTPS
-server {
-    listen 443 ssl http2;
-    server_name your-domain.com;
-
-    ssl_certificate     /etc/letsencrypt/live/your-domain.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/your-domain.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    # Workbench application
-    location / {
-        proxy_pass http://127.0.0.1:8420;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_buffering off;
-        proxy_read_timeout 600s;
-        proxy_send_timeout 600s;
-    }
-
-    # Open WebUI (with path rewriting — same as HTTP config above)
-    location /open-webui/ {
-        rewrite ^/open-webui(/.*)$ $1 break;
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_buffering off;
-        proxy_read_timeout 1800s;
-        proxy_send_timeout 1800s;
-
-        sub_filter_types application/javascript application/json text/css text/html;
-        sub_filter_once off;
-        sub_filter 'href="/' 'href="/open-webui/';
-        sub_filter "href='/" "href='/open-webui/";
-        sub_filter ' "/_app/' ' "/open-webui/_app/';
-        sub_filter " '/_app/" " '/open-webui/_app/";
-        sub_filter ' "/api/' ' "/open-webui/api/';
-        sub_filter " '/api/" " '/open-webui/api/";
-        sub_filter ' "/ws/' ' "/open-webui/ws/';
-        sub_filter ' "/static/' ' "/open-webui/static/';
-        sub_filter ' "/favicon' ' "/open-webui/favicon';
-        sub_filter ' "/opensearch' ' "/open-webui/opensearch';
-    }
-}
+```diff
+-    server_name _;
++    server_name your-domain.com;
 ```
 
-Obtain certificates:
+Reload:
 
 ```bash
-sudo nginx -t
-sudo systemctl reload nginx
-sudo certbot --nginx -d your-domain.com
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### CORS Configuration
-
-If using HTTPS, update CORS origins via environment:
+Verify it responds on the domain:
 
 ```bash
-# In .env:
+curl http://your-domain.com/health
+# Expected: {"status":"ok","version":"0.1.0"}
+```
+
+### Obtain Let's Encrypt certificate
+
+Certbot automatically validates domain ownership (HTTP challenge), obtains a certificate, and rewrites the nginx config for HTTPS with HTTP→HTTPS redirect:
+
+```bash
+sudo certbot --nginx -d your-domain.com --non-interactive --agree-tos --email you@example.com
+```
+
+Certbot will:
+- Validate domain ownership via HTTP challenge
+- Obtain and install the Let's Encrypt certificate
+- Rewrite the nginx config: add `listen 443 ssl`, certificate paths, and HTTP→HTTPS redirect
+- Enable auto-renewal (certbot.timer runs twice daily, renews certificates nearing expiry)
+
+### Configure CORS and HSTS
+
+Once HTTPS is working, set CORS origins and enable HSTS. Add these to `.env`:
+
+```ini
 WORKBENCH_API__CORS_ORIGINS=["https://your-domain.com"]
+WORKBENCH_API__STRICT_TRANSPORT_SECURITY="max-age=31536000; includeSubDomains"
 ```
 
-### HSTS
+Then recreate the workbench container to apply:
 
 ```bash
-# In .env:
-WORKBENCH_API__STRICT_TRANSPORT_SECURITY="max-age=31536000; includeSubDomains"
+docker compose --profile openwebui up -d --force-recreate workbench
+```
+
+Verify the headers:
+
+```bash
+curl -sI https://your-domain.com/ | grep -i strict-transport
+# Expected: strict-transport-security: max-age=31536000; includeSubDomains
+
+curl -sI -H 'Origin: https://your-domain.com' https://your-domain.com/api/v1/agents | grep access-control
+# Expected: access-control-allow-origin: https://your-domain.com
 ```
 
 ---
