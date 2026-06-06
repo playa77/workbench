@@ -33,6 +33,9 @@ const Router = (() => {
     if (name === 'settings') {
       document.getElementById('settings-panel').style.display = 'block';
       document.getElementById('active-tab-content').style.display = 'none';
+      if (tabCallbacks[name]) {
+        tabCallbacks[name](document.getElementById('settings-panel'));
+      }
       return;
     }
 
@@ -64,9 +67,7 @@ const Router = (() => {
       script.src = jsPath;
       script.onload = () => {
         _pendingActivation = name;
-        var fallback = document.createElement('script');
-        fallback.textContent = 'setTimeout(function() { Router._activatePending(); }, 10);';
-        document.body.appendChild(fallback);
+        setTimeout(() => { setActive(name); }, 10);
       };
       document.body.appendChild(script);
       return;

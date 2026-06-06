@@ -74,9 +74,9 @@ async def _auth_via_api_key(raw_key: str, session: AsyncSession) -> User | None:
     keys_result = await session.execute(select(UserApiKey))
     for key_row in keys_result.scalars().all():
         if verify_api_key(raw_key, key_row.key_hash):
-            if key_row.expires_at is not None and key_row.expires_at < datetime.now(UTC):
+            if key_row.expires_at is not None and key_row.expires_at < datetime.now(UTC).replace(tzinfo=None):
                 continue
-            key_row.last_used_at = datetime.now(UTC)
+            key_row.last_used_at = datetime.now(UTC).replace(tzinfo=None)
             await session.commit()
             user = await session.get(User, key_row.user_id)
             if user is None:
