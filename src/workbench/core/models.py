@@ -40,6 +40,7 @@ class User(Base):
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     openrouter_key: Mapped["UserOpenRouterKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     agent_settings: Mapped[list["UserAgentSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    agent_sessions: Mapped[list["AgentSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class UserApiKey(Base):
@@ -127,4 +128,29 @@ class StoredReport(Base):
     __table_args__ = (
         Index("idx_reports_user", "user_id"),
         Index("idx_reports_agent", "agent_name"),
+    )
+
+
+class AgentSession(Base):
+    """Stores the complete state of any agent run for history/replay."""
+    __tablename__ = "workbench_agent_sessions"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
+    agent_name: Mapped[str] = mapped_column(String(100), nullable=False)
+    session_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    title: Mapped[str] = mapped_column(String(500), nullable=False)
+    state_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    content: Mapped[str | None] = mapped_column(Text, nullable=True)
+    content_format: Mapped[str] = mapped_column(String(20), nullable=False, default="markdown")
+    metadata_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="agent_sessions")
+
+    __table_args__ = (
+        Index("idx_agent_sessions_user", "user_id"),
+        Index("idx_agent_sessions_agent", "agent_name"),
+        Index("idx_agent_sessions_session", "session_id"),
     )

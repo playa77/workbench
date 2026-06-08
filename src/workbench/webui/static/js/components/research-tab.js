@@ -73,6 +73,8 @@
     }
     depthEl.addEventListener('input', updateLeafCount);
     branchEl.addEventListener('input', updateLeafCount);
+
+    renderResearchPastSessions();
   }
 
   function startResearch() {
@@ -310,6 +312,83 @@
     if (activeAbortController) { activeAbortController.abort(); activeAbortController = null; }
     activeReader = null;
     activeRunId = null;
+  }
+
+  // Past Research Sessions (collapsible)
+  var researchPastLoaded = false;
+
+  function renderResearchPastSessions() {
+    var container = document.getElementById('research-output');
+    if (!container) return;
+    var pastHtml = ''
+      + '<div class="card" style="margin-top:24px">'
+      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="research-past-toggle">'
+      +     '<span>Past Research Sessions</span>'
+      +     '<span id="research-past-arrow" style="font-size:12px">&#x25BC;</span>'
+      +   '</div>'
+      +   '<div id="research-past-sessions" style="display:none;padding:8px 0">'
+      +     '<div style="text-align:center;padding:12px;color:var(--text-muted)">Loading...</div>'
+      +   '</div>'
+      + '</div>';
+    container.insertAdjacentHTML('beforeend', pastHtml);
+
+    document.getElementById('research-past-toggle').addEventListener('click', function () {
+      var body = document.getElementById('research-past-sessions');
+      var arrow = document.getElementById('research-past-arrow');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.innerHTML = '&#x25B2;';
+        if (!researchPastLoaded) {
+          researchPastLoaded = true;
+          loadResearchPastSessions();
+        }
+      } else {
+        body.style.display = 'none';
+        arrow.innerHTML = '&#x25BC;';
+      }
+    });
+  }
+
+  function loadResearchPastSessions() {
+    var body = document.getElementById('research-past-sessions');
+    API.listSessions('research').then(function (sessions) {
+      if (!sessions || sessions.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No past research sessions</div>';
+        return;
+      }
+      var recent = sessions.slice(0, 10);
+      body.innerHTML = recent.map(function (s) {
+        var date = s.created_at ? s.created_at.split('T')[0] : '';
+        var title = Utils.escapeHtml((s.title || 'Untitled').length > 60 ? s.title.substring(0, 57) + '...' : s.title || 'Untitled');
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border-color);cursor:pointer" data-session-id="' + s.id + '" class="research-past-item">'
+          + '<span style="font-size:12px;color:var(--text-muted);flex-shrink:0;margin-right:12px">' + date + '</span>'
+          + '<span style="font-size:13px;flex:1">' + title + '</span>'
+          + '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0">' + (s.word_count || 0) + ' words</span>'
+          + '</div>';
+      }).join('');
+      body.querySelectorAll('.research-past-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          var sid = el.dataset.sessionId;
+          loadPastResearchSession(sid);
+        });
+      });
+    }).catch(function () {
+      body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--danger);font-size:12px">Failed to load sessions</div>';
+    });
+  }
+
+  function loadPastResearchSession(id) {
+    var output = document.getElementById('research-output');
+    output.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading session...</div>';
+    API.getSession(id).then(function (session) {
+      renderReport(session.content || '');
+      // Re-add past sessions after the report
+      researchPastLoaded = false;
+      renderResearchPastSessions();
+    }).catch(function (e) {
+      output.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+      renderResearchPastSessions();
+    });
   }
 
   function resetButtons() {

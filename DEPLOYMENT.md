@@ -67,6 +67,8 @@ Internet ──→ nginx (:80/:443) ──┤  /             → workbench :8420
 
 Three containers: PostgreSQL 16 (pgvector), Workbench application, and optional Open WebUI.
 
+The Workbench Docker image includes the **tectonic** LaTeX engine (v0.15.0) for PDF export. No additional system packages are required.
+
 ### Step 1: Prepare
 
 ```bash
@@ -296,6 +298,8 @@ sudo systemctl restart nginx
 sudo systemctl status nginx
 sudo nginx -t
 ```
+
+The workbench service in `docker-compose.yml` uses `restart: unless-stopped`, which means containers auto-restart if they crash. To stop a persistently restarting container, use `docker compose stop workbench` instead of just killing the process.
 
 ---
 
@@ -647,6 +651,7 @@ Database migrations run automatically on startup. No manual migration step neede
 
 ### Upgrade Notes
 
+* The `docker-compose.yml` workbench service uses `restart: unless-stopped`, so after a rebuild the new container starts automatically with the updated image.
 * Always review `CHANGELOG.md` or git log for breaking changes before upgrading.
 * Migrations are additive and idempotent. Running `init-db` on an already-migrated database is safe.
 * The encryption key must remain the same across upgrades. **Changing `ENCRYPTION_KEY` after storing encrypted data will make existing keys unrecoverable.**
@@ -879,6 +884,23 @@ currentUser = await API.me();
 document.getElementById('active-tab-content').innerHTML = '';
 await renderTabs();
 ```
+
+### PDF export fails with "tectonic command not found"
+
+PDF export uses the **tectonic** LaTeX engine, which is included in the Docker image but not installed by `pip install` on bare-metal. Install it manually:
+
+```bash
+python3 -c "
+import urllib.request, tarfile, os, stat
+url = 'https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-gnu.tar.gz'
+urllib.request.urlretrieve(url, '/tmp/tectonic.tar.gz')
+with tarfile.open('/tmp/tectonic.tar.gz') as tf:
+    tf.extract('tectonic', '/usr/local/bin')
+os.chmod('/usr/local/bin/tectonic', 0o755)
+"
+```
+
+Verify the installation with `tectonic --version`.
 
 ---
 

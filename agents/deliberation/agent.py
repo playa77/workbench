@@ -24,7 +24,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
-from workbench.core.models import User
+from workbench.core.models import AgentSession, User
 from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
@@ -124,6 +124,29 @@ class DeliberationAgent(AgentBase):
                     "result": result, "service": service, "user_id": str(user.id),
                 }
                 self._session_timestamps[result.deliberation_id] = time.monotonic()
+
+                # Save AgentSession
+                try:
+                    agent_session = AgentSession(
+                        user_id=user.id,
+                        agent_name="deliberation",
+                        session_id=result.deliberation_id,
+                        title=result.question,
+                        state_json=result.model_dump(),
+                        content=result.synthesis,
+                        content_format="markdown",
+                        metadata_json={
+                            "frame_count": len(result.frames),
+                            "rhetoric_analysis": result.rhetoric_analysis is not None,
+                            "synthesis_available": result.synthesis is not None,
+                            "elapsed_seconds": result.elapsed_seconds,
+                            "status": result.status,
+                        },
+                    )
+                    session.add(agent_session)
+                    await session.commit()
+                except Exception:
+                    logger.exception("Failed to save AgentSession for deliberation %s", result.deliberation_id)
             except asyncio.CancelledError:
                 yield 'event: error\ndata: {"message": "Client disconnected"}\n\n'
             except Exception:

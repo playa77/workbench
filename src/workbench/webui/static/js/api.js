@@ -43,5 +43,16 @@ const API = (() => {
     listReports: function() { return request('GET', '/api/v1/reports'); },
     getReport: function(id) { return request('GET', '/api/v1/reports/' + id); },
     deleteReport: function(id) { return request('DELETE', '/api/v1/reports/' + id); },
+    listSessions: function(agent) {
+      var url = '/api/v1/sessions';
+      if (agent) url += '?agent=' + encodeURIComponent(agent);
+      return request('GET', url);
+    },
+    getSession: function(id) {
+      return request('GET', '/api/v1/sessions/' + id);
+    },
+    deleteSession: function(id) {
+      return request('DELETE', '/api/v1/sessions/' + id);
+    },
   };
 })();

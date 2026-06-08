@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
-from workbench.core.models import StoredReport, User
+from workbench.core.models import AgentSession, StoredReport, User
 from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
@@ -143,6 +143,24 @@ class ResearchAgent(AgentBase):
                 },
             )
             session.add(stored)
+
+            agent_session = AgentSession(
+                user_id=user.id,
+                agent_name="research",
+                session_id=run_id,
+                title=title,
+                state_json=state.model_dump(),
+                content=report,
+                content_format="markdown",
+                metadata_json={
+                    "run_id": run_id,
+                    "iterations": state.iteration,
+                    "sources": state.mind_map.source_count(),
+                    "input_tokens": state.token_usage.input_tokens,
+                    "output_tokens": state.token_usage.output_tokens,
+                },
+            )
+            session.add(agent_session)
             await session.commit()
         except Exception:
             pass

@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
-from workbench.core.models import User
+from workbench.core.models import AgentSession, User
 
 _news_scheduler: Any = None
 
@@ -140,6 +140,36 @@ class NewsAgent(AgentBase):
         from workbench.services.news_pipeline import NewsPipeline
         pipeline = NewsPipeline(store, session)
         run_id = await pipeline.run(str(user.id), interest, or_key)
+
+        # Save AgentSession
+        try:
+            title = interest.get("name", f"News Run {run_id}")
+            agent_session = AgentSession(
+                user_id=user.id,
+                agent_name="news",
+                session_id=str(run_id),
+                title=title,
+                state_json={
+                    "interest": interest,
+                    "run_id": run_id,
+                    "pipeline_stage": "completed",
+                },
+                content=None,
+                content_format="markdown",
+                metadata_json={
+                    "interest_id": interest.get("id"),
+                    "interest_name": interest.get("name"),
+                    "enable_summary": interest.get("enable_summary"),
+                    "enable_script": interest.get("enable_script"),
+                    "enable_brief": interest.get("enable_brief"),
+                    "interval_hours": interest.get("interval_hours"),
+                },
+            )
+            session.add(agent_session)
+            await session.commit()
+        except Exception:
+            logger = __import__("logging").getLogger(__name__)
+            logger.exception("Failed to save AgentSession for news run %d", run_id)
 
         # Send email if configured
         if interest.get("enable_email") and interest.get("email_smtp_host"):

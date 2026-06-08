@@ -20,7 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
-from workbench.core.models import StoredReport, User
+from workbench.core.models import AgentSession, StoredReport, User
 from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
@@ -105,7 +105,7 @@ class PlanningAgent(AgentBase):
 
                 await self._save_report(
                     user, session, body.goal, plan_type, result.content,
-                    service.state.run_id,
+                    service.state.run_id, service.state,
                 )
             except asyncio.CancelledError:
                 service.stop()
@@ -135,6 +135,7 @@ class PlanningAgent(AgentBase):
         plan_type: str,
         content: str,
         run_id: str,
+        state: Any,
     ) -> None:
         try:
             from workbench.core.encryption import encrypt_report_content
@@ -158,6 +159,22 @@ class PlanningAgent(AgentBase):
                 },
             )
             session.add(stored)
+
+            agent_session = AgentSession(
+                user_id=user.id,
+                agent_name="planning",
+                session_id=run_id,
+                title=title,
+                state_json=state.model_dump(),
+                content=content,
+                content_format="markdown",
+                metadata_json={
+                    "run_id": run_id,
+                    "plan_type": plan_type,
+                    "goal": goal[:500],
+                },
+            )
+            session.add(agent_session)
             await session.commit()
         except Exception:
             pass

@@ -48,6 +48,8 @@
 
     loadRoles();
     document.getElementById('btn-start-debate').addEventListener('click', startDebate);
+
+    renderDebatePastSessions();
   }
 
   function authHeaders() {
@@ -300,5 +302,109 @@
   function resetDebateButton() {
     var btn = document.getElementById('btn-start-debate');
     if (btn) { btn.classList.remove('btn-pulse'); Utils.resetButton(btn); }
+  }
+
+  // Past Debate Sessions
+  var debatePastLoaded = false;
+
+  function renderDebatePastSessions() {
+    var output = document.getElementById('debate-output');
+    if (!output) return;
+    output.insertAdjacentHTML('afterend', ''
+      + '<div class="card" style="margin-top:24px">'
+      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="debate-past-toggle">'
+      +     '<span>Past Debate Sessions</span>'
+      +     '<span id="debate-past-arrow" style="font-size:12px">&#x25BC;</span>'
+      +   '</div>'
+      +   '<div id="debate-past-sessions" style="display:none;padding:8px 0">'
+      +     '<div style="text-align:center;padding:12px;color:var(--text-muted)">Loading...</div>'
+      +   '</div>'
+      + '</div>'
+    );
+
+    document.getElementById('debate-past-toggle').addEventListener('click', function () {
+      var body = document.getElementById('debate-past-sessions');
+      var arrow = document.getElementById('debate-past-arrow');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.innerHTML = '&#x25B2;';
+        if (!debatePastLoaded) {
+          debatePastLoaded = true;
+          loadDebatePastSessions();
+        }
+      } else {
+        body.style.display = 'none';
+        arrow.innerHTML = '&#x25BC;';
+      }
+    });
+  }
+
+  function loadDebatePastSessions() {
+    var body = document.getElementById('debate-past-sessions');
+    API.listSessions('debate').then(function (sessions) {
+      if (!sessions || sessions.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No past debate sessions</div>';
+        return;
+      }
+      var recent = sessions.slice(0, 10);
+      body.innerHTML = recent.map(function (s) {
+        var date = s.created_at ? s.created_at.split('T')[0] : '';
+        var title = Utils.escapeHtml((s.title || 'Debate').length > 60 ? s.title.substring(0, 57) + '...' : s.title || 'Debate');
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border-color);cursor:pointer" data-session-id="' + s.id + '" class="debate-past-item">'
+          + '<span style="font-size:12px;color:var(--text-muted);flex-shrink:0;margin-right:12px">' + date + '</span>'
+          + '<span style="font-size:13px;flex:1">' + title + '</span>'
+          + '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0">' + (s.word_count || 0) + ' words</span>'
+          + '</div>';
+      }).join('');
+      body.querySelectorAll('.debate-past-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          loadPastDebateSession(el.dataset.sessionId);
+        });
+      });
+    }).catch(function () {
+      body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--danger);font-size:12px">Failed to load sessions</div>';
+    });
+  }
+
+  function loadPastDebateSession(id) {
+    stopPolling();
+    activeDebateId = null;
+    var container = document.getElementById('active-tab-content');
+    if (!container) return;
+    container.innerHTML = '<div style="max-width:900px;margin:0 auto"><div style="text-align:center;padding:40px;color:var(--text-muted)">Loading debate session...</div></div>';
+    API.getSession(id).then(function (session) {
+      var content = session.content || '{}';
+      var data;
+      try { data = JSON.parse(content); } catch (_e) { data = { topic: session.title || 'Debate', history: [] }; }
+      data.topic = data.topic || session.title || 'Debate';
+      data.max_rounds = data.max_rounds || 0;
+      data.rounds_completed = data.rounds_completed || 0;
+      data.status = 'COMPLETED';
+      var panel = renderProgressPanel(data.topic, data.rounds_completed, data.max_rounds, 'COMPLETED');
+      container.innerHTML = panel;
+      if (data.history) {
+        var transcript = document.getElementById('debate-transcript');
+        if (transcript) {
+          transcript.innerHTML = data.history.map(function (msg) {
+            if (msg.is_injection) {
+              return '<div style="padding:8px 12px;margin-bottom:8px;background:var(--warning-bg);border-left:3px solid var(--warning);border-radius:var(--radius-sm)">'
+                + '<div style="font-size:10px;text-transform:uppercase;color:var(--warning);font-weight:600;margin-bottom:4px">Director</div>'
+                + '<div style="font-size:12px;white-space:pre-wrap;color:var(--text-primary)">' + Utils.escapeHtml(msg.content) + '</div></div>';
+            }
+            return '<div style="padding:6px 0;border-bottom:1px solid var(--border-color)">'
+              + '<strong style="color:var(--accent);font-size:12px">' + Utils.escapeHtml(msg.sender) + '</strong>'
+              + '<p style="margin-top:4px;font-size:12px;white-space:pre-wrap">' + Utils.escapeHtml(msg.content) + '</p></div>';
+          }).join('');
+        }
+      }
+      var pauseBtn = document.getElementById('btn-pause-debate');
+      var resumeBtn = document.getElementById('btn-resume-debate');
+      var endBtn = document.getElementById('btn-end-debate');
+      if (pauseBtn) pauseBtn.style.display = 'none';
+      if (resumeBtn) resumeBtn.style.display = 'none';
+      if (endBtn) endBtn.style.display = 'none';
+    }).catch(function (e) {
+      container.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+    });
   }
 })();

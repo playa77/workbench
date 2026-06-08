@@ -48,6 +48,8 @@
 
     loadFrames();
     document.getElementById('btn-start-deliberation').addEventListener('click', startDeliberation);
+
+    renderDeliberationPastSessions();
   }
 
   function authHeaders() {
@@ -328,5 +330,81 @@
     if (btn) Utils.resetButton(btn);
     activeReader = null;
     activeAbortController = null;
+  }
+
+  // Past Deliberation Sessions
+  var deliberationPastLoaded = false;
+
+  function renderDeliberationPastSessions() {
+    var output = document.getElementById('deliberation-output');
+    if (!output) return;
+    output.insertAdjacentHTML('afterend', ''
+      + '<div class="card" style="margin-top:24px">'
+      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="deliberation-past-toggle">'
+      +     '<span>Past Deliberation Sessions</span>'
+      +     '<span id="deliberation-past-arrow" style="font-size:12px">&#x25BC;</span>'
+      +   '</div>'
+      +   '<div id="deliberation-past-sessions" style="display:none;padding:8px 0">'
+      +     '<div style="text-align:center;padding:12px;color:var(--text-muted)">Loading...</div>'
+      +   '</div>'
+      + '</div>'
+    );
+
+    document.getElementById('deliberation-past-toggle').addEventListener('click', function () {
+      var body = document.getElementById('deliberation-past-sessions');
+      var arrow = document.getElementById('deliberation-past-arrow');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.innerHTML = '&#x25B2;';
+        if (!deliberationPastLoaded) {
+          deliberationPastLoaded = true;
+          loadDeliberationPastSessions();
+        }
+      } else {
+        body.style.display = 'none';
+        arrow.innerHTML = '&#x25BC;';
+      }
+    });
+  }
+
+  function loadDeliberationPastSessions() {
+    var body = document.getElementById('deliberation-past-sessions');
+    API.listSessions('deliberation').then(function (sessions) {
+      if (!sessions || sessions.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No past deliberation sessions</div>';
+        return;
+      }
+      var recent = sessions.slice(0, 10);
+      body.innerHTML = recent.map(function (s) {
+        var date = s.created_at ? s.created_at.split('T')[0] : '';
+        var title = Utils.escapeHtml((s.title || 'Deliberation').length > 60 ? s.title.substring(0, 57) + '...' : s.title || 'Deliberation');
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border-color);cursor:pointer" data-session-id="' + s.id + '" class="deliberation-past-item">'
+          + '<span style="font-size:12px;color:var(--text-muted);flex-shrink:0;margin-right:12px">' + date + '</span>'
+          + '<span style="font-size:13px;flex:1">' + title + '</span>'
+          + '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0">' + (s.word_count || 0) + ' words</span>'
+          + '</div>';
+      }).join('');
+      body.querySelectorAll('.deliberation-past-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          loadPastDeliberationSession(el.dataset.sessionId);
+        });
+      });
+    }).catch(function () {
+      body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--danger);font-size:12px">Failed to load sessions</div>';
+    });
+  }
+
+  function loadPastDeliberationSession(id) {
+    var output = document.getElementById('deliberation-output');
+    output.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading session...</div>';
+    API.getSession(id).then(function (session) {
+      var content = session.content || '{}';
+      var data;
+      try { data = JSON.parse(content); } catch (_e) { data = { question: session.title || 'Deliberation' }; }
+      data.question = data.question || session.title || 'Deliberation';
+      renderDeliberationResults(data);
+    }).catch(function (e) {
+      output.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+    });
   }
 })();

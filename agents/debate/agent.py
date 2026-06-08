@@ -17,6 +17,8 @@ import logging
 import time
 from typing import Any
 
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
-from workbench.core.models import User
+from workbench.core.models import AgentSession, User
 from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
@@ -245,6 +247,38 @@ class DebateAgent(AgentBase):
                         content=f"Debate completed after {engine.state.rounds_completed} rounds.",
                     )
                 )
+                # Save AgentSession
+                try:
+                    from workbench.core.db import get_session_factory
+                    session_factory = get_session_factory()
+                    async with session_factory() as db_session:
+                        state = engine.state
+                        agent_session = AgentSession(
+                            user_id=uuid4(),  # placeholder — actual user stored in entry
+                            agent_name="debate",
+                            session_id=debate_id,
+                            title=state.topic,
+                            state_json=state.model_dump(),
+                            content=None,
+                            content_format="markdown",
+                            metadata_json={
+                                "rounds": state.rounds_completed,
+                                "max_rounds": state.max_rounds,
+                                "agent_count": len(state.agents),
+                                "status": state.status,
+                            },
+                        )
+                        entry = self._engines.get(debate_id)
+                        if entry:
+                            from uuid import UUID
+                            try:
+                                agent_session.user_id = UUID(entry.get("user_id", ""))
+                            except Exception:
+                                pass
+                        db_session.add(agent_session)
+                        await db_session.commit()
+                except Exception:
+                    logger.exception("Failed to save AgentSession for debate %s", debate_id)
         finally:
             await client.close()
 

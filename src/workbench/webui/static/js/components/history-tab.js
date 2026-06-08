@@ -1,32 +1,70 @@
-/** History / Reports Tab Component
- *  Displays past research reports with view, export, copy, and delete actions.
+/** History Tab Component
+ *  Displays all past agent sessions in a unified, filterable list.
+ *  Supports view, PDF export, and delete actions.
  */
 
 (function () {
   Router.register('history', renderHistoryTab);
 
+  var agentColors = {
+    research: '#4a90d9',
+    planning: '#7b61ff',
+    debate: '#e67e22',
+    chat: '#27ae60',
+    deliberation: '#8e44ad',
+    news: '#e74c3c',
+  };
+
+  var agentLabels = {
+    research: 'Research',
+    planning: 'Planning',
+    debate: 'Debate',
+    chat: 'Chat',
+    deliberation: 'Deliberation',
+    news: 'News',
+  };
+
   function renderHistoryTab(container) {
     container.innerHTML = ''
       + '<div style="max-width:900px;margin:0 auto">'
-      +   '<h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Research History</h2>'
+      +   '<h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Agent History</h2>'
+      +   '<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px">'
+      +     '<label style="font-size:13px;color:var(--text-secondary);font-weight:500">Filter:</label>'
+      +     '<select id="history-agent-filter" class="form-input" style="max-width:200px">'
+      +       '<option value="">All Agents</option>'
+      +       '<option value="research">Research</option>'
+      +       '<option value="planning">Planning</option>'
+      +       '<option value="debate">Debate</option>'
+      +       '<option value="chat">Chat</option>'
+      +       '<option value="deliberation">Deliberation</option>'
+      +       '<option value="news">News</option>'
+      +     '</select>'
+      +   '</div>'
       +   '<div class="card">'
-      +     '<div class="card-header">Saved Reports</div>'
+      +     '<div class="card-header">Saved Sessions</div>'
       +     '<div id="history-content" style="padding:8px 0">'
-      +       '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading reports...</div>'
+      +       '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading sessions...</div>'
       +     '</div>'
       +   '</div>'
       + '</div>';
 
-    loadReports();
+    var filterEl = document.getElementById('history-agent-filter');
+    filterEl.addEventListener('change', function () {
+      loadSessions(filterEl.value);
+    });
+
+    loadSessions(filterEl.value);
   }
 
-  function loadReports() {
+  function loadSessions(selectedAgent) {
     var content = document.getElementById('history-content');
-    API.listReports()
-      .then(function (reports) {
-        if (!reports || reports.length === 0) {
+    content.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading sessions...</div>';
+
+    API.listSessions(selectedAgent || undefined)
+      .then(function (sessions) {
+        if (!sessions || sessions.length === 0) {
           content.innerHTML = '<div style="text-align:center;padding:32px 16px;color:var(--text-muted)">'
-            + 'No research reports yet. Start a deep research task to generate your first report.'
+            + 'No sessions found' + (selectedAgent ? ' for this agent type.' : '.')
             + '</div>';
           return;
         }
@@ -34,6 +72,7 @@
         var tableHtml = '<table style="width:100%;border-collapse:collapse;font-size:13px">'
           + '<thead><tr style="border-bottom:1px solid var(--border-color)">'
           + '<th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Date</th>'
+          + '<th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Agent</th>'
           + '<th style="padding:8px 12px;text-align:left;font-weight:600;color:var(--text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Title</th>'
           + '<th style="padding:8px 12px;text-align:right;font-weight:600;color:var(--text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Words</th>'
           + '<th style="padding:8px 12px;text-align:right;font-weight:600;color:var(--text-secondary);font-size:11px;text-transform:uppercase;letter-spacing:0.5px">Actions</th>'
@@ -42,55 +81,57 @@
         content.innerHTML = tableHtml;
 
         var tbody = document.getElementById('history-table-body');
-        reports.forEach(function (r) {
-          var date = r.created_at ? r.created_at.split('T')[0] : '';
-          var title = Utils.escapeHtml(r.title.length > 80 ? r.title.substring(0, 77) + '...' : r.title);
+        sessions.forEach(function (s) {
+          var date = s.created_at ? s.created_at.split('T')[0] : '';
+          var agent = s.agent_name || 'unknown';
+          var color = agentColors[agent] || '#888';
+          var label = agentLabels[agent] || agent;
+          var title = Utils.escapeHtml((s.title || '').length > 80 ? s.title.substring(0, 77) + '...' : s.title || 'Untitled');
           var row = document.createElement('tr');
           row.style.borderBottom = '1px solid var(--border-color)';
           row.innerHTML = ''
             + '<td style="padding:8px 12px;color:var(--text-muted);font-size:12px">' + date + '</td>'
+            + '<td style="padding:8px 12px"><span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:' + color + '22;color:' + color + '">' + Utils.escapeHtml(label) + '</span></td>'
             + '<td style="padding:8px 12px">' + title + '</td>'
-            + '<td style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:12px">' + (r.word_count || 0) + '</td>'
+            + '<td style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:12px">' + (s.word_count || 0) + '</td>'
             + '<td style="padding:8px 12px;text-align:right;white-space:nowrap">'
-            + '<button class="btn btn-secondary btn-sm" data-action="view" data-id="' + r.id + '" style="margin-right:4px">View</button>'
-            + '<button class="btn btn-secondary btn-sm" data-action="pdf" data-id="' + r.id + '" data-title="' + Utils.escapeHtml(r.title) + '" style="margin-right:4px">PDF</button>'
-            + '<button class="btn btn-secondary btn-sm" data-action="copy" data-id="' + r.id + '" style="margin-right:4px">Copy MD</button>'
-            + '<button class="btn btn-danger btn-sm" data-action="delete" data-id="' + r.id + '" data-title="' + Utils.escapeHtml(r.title) + '">Del</button>'
+            + '<button class="btn btn-secondary btn-sm" data-action="view" data-id="' + s.id + '" style="margin-right:4px">View</button>'
+            + '<button class="btn btn-secondary btn-sm" data-action="pdf" data-id="' + s.id + '" data-title="' + Utils.escapeHtml(s.title || 'Session') + '" style="margin-right:4px">PDF</button>'
+            + '<button class="btn btn-danger btn-sm" data-action="delete" data-id="' + s.id + '" data-title="' + Utils.escapeHtml(s.title || 'Session') + '">Del</button>'
             + '</td>';
           tbody.appendChild(row);
         });
 
         // Wire up action buttons
         content.querySelectorAll('[data-action="view"]').forEach(function (btn) {
-          btn.addEventListener('click', function () { viewReport(btn.dataset.id); });
+          btn.addEventListener('click', function () { viewSession(btn.dataset.id); });
         });
         content.querySelectorAll('[data-action="pdf"]').forEach(function (btn) {
-          btn.addEventListener('click', function () { exportReportPdf(btn.dataset.id, btn.dataset.title); });
-        });
-        content.querySelectorAll('[data-action="copy"]').forEach(function (btn) {
-          btn.addEventListener('click', function () { copyReport(btn.dataset.id); });
+          btn.addEventListener('click', function () { exportSessionPdf(btn.dataset.id, btn.dataset.title); });
         });
         content.querySelectorAll('[data-action="delete"]').forEach(function (btn) {
-          btn.addEventListener('click', function () { deleteReport(btn.dataset.id, btn.dataset.title); });
+          btn.addEventListener('click', function () { deleteSession(btn.dataset.id, btn.dataset.title); });
         });
       })
       .catch(function () {
         content.innerHTML = '<div style="text-align:center;padding:32px">'
-          + '<div style="color:var(--danger);margin-bottom:12px">Could not load reports</div>'
-          + '<button class="btn btn-primary btn-sm" onclick="window._historyLoadReports()">Retry</button>'
+          + '<div style="color:var(--danger);margin-bottom:12px">Could not load sessions</div>'
+          + '<button class="btn btn-primary btn-sm" onclick="window._historyLoadSessions()">Retry</button>'
           + '</div>';
-        window._historyLoadReports = loadReports;
+        window._historyLoadSessions = function () {
+          var filterEl = document.getElementById('history-agent-filter');
+          loadSessions(filterEl ? filterEl.value : '');
+        };
       });
   }
 
-  function viewReport(id) {
+  function viewSession(id) {
     var content = document.getElementById('history-content');
-    // Show loading
-    content.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading report...</div>';
+    content.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading session...</div>';
 
-    API.getReport(id)
-      .then(function (report) {
-        var md = Utils.escapeHtml(report.content || '')
+    API.getSession(id)
+      .then(function (session) {
+        var md = Utils.escapeHtml(session.content || '')
           .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
           .replace(/\*(.+?)\*/g, '<em>$1</em>')
           .replace(/`([^`]+)`/g, '<code>$1</code>')
@@ -103,12 +144,36 @@
           .replace(/\n\n/g, '</p><p style="margin-bottom:8px;line-height:1.7">')
           .replace(/\n/g, '<br>');
 
+        var agent = session.agent_name || 'unknown';
+        var color = agentColors[agent] || '#888';
+        var label = agentLabels[agent] || agent;
+        var date = session.created_at ? session.created_at.split('T')[0] : '';
+        var metaHtml = '';
+        if (session.metadata) {
+          try {
+            var meta = typeof session.metadata === 'string' ? JSON.parse(session.metadata) : session.metadata;
+            var metaItems = [];
+            Object.keys(meta).forEach(function (k) {
+              var val = typeof meta[k] === 'object' ? JSON.stringify(meta[k]) : String(meta[k]);
+              metaItems.push('<span style="font-size:11px;color:var(--text-muted)"><strong>' + Utils.escapeHtml(k) + ':</strong> ' + Utils.escapeHtml(val.length > 60 ? val.substring(0, 57) + '...' : val) + '</span>');
+            });
+            if (metaItems.length) metaHtml = '<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">' + metaItems.join('') + '</div>';
+          } catch (_e) {}
+        }
+
         content.innerHTML = ''
           + '<div style="padding:8px 0">'
           + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
-          + '<h3 style="margin:0;font-size:16px;font-weight:600">' + Utils.escapeHtml(report.title || 'Report') + '</h3>'
+          + '<h3 style="margin:0;font-size:16px;font-weight:600">' + Utils.escapeHtml(session.title || 'Session') + '</h3>'
           + '<button class="btn btn-secondary btn-sm" id="btn-back-to-list">Back to List</button>'
           + '</div>'
+          + '<div style="display:flex;gap:12px;margin-bottom:12px;font-size:12px;color:var(--text-secondary)">'
+          + '<span>Agent: <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;background:' + color + '22;color:' + color + '">' + Utils.escapeHtml(label) + '</span></span>'
+          + '<span>Date: ' + date + '</span>'
+          + '<span>Words: ' + (session.word_count || 0) + '</span>'
+          + '<span>Length: ' + (session.content_length || 0) + ' chars</span>'
+          + '</div>'
+          + metaHtml
           + '<div style="line-height:1.7;font-size:13px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px">'
           + '<p style="margin-bottom:8px;line-height:1.7">' + md + '</p>'
           + '</div>'
@@ -120,40 +185,27 @@
       })
       .catch(function (e) {
         content.innerHTML = '<div style="text-align:center;padding:24px;color:var(--danger)">'
-          + 'Failed to load report: ' + Utils.escapeHtml(e.message) + '</div>';
+          + 'Failed to load session: ' + Utils.escapeHtml(e.message) + '</div>';
       });
   }
 
-  function exportReportPdf(id, title) {
-    API.getReport(id)
-      .then(function (report) {
-        Utils.exportMarkdownAsPdf(report.content, title || report.title || 'Report');
+  function exportSessionPdf(id, title) {
+    API.getSession(id)
+      .then(function (session) {
+        Utils.exportMarkdownAsPdf(session.content || '', title || session.title || 'Session');
       })
       .catch(function (e) {
         Utils.showToast('Export failed: ' + e.message, 'error');
       });
   }
 
-  function copyReport(id) {
-    API.getReport(id)
-      .then(function (report) {
-        navigator.clipboard.writeText(report.content || '').then(function () {
-          Utils.showToast('Copied to clipboard', 'success');
-        }).catch(function () {
-          Utils.showToast('Could not copy to clipboard', 'error');
-        });
-      })
-      .catch(function (e) {
-        Utils.showToast('Failed: ' + e.message, 'error');
-      });
-  }
-
-  function deleteReport(id, title) {
-    if (!confirm('Delete report "' + title + '"?')) return;
-    API.deleteReport(id)
+  function deleteSession(id, title) {
+    if (!confirm('Delete session "' + title + '"?')) return;
+    API.deleteSession(id)
       .then(function () {
-        Utils.showToast('Report deleted', 'info');
-        loadReports();
+        Utils.showToast('Session deleted', 'info');
+        var filterEl = document.getElementById('history-agent-filter');
+        loadSessions(filterEl ? filterEl.value : '');
       })
       .catch(function (e) {
         Utils.showToast('Delete failed: ' + e.message, 'error');

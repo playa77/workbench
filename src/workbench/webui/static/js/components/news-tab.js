@@ -11,6 +11,104 @@
       </div>`;
 
     await loadInterests();
+
+    renderNewsPastSessions();
+  }
+
+  // Past News Sessions
+  var newsPastLoaded = false;
+
+  function renderNewsPastSessions() {
+    var content = document.getElementById('news-content');
+    if (!content) return;
+    content.insertAdjacentHTML('afterend', ''
+      + '<div class="card" style="margin-top:24px">'
+      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="news-past-toggle">'
+      +     '<span>Past News Sessions</span>'
+      +     '<span id="news-past-arrow" style="font-size:12px">&#x25BC;</span>'
+      +   '</div>'
+      +   '<div id="news-past-sessions" style="display:none;padding:8px 0">'
+      +     '<div style="text-align:center;padding:12px;color:var(--text-muted)">Loading...</div>'
+      +   '</div>'
+      + '</div>'
+    );
+
+    document.getElementById('news-past-toggle').addEventListener('click', function () {
+      var body = document.getElementById('news-past-sessions');
+      var arrow = document.getElementById('news-past-arrow');
+      if (body.style.display === 'none') {
+        body.style.display = 'block';
+        arrow.innerHTML = '&#x25B2;';
+        if (!newsPastLoaded) {
+          newsPastLoaded = true;
+          loadNewsPastSessions();
+        }
+      } else {
+        body.style.display = 'none';
+        arrow.innerHTML = '&#x25BC;';
+      }
+    });
+  }
+
+  function loadNewsPastSessions() {
+    var body = document.getElementById('news-past-sessions');
+    API.listSessions('news').then(function (sessions) {
+      if (!sessions || sessions.length === 0) {
+        body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No past news sessions</div>';
+        return;
+      }
+      var recent = sessions.slice(0, 10);
+      body.innerHTML = recent.map(function (s) {
+        var date = s.created_at ? s.created_at.split('T')[0] : '';
+        var title = Utils.escapeHtml((s.title || 'News').length > 60 ? s.title.substring(0, 57) + '...' : s.title || 'News');
+        return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border-color);cursor:pointer" data-session-id="' + s.id + '" class="news-past-item">'
+          + '<span style="font-size:12px;color:var(--text-muted);flex-shrink:0;margin-right:12px">' + date + '</span>'
+          + '<span style="font-size:13px;flex:1">' + title + '</span>'
+          + '<span style="font-size:11px;color:var(--text-muted);flex-shrink:0">' + (s.word_count || 0) + ' words</span>'
+          + '</div>';
+      }).join('');
+      body.querySelectorAll('.news-past-item').forEach(function (el) {
+        el.addEventListener('click', function () {
+          loadPastNewsSession(el.dataset.sessionId);
+        });
+      });
+    }).catch(function () {
+      body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--danger);font-size:12px">Failed to load sessions</div>';
+    });
+  }
+
+  function loadPastNewsSession(id) {
+    var container = document.getElementById('active-tab-content');
+    if (!container) return;
+    container.innerHTML = '<div style="max-width:900px;margin:0 auto"><div style="text-align:center;padding:40px;color:var(--text-muted)">Loading news session...</div></div>';
+    API.getSession(id).then(function (session) {
+      var md = Utils.escapeHtml(session.content || '')
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/^### (.+)$/gm, '<h3 style="margin:20px 0 8px;font-size:16px;font-weight:600">$1</h3>')
+        .replace(/^## (.+)$/gm, '<h2 style="margin:24px 0 12px;font-size:18px;font-weight:700">$1</h2>')
+        .replace(/^# (.+)$/gm, '<h1 style="margin:28px 0 16px;font-size:20px;font-weight:700">$1</h1>')
+        .replace(/^> (.+)$/gm, '<blockquote style="border-left:3px solid var(--accent);padding:4px 12px;margin:8px 0;color:var(--text-muted);font-style:italic">$1</blockquote>')
+        .replace(/^[-*] (.+)$/gm, '<li style="margin-left:20px">$1</li>')
+        .replace(/\n\n/g, '</p><p style="margin-bottom:8px;line-height:1.7">')
+        .replace(/\n/g, '<br>');
+
+      container.innerHTML = ''
+        + '<div style="max-width:900px;margin:0 auto">'
+        + '<div style="padding:8px 0">'
+        + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
+        + '<h3 style="margin:0;font-size:16px;font-weight:600">' + Utils.escapeHtml(session.title || 'News Session') + '</h3>'
+        + '<button class="btn btn-secondary btn-sm" onclick="javascript:Router.setActive(\'news\')">Back to News</button>'
+        + '</div>'
+        + '<div style="line-height:1.7;font-size:13px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px">'
+        + '<p style="margin-bottom:8px;line-height:1.7">' + md + '</p>'
+        + '</div>'
+        + '</div>'
+        + '</div>';
+    }).catch(function (e) {
+      container.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+    });
   }
 
   async function loadInterests() {

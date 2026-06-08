@@ -144,12 +144,14 @@ def _register_core_routes(app: FastAPI) -> None:
     from workbench.api.routes import auth, health
     from workbench.api.routes import config as config_routes
     from workbench.api.routes import reports as report_routes
+    from workbench.api.routes import sessions as session_routes
     app.include_router(health.router, tags=["core"])
     app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
     app.include_router(admin_routes.router, prefix="/api/v1", tags=["admin"])
     app.include_router(config_routes.router, prefix="/api/v1", tags=["config"])
     app.include_router(agent_routes.router, prefix="/api/v1", tags=["agents"])
     app.include_router(report_routes.router, prefix="/api/v1", tags=["reports"])
+    app.include_router(session_routes.router, prefix="/api/v1", tags=["sessions"])
 
     agent_registry = get_registry()
     agent_registry.mount_all(app)

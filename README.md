@@ -22,6 +22,7 @@ Run locally or deploy to a VPS with full HTTPS (Let's Encrypt + nginx). Bring yo
 | **Strategic Planning** | Planning | Generates any of 9 plan types: project plans, SWOT analyses, WBS, schedules, root cause analyses, pitch decks, governance frameworks, team compositions, or executive summaries. |
 | **Math Tutor** | Math | Step-by-step problem solving with LaTeX rendering. Explains reasoning, not just answers. |
 | **Knowledge Base** | Knowledge | Create document collections, upload files, and query them with RAG-style retrieval. |
+| **History** | History | Unified searchable list of all past agent sessions. Filter by agent type, view full state, export as PDF. |
 | **Open WebUI** | Open WebUI | Full chat-first LLM interface with model management, RAG, and multimodality. Runs alongside the agent tabs in its own iframe, proxied through nginx. |
 
 ---
@@ -96,7 +97,9 @@ cp .env.example .env
 docker compose --profile openwebui up -d
 ```
 
-This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and Open WebUI on port 3000. All bind to `127.0.0.1` only.
+This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and Open WebUI on port 3000. All bind to `127.0.0.1` only. The workbench service uses `restart: unless-stopped` so containers auto-restart on crash.
+
+The Docker image includes the **tectonic** LaTeX engine (v0.15.0) for PDF export. No additional system packages are needed.
 
 For production deployment -- nginx reverse proxy, Let's Encrypt TLS, CORS, HSTS -- see [DEPLOYMENT.md](DEPLOYMENT.md).
 
@@ -186,6 +189,7 @@ The web UI is a vanilla JavaScript SPA at `src/workbench/webui/static/`. No fram
 | `components/planning-tab.js` | 9 plan types, SSE generation |
 | `components/math-tutor-tab.js` | Math tutor with LaTeX equation builder |
 | `components/knowledge-tab.js` | Knowledge base management: collections, uploads, queries |
+| `components/history-tab.js` | Unified agent session history with filter, view, PDF export |
 | `components/owui-tab.js` | Open WebUI health check + iframe |
 
 ---
@@ -223,6 +227,7 @@ workbench/
 ├── src/workbench/                   # Core infrastructure
 │   ├── main.py                      # CLI entry point
 │   ├── api/                         # FastAPI app, routes, dependency injection
+│   │   └── routes/sessions.py       # Agent session history API
 │   ├── core/                        # Config, DB, auth, models, encryption, agent registry
 │   ├── shared/                      # Canonical shared primitives (LLM router, config loader, DB session)
 │   ├── services/                    # Domain logic (debate engine, news pipeline, research orchestrator, etc.)
@@ -239,6 +244,7 @@ workbench/
 │           ├── chat-tab.js          # Chat UI
 │           ├── debate-tab.js        # Debate arena
 │           ├── deliberation-tab.js  # Deliberation UI
+│           ├── history-tab.js      # Unified agent session history
 │           ├── knowledge-tab.js     # Knowledge base management
 │           ├── math-tutor-tab.js    # Math tutor with LaTeX rendering
 │           ├── news-tab.js          # News pipeline
@@ -247,7 +253,7 @@ workbench/
 │           └── research-tab.js      # Research UI
 │
 ├── config/default.toml              # Default configuration
-├── alembic/                         # Database migrations (3 versions)
+├── alembic/                         # Database migrations (9 versions)
 ├── tests/                           # pytest suite (46 tests)
 ├── docker-compose.yml               # Docker deployment (PG + Workbench + Open WebUI)
 ├── Dockerfile                       # python:3.12-slim, news+research extras
@@ -273,6 +279,9 @@ Check that the agent is toggled on in Settings. Each agent only activates when e
 
 **Rate limited (429)**
 Default limits are 5/min for auth, 60/min for agents, 120/min general. Adjust via `config/default.toml` or environment variables.
+
+**PDF export fails or "tectonic command not found"**
+On bare-metal, the tectonic LaTeX engine is not installed by pip. Install it manually — see the Troubleshooting section of [DEPLOYMENT.md](DEPLOYMENT.md) for instructions.
 
 **The server won't start on port 8420**
 The port is already in use. Change it: `workbench serve --port 9000`.

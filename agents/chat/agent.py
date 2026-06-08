@@ -1,5 +1,7 @@
 """Chat Agent — LLM chat with the workbench infrastructure."""
 
+from uuid import uuid4
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
-from workbench.core.models import User
+from workbench.core.models import AgentSession, User
 from workbench.core.router import OpenRouterClient
 
 
@@ -40,6 +42,33 @@ class ChatAgent(AgentBase):
                 temperature=body.temperature,
                 max_tokens=body.max_tokens or 4096,
             )
+            # Save AgentSession
+            try:
+                session_id = str(uuid4())
+                title = (body.message[:100] + "...") if len(body.message) > 100 else body.message
+                agent_session = AgentSession(
+                    user_id=user.id,
+                    agent_name="chat",
+                    session_id=session_id,
+                    title=title,
+                    state_json={
+                        "messages": [
+                            {"role": "user", "content": body.message},
+                            {"role": "assistant", "content": response},
+                        ],
+                    },
+                    content=response,
+                    content_format="text",
+                    metadata_json={
+                        "model": body.model or "deepseek/deepseek-v4-pro",
+                        "temperature": body.temperature,
+                    },
+                )
+                session.add(agent_session)
+                await session.commit()
+            except Exception:
+                logger = __import__("logging").getLogger(__name__)
+                logger.exception("Failed to save AgentSession for chat")
             return {"response": response}
         finally:
             await client.close()
