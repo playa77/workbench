@@ -21,6 +21,41 @@ from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
 
+# Common words for simple language detection heuristic
+_GERMAN_WORDS: set[str] = {
+    "der", "die", "das", "und", "ist", "sind", "ein", "eine", "auf", "für",
+    "mit", "von", "zu", "im", "den", "dem", "des", "sich", "nicht", "auch",
+    "werden", "hat", "bei", "nach", "aus", "über", "zum", "zur", "unter",
+    "vor", "zwischen", "durch", "gegen", "ohne", "um", "bis", "seit", "ab",
+    "an", "dass", "wenn", "aber", "oder", "weil",
+}
+
+_ENGLISH_WORDS: set[str] = {
+    "the", "a", "an", "and", "is", "are", "was", "were", "for", "with",
+    "from", "to", "in", "on", "at", "by", "of", "that", "this", "it",
+    "not", "also", "will", "has", "have", "but", "or", "because",
+}
+
+
+def detect_language(text: str) -> str:
+    """Detect whether text is German or English using word frequency heuristics.
+
+    Counts occurrences of common German vs English words.
+    If German words > English words * 1.5, returns "de", otherwise "en".
+    Falls back to "en" on any error.
+    """
+    if not text:
+        return "en"
+    try:
+        words = text.lower().split()
+        if not words:
+            return "en"
+        de_count = sum(1 for w in words if w in _GERMAN_WORDS)
+        en_count = sum(1 for w in words if w in _ENGLISH_WORDS)
+        return "de" if de_count > en_count * 1.5 else "en"
+    except Exception:
+        return "en"
+
 
 class NewsPipeline:
     def __init__(self, store: Any, session: Any):
@@ -262,16 +297,31 @@ class NewsPipeline:
         target_brief = interest.get("target_brief_words", 600)
         model = interest.get("brief_model") or "deepseek/deepseek-v4-pro"
 
+        # Detect language from content
+        language = detect_language(theme_summaries)
+
         try:
-            prompt = (
-                "Synthesize a daily news brief from these themes:\n\n"
-                f"{theme_summaries}\n\n"
-                f"Write a cohesive {target_brief}-word brief that ties these themes together, "
-                "highlighting connections and key takeaways."
-            )
+            if language == "de":
+                prompt = (
+                    "Fasse diese Nachrichtenthemen zu einer täglichen Kurznachricht zusammen:\n\n"
+                    f"{theme_summaries}\n\n"
+                    f"Schreibe einen zusammenhängenden {target_brief}-Wörter-Bericht, "
+                    "der diese Themen verbindet und Zusammenhänge sowie wichtige Erkenntnisse hervorhebt. "
+                    "Schreibe auf Deutsch. Verwende deutsche Überschriften."
+                )
+                system_content = "Du bist ein Redaktionsleiter. Schreibe prägnante, aufschlussreiche tägliche Nachrichten auf Deutsch."
+            else:
+                prompt = (
+                    "Synthesize a daily news brief from these themes:\n\n"
+                    f"{theme_summaries}\n\n"
+                    f"Write a cohesive {target_brief}-word brief that ties these themes together, "
+                    "highlighting connections and key takeaways."
+                )
+                system_content = "You are an executive editor. Write concise, insightful daily briefs."
+
             response = await llm.chat_completion(
                 messages=[
-                    {"role": "system", "content": "You are an executive editor. Write concise, insightful daily briefs."},
+                    {"role": "system", "content": system_content},
                     {"role": "user", "content": prompt},
                 ],
                 model=model,
@@ -279,6 +329,6 @@ class NewsPipeline:
                 max_tokens=1500,
             )
             await self._store.insert_brief(run_id, response)
-            logger.info("Generated daily brief for run %d", run_id)
+            logger.info("Generated daily brief for run %d (language=%s)", run_id, language)
         except Exception as exc:
             logger.error("Brief generation failed: %s", exc)

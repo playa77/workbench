@@ -17,6 +17,42 @@ from pydantic import BaseModel, Field
 
 # ---- Data Models ----
 
+# Common words for simple language detection heuristic
+_GERMAN_WORDS: set[str] = {
+    "der", "die", "das", "und", "ist", "sind", "ein", "eine", "auf", "für",
+    "mit", "von", "zu", "im", "den", "dem", "des", "sich", "nicht", "auch",
+    "werden", "hat", "bei", "nach", "aus", "über", "zum", "zur", "unter",
+    "vor", "zwischen", "durch", "gegen", "ohne", "um", "bis", "seit", "ab",
+    "an", "dass", "wenn", "aber", "oder", "weil",
+}
+
+_ENGLISH_WORDS: set[str] = {
+    "the", "a", "an", "and", "is", "are", "was", "were", "for", "with",
+    "from", "to", "in", "on", "at", "by", "of", "that", "this", "it",
+    "not", "also", "will", "has", "have", "but", "or", "because",
+}
+
+
+def detect_language(text: str) -> str:
+    """Detect whether text is German or English using word frequency heuristics.
+
+    Counts occurrences of common German vs English words.
+    If German words > English words * 1.5, returns "de", otherwise "en".
+    Falls back to "en" on any error.
+    """
+    if not text:
+        return "en"
+    try:
+        words = text.lower().split()
+        if not words:
+            return "en"
+        de_count = sum(1 for w in words if w in _GERMAN_WORDS)
+        en_count = sum(1 for w in words if w in _ENGLISH_WORDS)
+        return "de" if de_count > en_count * 1.5 else "en"
+    except Exception:
+        return "en"
+
+
 
 class AgentConfig(BaseModel):
     """Configuration for a single debate agent."""
@@ -59,6 +95,7 @@ class DebateState(BaseModel):
     current_turn_index: int = 0
     rounds_completed: int = 0
     max_rounds: int = 50
+    language: str = "auto"  # "auto", "en", or "de"
     last_updated: str = Field(
         default_factory=lambda: datetime.now(UTC).isoformat()
     )
@@ -106,6 +143,21 @@ _ROLES = [
     ("debitist", "Debitist", "Debt-based, monetary system perspective"),
 ]
 
+_ROLE_NAMES_DE: dict[str, str] = {
+    "optimist": "Optimist",
+    "pessimist": "Pessimist",
+    "pragmatist": "Pragmatiker",
+    "strategist": "Stratege",
+    "contrarian": "Querdenker",
+    "historian": "Historiker",
+    "futurist": "Zukunftsforscher",
+    "capitalist": "Kapitalist",
+    "marxist": "Marxist",
+    "stoic": "Stoiker",
+    "machiavelli": "Machiavelli",
+    "debitist": "Debitist",
+}
+
 
 def get_roles() -> list[dict[str, str]]:
     return [{"id": rid, "name": rname, "description": rdesc} for rid, rname, rdesc in _ROLES]
@@ -130,12 +182,16 @@ class DebateEngine:
         topic: str,
         agents: list[AgentConfig],
         max_rounds: int = 10,
+        language: str = "auto",
     ) -> None:
+        if language == "auto":
+            language = detect_language(topic)
         self.state = DebateState(
             topic=topic,
             agents=agents,
             max_rounds=max_rounds,
             status="IDLE",
+            language=language,
         )
 
     def start(self) -> None:
@@ -193,11 +249,22 @@ class DebateEngine:
         )
         return "\n\n".join(f"{m.sender_name}: {m.content}" for m in recent)
 
-    def build_prompt_for_agent(self, history_limit: int = 10) -> tuple[str, str]:
-        """Build system + user prompt for the current agent's turn."""
+    def build_prompt_for_agent(self, history_limit: int = 10, language: str | None = None) -> tuple[str, str]:
+        """Build system + user prompt for the current agent's turn.
+
+        Args:
+            history_limit: Number of recent messages to include as context.
+            language: ISO language code ("en", "de") or None to use the
+                language from DebateState (which may have been auto-detected).
+        """
         agent = self.get_current_agent()
         if not agent:
             raise RuntimeError("No current agent")
+
+        if language is None:
+            language = self.state.language
+        if language == "auto":
+            language = detect_language(self.state.topic)
 
         transcript = self.get_context_for_current_turn(history_limit)
 
@@ -208,14 +275,27 @@ class DebateEngine:
                 last_msg.content, last_msg.influence_weight
             )
 
-        system = agent.system_prompt
-        user = (
-            f"The debate topic is: {self.state.topic}\n\n"
-            f"Recent transcript:\n{transcript}\n\n"
-            f"{injection_instruction}\n\n"
-            f"It is now your turn. Respond as {agent.name}. "
-            f"Keep it concise (under 200 words). React to the previous speaker."
-        )
+        if language == "de":
+            de_name = _ROLE_NAMES_DE.get(agent.id, agent.name)
+            system = agent.system_prompt.replace(agent.name, de_name)
+            if "Schreibe auf Deutsch" not in system:
+                system += "\n\nSchreibe auf Deutsch."
+            user = (
+                f"Das Debattenthema ist: {self.state.topic}\n\n"
+                f"Aktuelles Transkript:\n{transcript}\n\n"
+                f"{injection_instruction}\n\n"
+                f"Du bist an der Reihe. Antworte als {de_name}. "
+                f"Halte es kurz (unter 200 Wörter). Reagiere auf den vorherigen Sprecher."
+            )
+        else:
+            system = agent.system_prompt
+            user = (
+                f"The debate topic is: {self.state.topic}\n\n"
+                f"Recent transcript:\n{transcript}\n\n"
+                f"{injection_instruction}\n\n"
+                f"It is now your turn. Respond as {agent.name}. "
+                f"Keep it concise (under 200 words). React to the previous speaker."
+            )
         return system, user
 
     def to_dict(self) -> dict[str, Any]:

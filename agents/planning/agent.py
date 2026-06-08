@@ -27,6 +27,29 @@ logger = logging.getLogger(__name__)
 
 SESSION_TTL_SECONDS = 3600
 
+# Simple language detection: count German vs English common words
+_DE_WORDS = frozenset({
+    "der", "die", "das", "und", "ist", "sind", "ein", "eine", "auf", "für",
+    "mit", "von", "zu", "im", "den", "dem", "des", "sich", "nicht", "auch",
+    "werden", "hat", "bei", "nach", "aus", "über", "zum", "zur", "unter",
+    "vor", "zwischen", "durch", "gegen", "ohne", "um", "bis", "seit",
+    "dass", "wenn", "aber", "oder", "weil", "kann", "soll", "wurde",
+})
+_EN_WORDS = frozenset({
+    "the", "a", "an", "and", "is", "are", "was", "were", "for", "with",
+    "from", "to", "in", "on", "at", "by", "of", "that", "this", "it",
+    "not", "also", "will", "has", "have", "but", "or", "because",
+})
+
+def _detect_language(text: str) -> str:
+    """Detect whether text is German or English by counting common words."""
+    words = text.lower().split()
+    de_count = sum(1 for w in words if w in _DE_WORDS)
+    en_count = sum(1 for w in words if w in _EN_WORDS)
+    if de_count > en_count * 1.5:
+        return "de"
+    return "en"
+
 
 class PlanningAgent(AgentBase):
     name = "planning"
@@ -82,6 +105,7 @@ class PlanningAgent(AgentBase):
 
         client = OpenRouterClient(api_key=or_key)
         service = PlanningService(client)
+        lang = _detect_language(body.goal)
 
         async def generate_sse():
             task = asyncio.create_task(
@@ -90,6 +114,7 @@ class PlanningAgent(AgentBase):
                     plan_type=plan_type,
                     model=body.model,
                     temperature=body.temperature,
+                    language=lang,
                 )
             )
 

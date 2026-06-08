@@ -887,9 +887,13 @@ await renderTabs();
 
 ### PDF export fails with "tectonic command not found"
 
-PDF export uses the **tectonic** LaTeX engine, which is included in the Docker image but not installed by `pip install` on bare-metal. Install it manually:
+PDF export uses the **tectonic** LaTeX engine, which is included in the Docker image but not installed by `pip install` on bare-metal. Install it manually along with the required fonts:
 
 ```bash
+# 1. Install required fonts
+sudo apt-get install -y fonts-linuxlibertine fonts-inconsolata
+
+# 2. Install tectonic
 python3 -c "
 import urllib.request, tarfile, os, stat
 url = 'https://github.com/tectonic-typesetting/tectonic/releases/download/tectonic%400.15.0/tectonic-0.15.0-x86_64-unknown-linux-gnu.tar.gz'
@@ -900,7 +904,17 @@ os.chmod('/usr/local/bin/tectonic', 0o755)
 "
 ```
 
-Verify the installation with `tectonic --version`.
+Verify with `tectonic --version` and `fc-list | grep -i liber`.
+
+### PDF export fails with "font cannot be found"
+
+If tectonic compiles but fontspec fails to find Linux Libertine or Inconsolata, the Debian font packages may be missing:
+
+```bash
+sudo apt-get install -y fonts-linuxlibertine fonts-inconsolata
+```
+
+The LaTeX template loads fonts by explicit path (`/usr/share/fonts/opentype/linux-libertine/`), so the OTF files must be present at those locations.
 
 ---
 

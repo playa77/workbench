@@ -345,6 +345,18 @@ _LATEX_SPECIAL = [
 ]
 
 
+def _tie_heading(text: str) -> str:
+    """Prevent line breaks at commas in headings and titles.
+
+    In LaTeX, a comma followed by a space is a valid line-breaking point.
+    This makes headings like "Widersprüche, Debatten" wrap ugly: the comma
+    ends up isolated at the end of a line.  Replacing ", " with ",~" ties
+    the comma to the following word via a non-breaking space (~), so the
+    comma never sits alone at a line boundary.
+    """
+    return text.replace(", ", ",~")
+
+
 def _escape_latex(text: str) -> str:
     """Escape LaTeX special characters in plain text."""
     for char, replacement in _LATEX_SPECIAL:
@@ -474,99 +486,117 @@ def _convert_table(lines: list[str]) -> str:
 # LaTeX document template
 # ---------------------------------------------------------------------------
 
-_LATEX_TEMPLATE = r"""\documentclass[11pt,a4paper]{{article}}
+_LATEX_TEMPLATE = r"""\documentclass[11pt,a4paper]{article}
 
 % --- Page setup ---
-\usepackage[a4paper, left=25mm, right=25mm, top=30mm, bottom=25mm]{{geometry}}
-\usepackage{{fancyhdr}}
-\usepackage{{lastpage}}
-\usepackage{{titlesec}}
-\usepackage{{hyperref}}
-\usepackage{{xcolor}}
-\usepackage{{fontspec}}
-\usepackage{{listings}}
-\usepackage{{booktabs}}
-\usepackage{{enumitem}}
-\usepackage{{parskip}}
+\usepackage[a4paper, left=25mm, right=25mm, top=30mm, bottom=25mm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{titlesec}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{fontspec}
+\usepackage{listings}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{parskip}
 
-% --- Fonts: Linux Libertine (modern professional) ---
-\setmainfont{{Linux Libertine O}}
-\setsansfont{{Linux Biolinum O}}
-\setmonofont{{Inconsolata}}
+% --- Fonts: Linux Libertine + Biolinum + Inconsolata (modern professional) ---
+% Use Path-based loading: more robust than font names across distributions.
+\setmainfont[
+  Path=/usr/share/fonts/opentype/linux-libertine/,
+  Extension=.otf,
+  UprightFont=LinLibertine_R,
+  BoldFont=LinLibertine_RB,
+  ItalicFont=LinLibertine_RI,
+  BoldItalicFont=LinLibertine_RBI
+]{LinLibertine_R}
+\setsansfont[
+  Path=/usr/share/fonts/opentype/linux-libertine/,
+  Extension=.otf,
+  UprightFont=LinBiolinum_R,
+  BoldFont=LinBiolinum_RB,
+  ItalicFont=LinBiolinum_RI
+]{LinBiolinum_R}
+\setmonofont[
+  Path=/usr/share/fonts/truetype/inconsolata/,
+  Extension=.otf,
+  UprightFont=Inconsolata
+]{Inconsolata}
 
 % --- Colors ---
-\definecolor{{headingcolor}}{{RGB}}{{30,30,30}}
-\definecolor{{linkcolor}}{{RGB}}{{44,90,160}}
-\definecolor{{codebg}}{{RGB}}{{245,245,245}}
+\definecolor{headingcolor}{RGB}{30,30,30}
+\definecolor{linkcolor}{RGB}{44,90,160}
+\definecolor{codebg}{RGB}{245,245,245}
 
 % --- Headers/Footers ---
-\pagestyle{{fancy}}
-\fancyhf{{}}
-\fancyhead[L]{{\small\itshape\color{{gray}} \reporttitle}}
-\fancyhead[R]{{\small\color{{gray}} \today}}
-\fancyfoot[C]{{\small\color{{gray}} \thepage{{}} of \pageref{{LastPage}}}}
-\renewcommand{{\headrulewidth}}{{0.4pt}}
-\renewcommand{{\footrulewidth}}{{0pt}}
-\fancypagestyle{{plain}}{{
-  \fancyhf{{}}
-  \fancyfoot[C]{{\small\color{{gray}} \thepage{{}} of \pageref{{LastPage}}}}
-}}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\itshape\color{gray} \reporttitle}
+\fancyhead[R]{\small\color{gray} \today}
+\fancyfoot[C]{\small\color{gray} \thepage{} of \pageref{LastPage}}
+\renewcommand{\headrulewidth}{0.4pt}
+\renewcommand{\footrulewidth}{0pt}
+\fancypagestyle{plain}{
+  \fancyhf{}
+  \fancyfoot[C]{\small\color{gray} \thepage{} of \pageref{LastPage}}
+}
 
 % --- Section formatting ---
-\titleformat{{\section}}{{\Large\bfseries\sffamily\color{{headingcolor}}}}{{}}{{0em}}{{}}[\vspace{{-0.5em}}]
-\titleformat{{\subsection}}{{\large\bfseries\sffamily\color{{headingcolor}}}}{{}}{{0em}}{{}}[\vspace{{-0.5em}}]
-\titleformat{{\subsubsection}}{{\normalsize\bfseries\sffamily\color{{headingcolor}}}}{{}}{{0em}}{{}}[\vspace{{-0.5em}}]
+\titleformat{\section}{\Large\bfseries\sffamily\color{headingcolor}}{}{0em}{}[\vspace{-0.5em}]
+\titleformat{\subsection}{\large\bfseries\sffamily\color{headingcolor}}{}{0em}{}[\vspace{-0.5em}]
+\titleformat{\subsubsection}{\normalsize\bfseries\sffamily\color{headingcolor}}{}{0em}{}[\vspace{-0.5em}]
 
 % --- Code blocks ---
-\lstset{{
+\lstset{
   basicstyle=\small\ttfamily,
-  backgroundcolor=\color{{codebg}},
+  backgroundcolor=\color{codebg},
   frame=single,
   framerule=0pt,
   framesep=8pt,
-  rulecolor=\color{{lightgray}},
+  rulecolor=\color{lightgray},
   breaklines=true,
   showstringspaces=false,
   aboveskip=10pt,
   belowskip=10pt,
   xleftmargin=0pt,
   framexleftmargin=0pt,
-}}
+}
 
 % --- Links ---
-\hypersetup{{
+\hypersetup{
   colorlinks=true,
   linkcolor=linkcolor,
   urlcolor=linkcolor,
   citecolor=linkcolor,
-}}
+}
 
 % --- Report title command ---
-\newcommand{{\reporttitle}}{{TITLE}}
+\newcommand{\reporttitle}{Workbench Report}
 
 % --- Title page ---
-\newcommand{{\maketitlepage}}[2]{{
-  \begin{{titlepage}}
+\newcommand{\maketitlepage}[2]{
+  \begin{titlepage}
     \centering
-    \vspace*{{6cm}}
-    {{\Huge\bfseries\sffamily #1\par}}
-    \vspace{{1.5cm}}
-    {{\Large\color{{gray}} #2\par}}
-    \vspace{{3cm}}
-    {{\normalsize\color{{gray}} Generated by Workbench\par}}
+    \vspace*{6cm}
+    {\Huge\bfseries\sffamily #1\par}
+    \vspace{1.5cm}
+    {\Large\color{gray} #2\par}
+    \vspace{3cm}
+    {\normalsize\color{gray} Generated by Workbench\par}
     \vfill
-  \end{{titlepage}}
-}}
+  \end{titlepage}
+}
 
-\begin{{document}}
+\begin{document}
 
-\renewcommand{{\reporttitle}}{{{TITLE}}}
+\renewcommand{\reporttitle}{{TITLE}}
 
-\maketitlepage{{\reporttitle}}{{\today}}
+\maketitlepage{\reporttitle}{\today}
 
 {BODY}
 
-\end{{document}}
+\end{document}
 """
 
 
@@ -614,6 +644,7 @@ def _build_latex_document(content: str, title: str) -> str:
         if h_match:
             level = len(h_match.group(1))
             text = _process_inline(h_match.group(2))
+            text = _tie_heading(text)
             cmd = {1: "section", 2: "subsection", 3: "subsubsection"}[level]
             parts.append(f"\\{cmd}{{{text}}}")
             parts.append("")
@@ -688,6 +719,7 @@ def _build_latex_document(content: str, title: str) -> str:
             parts.append("")
 
     body = "\n".join(parts).strip()
-    return _LATEX_TEMPLATE.replace("{TITLE}", _escape_latex(title)).replace(
+    safe_title = _tie_heading(_escape_latex(title))
+    return _LATEX_TEMPLATE.replace("{TITLE}", safe_title).replace(
         "{BODY}", body
     )

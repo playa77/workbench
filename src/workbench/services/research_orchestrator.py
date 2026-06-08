@@ -512,6 +512,65 @@ async def _tool_draft_report(args: dict, state: ResearchState) -> dict:
 # System Prompt
 # ---------------------------------------------------------------------------
 
+_REPORT_FORMAT = {
+    "en": """REQUIRED REPORT FORMAT (markdown):
+# Research Report: {{Descriptive Title}}
+
+## Executive Summary (6-8 dense sentences)
+- What is the question and why does it matter?
+- What are the main findings?
+- What are the key tensions, contradictions, or open questions?
+- What is the actionable takeaway?
+
+## {{Thematic Section}} — at least 3 sections, each with {depth_paragraphs} dense, citation-rich paragraphs
+- One clear theme or dimension per section. Weave sources into the argument.
+- Use concrete numbers, dates, and quotes where available.
+- Include inline citations like [1], [2], [5] after each sourced claim.
+
+## Contradictions & Debates
+- Explicitly surface contradictions between sources.
+- If sources disagree, present both sides with citations.
+- Note consensus where it exists versus areas of active disagreement.
+
+## Limitations
+- What is missing from this report?
+- What biases might the sources carry?
+- What follow-up research would be needed?
+
+## Sources — [1] Title - URL, numbered by first citation
+- List every source, numbered by order of first citation in the report.
+- Format: [N] Title — URL""",
+
+    "de": """REQUIRED REPORT FORMAT (markdown):
+# Forschungsbericht: {{Aussagekräftiger Titel}}
+
+## Zusammenfassung (6-8 dichte Sätze)
+- Was ist die Frage und warum ist sie relevant?
+- Was sind die wichtigsten Erkenntnisse?
+- Welche Spannungen, Widersprüche oder offenen Fragen gibt es?
+- Was ist die handlungsrelevante Kernaussage?
+
+## {{Thematischer Abschnitt}} — mindestens 3 Abschnitte, jeweils {depth_paragraphs} dichte, quellengestützte Absätze
+- Ein klares Thema oder eine Dimension pro Abschnitt. Quellen in die Argumentation einweben.
+- Konkrete Zahlen, Daten und Zitate verwenden, wo verfügbar.
+- Inline-Zitationen wie [1], [2], [5] nach jeder quellengestützten Behauptung einfügen.
+
+## Widersprüche & Debatten
+- Widersprüche zwischen Quellen explizit aufzeigen.
+- Wenn Quellen uneins sind, beide Seiten mit Zitationen darstellen.
+- Konsensbereiche von aktiven Meinungsverschiedenheiten unterscheiden.
+
+## Einschränkungen
+- Was fehlt in diesem Bericht?
+- Welche Verzerrungen könnten die Quellen enthalten?
+- Welche Folgerecherche wäre nötig?
+
+## Quellen — [1] Titel - URL, nummeriert nach erster Zitation
+- Jede Quelle auflisten, nummeriert nach Reihenfolge der ersten Zitation im Bericht.
+- Format: [N] Titel — URL""",
+}
+
+
 SYSTEM_TEMPLATE = """\
 You are an autonomous deep research agent. You conduct rigorous, multi-source
 investigations and produce publication-quality reports where every factual claim
@@ -570,13 +629,7 @@ CITATION RULES:
 - Number sources sequentially: [1], [2], [3]. Multiple: [1][3].
 - If you cannot cite a claim, do NOT include it.
 
-REQUIRED REPORT FORMAT (markdown):
-# Research Report: {{Descriptive Title}}
-## Executive Summary (6-8 dense sentences)
-## {{Thematic Section}} — at least 3 sections, each with {depth_paragraphs} paragraphs
-## Contradictions & Debates
-## Limitations
-## Sources — [1] Title - URL, numbered by first citation
+{report_format_template}
 
 QUALITY STANDARDS:
 - DEPTH: {depth_paragraphs} paragraphs per section
@@ -938,6 +991,11 @@ class ResearchOrchestrator:
         # Depth-based paragraph requirement
         depth_paragraphs = state.tree_depth * 2
 
+        # Localized report format template
+        report_format_template = _REPORT_FORMAT.get(
+            language_code, _REPORT_FORMAT["en"]
+        ).format(depth_paragraphs=depth_paragraphs)
+
         return SYSTEM_TEMPLATE.format(
             query=state.query,
             language_name=language_name,
@@ -956,6 +1014,7 @@ class ResearchOrchestrator:
             source_count=state.mind_map.source_count(),
             iteration=state.iteration,
             max_iterations=str(state.max_iterations) if state.max_iterations else "unlimited",
+            report_format_template=report_format_template,
         )
 
     def _compute_current_depth(self) -> int:

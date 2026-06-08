@@ -484,6 +484,110 @@ burnout. Mitigation for each.
 }
 
 # ---------------------------------------------------------------------------
+# Localisation — Section Heading Translations
+# ---------------------------------------------------------------------------
+
+_DE_SECTION_HEADINGS: dict[str, str] = {
+    "Goal Statement": "Zielsetzung",
+    "Dependencies and Resources": "Abhängigkeiten & Ressourcen",
+    "Risk Assessment": "Risikobewertung",
+    "Stakeholder Analysis": "Stakeholder-Analyse",
+    "Regulatory & Compliance": "Regulatorische & Compliance-Aspekte",
+    "Timeline Overview": "Zeitplan-Übersicht",
+    "Success Metrics": "Erfolgskennzahlen",
+    "Strengths": "Stärken",
+    "Weaknesses": "Schwächen",
+    "Opportunities": "Chancen",
+    "Threats": "Risiken",
+    "Strategic Objectives": "Strategische Ziele",
+    "Recommendations": "Empfehlungen",
+    "Assumptions": "Annahmen",
+    "Missing Information": "Fehlende Informationen",
+    "Questions for Stakeholders": "Fragen an Stakeholder",
+    "Focus and Context": "Fokus & Kontext",
+    "Purpose and Goals": "Zweck & Ziele",
+    "Key Deliverables and Outcomes": "Wichtigste Ergebnisse",
+    "Timeline and Budget": "Zeitplan & Budget",
+    "Risks and Mitigations": "Risiken & Gegenmaßnahmen",
+    "Action Orientation": "Handlungsempfehlungen",
+    "Overall Takeaway": "Kernbotschaft",
+    "Level 1 — Major Work Streams": "Ebene 1 — Hauptarbeitsstränge",
+    "Level 2 — Work Packages": "Ebene 2 — Arbeitspakete",
+    "Level 3 — Tasks": "Ebene 3 — Aufgaben",
+    "Dependency Map": "Abhängigkeitsdiagramm",
+    "Duration Estimates": "Dauerschätzungen",
+    "Critical Path": "Kritischer Pfad",
+    "Project Phases": "Projektphasen",
+    "Milestone Plan": "Meilensteinplan",
+    "Resource Loading": "Ressourcenauslastung",
+    "Risk Timeline": "Risiko-Zeitplan",
+    "Problem Statement": "Problemstellung",
+    "Timeline of Events": "Ereignisablauf",
+    "5-Why Analysis": "5-Warum-Analyse",
+    "Root Causes Identified": "Identifizierte Ursachen",
+    "Evidence": "Belege",
+    "Remediation Actions": "Korrekturmaßnahmen",
+    "Prevention": "Prävention",
+    "Executive Hook": "Aufhänger",
+    "Solution": "Lösung",
+    "Market Analysis": "Marktanalyse",
+    "Competitive Advantage": "Wettbewerbsvorteil",
+    "Business Model / Approach": "Geschäftsmodell / Ansatz",
+    "Team & Capabilities": "Team & Fähigkeiten",
+    "The Ask": "Die Anfrage",
+    "Call to Action": "Handlungsaufforderung",
+    "Governance Philosophy": "Governance-Philosophie",
+    "Governance Bodies": "Governance-Gremien",
+    "Decision Escalation Matrix": "Entscheidungs-Eskalationsmatrix",
+    "Roles & Responsibilities": "Rollen & Verantwortlichkeiten",
+    "Monitoring & Reporting": "Monitoring & Berichterstattung",
+    "Compliance & Audit": "Compliance & Audit",
+    "Meeting Cadence": "Besprechungsrhythmus",
+    "Team Structure": "Teamstruktur",
+    "Skill Requirements Matrix": "Kompetenzanforderungsmatrix",
+    "Team Composition Rationale": "Begründung der Teamzusammensetzung",
+    "Onboarding Plan": "Einarbeitungsplan",
+    "Communication Plan": "Kommunikationsplan",
+    "Growth Path": "Entwicklungspfad",
+    "Risks": "Risiken",
+}
+
+
+def _get_section_heading(english_heading: str, language: str) -> str:
+    """Translate a section heading to the target language.
+
+    Falls back to the English heading if no translation is available.
+    """
+    if language in ("de", "german", "de-DE"):
+        return _DE_SECTION_HEADINGS.get(english_heading, english_heading)
+    return english_heading
+
+
+def _build_language_instruction(language: str) -> str:
+    """Build a language instruction block to prepend to a system prompt.
+
+    For non-English languages, this instructs the LLM to write in that
+    language and provides section heading translations.
+    """
+    if language in ("de", "german", "de-DE"):
+        lang_name = "German"
+        mappings = "\n".join(
+            f"  {eng} -> {_DE_SECTION_HEADINGS[eng]}"
+            for eng in sorted(_DE_SECTION_HEADINGS)
+        )
+        return (
+            f"WRITING LANGUAGE: {lang_name}. Write ALL output in {lang_name}.\n"
+            f"ALL section headings, labels, and analysis MUST be in {lang_name}.\n"
+            f"\n"
+            f"Use these translated section headings when writing in {lang_name}:\n"
+            f"{mappings}\n"
+            f"\n"
+            f"---\n\n"
+        )
+    return ""
+
+
+# ---------------------------------------------------------------------------
 # Data Models
 # ---------------------------------------------------------------------------
 
@@ -530,6 +634,7 @@ class PlanningService:
         goal: str,
         plan_type: str = "project_plan",
         *,
+        language: str = "en",
         model: str = "deepseek/deepseek-v4-pro",
         temperature: float = 0.5,
     ) -> DeliberationResult:
@@ -537,9 +642,10 @@ class PlanningService:
         run_id = self.state.run_id
 
         plan_info = PLAN_TYPES.get(plan_type, PLAN_TYPES["project_plan"])
-        system_prompt = SYSTEM_PROMPTS.get(
+        base_prompt = SYSTEM_PROMPTS.get(
             plan_type, SYSTEM_PROMPTS["project_plan"]
         )
+        system_prompt = _build_language_instruction(language) + base_prompt
 
         self.state = PlanningState(
             run_id=run_id,

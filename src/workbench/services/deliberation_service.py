@@ -159,8 +159,79 @@ AVAILABLE_FRAMES: list[dict[str, str]] = [
     ]
 ]
 
+# ---------------------------------------------------------------------------
+# German localizations
+# ---------------------------------------------------------------------------
 
-def get_available_frames() -> list[dict[str, str]]:
+_FRAME_LABELS_DE: dict[str, str] = {
+    "deliberation_director": "Deliberations-Leitung",
+    "critique_agent": "Kritik-Agent",
+    "rhetoric_analyst": "Rhetorik-Analyst",
+    "synthesis_agent": "Synthese-Agent",
+    "pro_con": "Pro / Contra",
+    "swot": "SWOT-Analyse",
+    "stakeholder": "Stakeholder-Analyse",
+    "forces": "Treibende Kräfte",
+}
+
+_SYNTHESIS_LABELS_DE: dict[str, str] = {
+    "## Agreement / Disagreement Surface": "## Übereinstimmungen / Meinungsverschiedenheiten",
+    "**Agreements:**": "**Übereinstimmungen:**",
+    "**Disagreements:**": "**Meinungsverschiedenheiten:**",
+    "executive answer": "zusammenfassende Antwort",
+}
+
+# Common words for simple language detection heuristic
+_GERMAN_WORDS: set[str] = {
+    "der", "die", "das", "und", "ist", "sind", "ein", "eine", "auf", "für",
+    "mit", "von", "zu", "im", "den", "dem", "des", "sich", "nicht", "auch",
+    "werden", "hat", "bei", "nach", "aus", "über", "zum", "zur", "unter",
+    "vor", "zwischen", "durch", "gegen", "ohne", "um", "bis", "seit", "ab",
+    "an", "dass", "wenn", "aber", "oder", "weil",
+}
+
+_ENGLISH_WORDS: set[str] = {
+    "the", "a", "an", "and", "is", "are", "was", "were", "for", "with",
+    "from", "to", "in", "on", "at", "by", "of", "that", "this", "it",
+    "not", "also", "will", "has", "have", "but", "or", "because",
+}
+
+
+def detect_language(text: str) -> str:
+    """Detect whether text is German or English using word frequency heuristics.
+
+    Counts occurrences of common German vs English words.
+    If German words > English words * 1.5, returns "de", otherwise "en".
+    Falls back to "en" on any error.
+    """
+    if not text:
+        return "en"
+    try:
+        words = text.lower().split()
+        if not words:
+            return "en"
+        de_count = sum(1 for w in words if w in _GERMAN_WORDS)
+        en_count = sum(1 for w in words if w in _ENGLISH_WORDS)
+        return "de" if de_count > en_count * 1.5 else "en"
+    except Exception:
+        return "en"
+
+
+def get_available_frames(language: str = "en") -> list[dict[str, str]]:
+    """Return available frames with labels in the requested language.
+
+    Args:
+        language: ISO language code ("en" or "de"). Defaults to "en".
+    """
+    if language == "de":
+        return [
+            {
+                "frame_id": f["frame_id"],
+                "label": _FRAME_LABELS_DE.get(f["frame_id"], f["label"]),
+                "description": f["description"],
+            }
+            for f in AVAILABLE_FRAMES
+        ]
     return list(AVAILABLE_FRAMES)
 
 
@@ -287,9 +358,22 @@ class DeliberationService:
         rounds: int = 2,
         include_rhetoric_analysis: bool = True,
         include_synthesis: bool = True,
+        language: str = "auto",
     ) -> DeliberationResult:
-        """Run the full deliberation pipeline. Returns the complete result."""
+        """Run the full deliberation pipeline. Returns the complete result.
+
+        Args:
+            question: The question or topic to deliberate on.
+            frame_configs: List of frame configurations to use.
+            rounds: Number of critique rounds.
+            include_rhetoric_analysis: Whether to include rhetoric analysis.
+            include_synthesis: Whether to include synthesis.
+            language: ISO language code ("en", "de") or "auto" to detect from
+                the question text. Defaults to "auto".
+        """
         t0 = time.monotonic()
+        if language == "auto":
+            language = detect_language(question)
 
         result = DeliberationResult(question=question, status="RUNNING")
         result.deliberation_id = uuid.uuid4().hex[:12]
@@ -357,7 +441,7 @@ class DeliberationService:
             # ---- Phase 5: Synthesis ----
             if include_synthesis:
                 self._emit(did, "phase", {"phase": "synthesis", "message": "Generating synthesis..."})
-                result.synthesis = await self._generate_synthesis(question, outputs, result.disagreement_surface, did)
+                result.synthesis = await self._generate_synthesis(question, outputs, result.disagreement_surface, did, language=language)
 
             result.status = "COMPLETED"
 
@@ -599,6 +683,7 @@ class DeliberationService:
         outputs: list[FrameOutput],
         surface: DisagreementSurface,
         deliberation_id: str,
+        language: str = "en",
     ) -> str:
         frame_summaries = "\n\n---\n\n".join(
             f"### {o.label} ({o.frame_id})\n{o.position}\n\n"
@@ -614,26 +699,51 @@ class DeliberationService:
             for d in surface.disagreements
         ) if surface.disagreements else "None identified"
 
-        prompt = (
-            f"Original question: {question}\n\n"
-            f"You are the synthesis agent. Below are the outputs from multiple "
-            f"deliberation frames, plus an agreement/disagreement surface analysis.\n\n"
-            f"{frame_summaries}\n\n"
-            f"## Agreement / Disagreement Surface\n\n"
-            f"**Agreements:**\n{agreements}\n\n"
-            f"**Disagreements:**\n{disagreements}\n\n"
-            f"Produce a comprehensive synthesis that:\n"
-            f"1. Provides a direct, concise executive answer (2-3 sentences)\n"
-            f"2. Summarizes the key arguments from all frames\n"
-            f"3. Maps where frames agree and disagree, with severity\n"
-            f"4. Separates normative judgments from empirical claims\n"
-            f"5. States remaining uncertainties and open questions\n"
-            f"6. Recommends next steps or data needed to reduce uncertainty\n\n"
-            f"Format with clear section headers. Be precise and audit-friendly."
-        )
+        if language == "de":
+            prompt = (
+                f"Originalfrage: {question}\n\n"
+                f"Du bist der Synthese-Agent. Nachfolgend findest du die Ergebnisse "
+                f"mehrerer Deliberations-Perspektiven sowie eine Übersicht über "
+                f"Übereinstimmungen und Meinungsverschiedenheiten.\n\n"
+                f"{frame_summaries}\n\n"
+                f"## Übereinstimmungen / Meinungsverschiedenheiten\n\n"
+                f"**Übereinstimmungen:**\n{agreements}\n\n"
+                f"**Meinungsverschiedenheiten:**\n{disagreements}\n\n"
+                f"Erstelle eine umfassende Synthese, die:\n"
+                f"1. Eine direkte, prägnante zusammenfassende Antwort liefert (2-3 Sätze)\n"
+                f"2. Die wichtigsten Argumente aller Perspektiven zusammenfasst\n"
+                f"3. Aufzeigt, wo sich die Perspektiven einig und uneinig sind, mit Gewichtung\n"
+                f"4. Normative Urteile von empirischen Behauptungen trennt\n"
+                f"5. Verbleibende Unsicherheiten und offene Fragen benennt\n"
+                f"6. Nächste Schritte oder benötigte Daten zur Verringerung der Unsicherheit empfiehlt\n\n"
+                f"Formatiere mit klaren Überschriften. Schreibe auf Deutsch. "
+                f"Sei präzise und nachvollziehbar."
+            )
+            system_content = _SKILL_BODIES.get("synthesis_agent", "Du bist ein Synthese-Agent.")
+            system_content += "\n\nSchreibe auf Deutsch. Verwende deutsche Überschriften."
+        else:
+            prompt = (
+                f"Original question: {question}\n\n"
+                f"You are the synthesis agent. Below are the outputs from multiple "
+                f"deliberation frames, plus an agreement/disagreement surface analysis.\n\n"
+                f"{frame_summaries}\n\n"
+                f"## Agreement / Disagreement Surface\n\n"
+                f"**Agreements:**\n{agreements}\n\n"
+                f"**Disagreements:**\n{disagreements}\n\n"
+                f"Produce a comprehensive synthesis that:\n"
+                f"1. Provides a direct, concise executive answer (2-3 sentences)\n"
+                f"2. Summarizes the key arguments from all frames\n"
+                f"3. Maps where frames agree and disagree, with severity\n"
+                f"4. Separates normative judgments from empirical claims\n"
+                f"5. States remaining uncertainties and open questions\n"
+                f"6. Recommends next steps or data needed to reduce uncertainty\n\n"
+                f"Format with clear section headers. Be precise and audit-friendly."
+            )
+            system_content = _SKILL_BODIES.get("synthesis_agent", "You are a synthesis agent.")
+
         response = await self._client.chat_completion(
             messages=[
-                {"role": "system", "content": _SKILL_BODIES.get("synthesis_agent", "You are a synthesis agent.")},
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt},
             ],
             model="deepseek/deepseek-v4-pro",
