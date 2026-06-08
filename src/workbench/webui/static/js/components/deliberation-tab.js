@@ -92,8 +92,8 @@
     var includeSynthesis = document.getElementById('dl-synthesis').checked;
 
     var btn = document.getElementById('btn-start-deliberation');
-    btn.disabled = true;
-    btn.textContent = 'Running...';
+    Utils.setButtonLoading(btn, 'Running...');
+    Utils.showToast('Deliberation started', 'info');
 
     var output = document.getElementById('deliberation-output');
     output.innerHTML = ''
@@ -159,6 +159,7 @@
         if (e.name === 'AbortError') return;
         output.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
         resetDeliberation(btn);
+        Utils.showToast(e.message, 'error');
       });
   }
 
@@ -196,9 +197,11 @@
         setPhase('Complete');
         logEvent('Deliberation finished. Loading results...');
         loadDeliberationResults(activeDeliberationId);
+        Utils.showToast('Deliberation complete', 'success');
         break;
       case 'error':
         logEvent('<span style="color:var(--danger)">Error: ' + Utils.escapeHtml(data.message || data) + '</span>');
+        Utils.showToast(data.message || 'Error during deliberation', 'error');
         break;
       case 'done':
         break;
@@ -322,7 +325,7 @@
   }
 
   function resetDeliberation(btn) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Start Deliberation'; }
+    if (btn) Utils.resetButton(btn);
     activeReader = null;
     activeAbortController = null;
   }

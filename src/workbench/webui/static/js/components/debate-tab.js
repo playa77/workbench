@@ -89,8 +89,8 @@
     var maxRounds = parseInt(document.getElementById('debate-rounds').value) || 3;
 
     var btn = document.getElementById('btn-start-debate');
-    btn.disabled = true;
-    btn.textContent = 'Starting...';
+    Utils.setButtonLoading(btn, 'Starting...');
+    Utils.showToast('Debate started', 'info');
 
     var output = document.getElementById('debate-output');
     output.innerHTML = renderProgressPanel(topic, 0, maxRounds, 'RUNNING');
@@ -105,12 +105,13 @@
         if (!data.debate_id) throw new Error(data.detail || 'Failed to start debate');
         activeDebateId = data.debate_id;
         btn.textContent = 'Debating...';
+        btn.classList.add('btn-pulse');
         startPolling();
       })
       .catch(function (e) {
         output.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
-        btn.disabled = false;
-        btn.textContent = 'Start Debate';
+        Utils.resetButton(btn);
+        Utils.showToast(e.message, 'error');
       });
   }
 
@@ -134,12 +135,19 @@
         updateDebatePanel(data);
         if (data.status === 'COMPLETED' || data.status === 'PAUSED') {
           stopPolling();
-          resetDebateButton();
+          var btn = document.getElementById('btn-start-debate');
+          if (data.status === 'COMPLETED') {
+            if (btn) { btn.classList.remove('btn-pulse'); btn.textContent = 'Start Debate'; btn.disabled = false; }
+            Utils.showToast('Debate complete', 'success');
+          } else {
+            resetDebateButton();
+          }
         }
       })
       .catch(function () {
         stopPolling();
         resetDebateButton();
+        Utils.showToast('Lost connection to debate', 'error');
       });
   }
 
@@ -291,6 +299,6 @@
 
   function resetDebateButton() {
     var btn = document.getElementById('btn-start-debate');
-    if (btn) { btn.disabled = false; btn.textContent = 'Start Debate'; }
+    if (btn) { btn.classList.remove('btn-pulse'); Utils.resetButton(btn); }
   }
 })();

@@ -192,6 +192,43 @@ body {
   transition: background var(--transition), opacity var(--transition);
 }
 
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-loading {
+  position: relative;
+  color: transparent !important;
+  pointer-events: none;
+}
+
+.btn-loading::after {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  top: 50%;
+  left: 50%;
+  margin: -8px 0 0 -8px;
+}
+
+.btn-secondary.btn-loading::after {
+  border-color: rgba(0,0,0,0.15);
+  border-top-color: var(--text-primary);
+}
+
+.btn-success-flash {
+  transition: background 0.15s;
+  background: var(--success) !important;
+  color: #fff !important;
+}
+
 .btn-primary {
   background: var(--accent);
   color: #fff;
@@ -346,6 +383,46 @@ pre code {
 .alert-error { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
 .alert-success { background: var(--success-bg); border-color: var(--success); color: var(--success); }
 
+/* Toast notifications */
+.toast-container {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  padding: 10px 16px;
+  border-radius: var(--radius);
+  font-size: 13px;
+  min-width: 200px;
+  max-width: 360px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  animation: toastSlideIn 0.3s ease, toastFadeOut 0.3s ease forwards;
+  animation-delay: 0s, 2.5s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.toast-success { background: var(--success); color: #fff; }
+.toast-error { background: var(--danger); color: #fff; }
+.toast-info { background: var(--accent); color: #fff; }
+
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes toastFadeOut {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
 /* Spinner */
 .spinner {
   width: 20px;
@@ -358,6 +435,15 @@ pre code {
 }
 
 @keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.btn-pulse {
+  animation: pulse 1.5s ease-in-out infinite;
+}
 
 /* Agent list grid */
 .agent-grid {

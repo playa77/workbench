@@ -54,7 +54,8 @@
     var btnStart = document.getElementById('btn-start-research');
     if (!btnStart) return;
     var btnStop = document.getElementById('btn-stop-research');
-    btnStart.disabled = true;
+    Utils.setButtonLoading(btnStart, 'Starting...');
+    Utils.showToast('Research started', 'info');
     btnStop.style.display = 'inline-flex';
 
     var output = document.getElementById('research-output');
@@ -152,10 +153,13 @@
       case 'complete':
         renderReport(typeof data === 'string' ? data : (data.report || ''));
         resetButtons();
+        Utils.showToast('Research complete', 'success');
         break;
       case 'error':
-        appendThinking('<span style="color:var(--danger)">' + Utils.escapeHtml(typeof data === 'string' ? data : (data.message || '')) + '</span>');
+        var errMsg = typeof data === 'string' ? data : (data.message || 'Unknown error');
+        appendThinking('<span style="color:var(--danger)">' + Utils.escapeHtml(errMsg) + '</span>');
         resetButtons();
+        Utils.showToast(errMsg, 'error');
         break;
       case 'done':
         break;
@@ -222,8 +226,10 @@
       + '<div class="card">'
       +   '<div class="card-header">Research Report</div>'
       +   '<div style="line-height:1.7;font-size:13px"><p style="margin-bottom:8px;line-height:1.7">' + md + '</p></div>'
-      +   '<div style="margin-top:16px;display:flex;gap:8px">'
-      +     '<button class="btn btn-primary btn-sm" onclick="window.researchCopyReport()">Copy Report</button>'
+      +   '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">'
+      +     '<button class="btn btn-primary btn-sm" onclick="window.researchCopyReport()">Copy Markdown</button>'
+      +     '<button class="btn btn-secondary btn-sm" onclick="window.researchExportHtml()">Export HTML</button>'
+      +     '<button class="btn btn-secondary btn-sm" onclick="window.researchExportPdf()">Export PDF</button>'
       +     '<button class="btn btn-secondary btn-sm" onclick="Router.setActive(\'research\')">New Research</button>'
       +   '</div>'
       + '</div>';
@@ -233,6 +239,20 @@
   window.researchCopyReport = function () {
     if (window._researchReportContent) {
       navigator.clipboard.writeText(window._researchReportContent).catch(function () {});
+    }
+  };
+
+  window.researchExportHtml = function () {
+    if (window._researchReportContent) {
+      Utils.exportMarkdownAsHtml(window._researchReportContent, 'Research Report');
+      Utils.showToast('HTML exported', 'success');
+    }
+  };
+
+  window.researchExportPdf = function () {
+    if (window._researchReportContent) {
+      Utils.setButtonLoading(document.querySelector('#research-output .btn-secondary:nth-of-type(2)'), 'Generating...');
+      Utils.exportMarkdownAsPdf(window._researchReportContent, 'Research Report');
     }
   };
 
@@ -257,7 +277,7 @@
   function resetButtons() {
     var s = document.getElementById('btn-start-research');
     var t = document.getElementById('btn-stop-research');
-    if (s) s.disabled = false;
+    if (s) Utils.resetButton(s);
     if (t) t.style.display = 'none';
     activeReader = null;
     activeAbortController = null;

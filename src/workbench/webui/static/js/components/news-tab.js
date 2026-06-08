@@ -109,11 +109,17 @@
         enable_brief: document.getElementById('ni-enable-brief')?.checked ?? true,
         enable_email: true,
       };
-      if (!data.name) return alert('Name is required');
+      if (!data.name) { Utils.showToast('Name is required', 'error'); return; }
+      Utils.setButtonLoading(btn, 'Creating...');
       try {
         await fetch('/api/v1/agents/news/interests', { method:'POST', headers: authHeaders(), body: JSON.stringify(data) });
+        Utils.setButtonSuccess(btn, 'Created!');
+        Utils.showToast('Interest created', 'success');
         loadInterests();
-      } catch (e) { alert('Failed: ' + e.message); }
+      } catch (e) {
+        Utils.resetButton(btn);
+        Utils.showToast('Failed: ' + e.message, 'error');
+      }
     });
   }
 
@@ -122,14 +128,17 @@
       const resp = await fetch(`/api/v1/agents/news/interests/${interestId}/run`, { method:'POST', headers: authHeaders() });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || 'Run failed');
-      alert('Pipeline started (run #' + Utils.escapeHtml(String(data.run_id)) + ')');
-    } catch (e) { alert(e.message); }
+      Utils.showToast('Pipeline started (run #' + data.run_id + ')', 'success');
+    } catch (e) { Utils.showToast(e.message, 'error'); }
   };
 
   window.newsDeleteInterest = async (interestId) => {
     if (!confirm('Delete this interest and all its data?')) return;
-    await fetch(`/api/v1/agents/news/interests/${interestId}`, { method:'DELETE', headers: authHeaders() });
-    loadInterests();
+    try {
+      await fetch(`/api/v1/agents/news/interests/${interestId}`, { method:'DELETE', headers: authHeaders() });
+      Utils.showToast('Interest deleted', 'info');
+      loadInterests();
+    } catch (e) { Utils.showToast('Delete failed: ' + e.message, 'error'); }
   };
 
   window.newsLoadRuns = async (interestId) => {

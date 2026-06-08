@@ -10,8 +10,9 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import Depends, FastAPI
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
@@ -132,11 +133,20 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
     return app
 
 
+class ExportRequest(BaseModel):
+    content: str
+    title: str = "Report"
+
+
 def _register_core_routes(app: FastAPI) -> None:
     from workbench.api.routes import agents as agent_routes
     from workbench.api.routes import admin as admin_routes
     from workbench.api.routes import auth, health
     from workbench.api.routes import config as config_routes
+    from workbench.services.export_service import (
+        generate_pdf_print_page,
+        markdown_to_html,
+    )
 
     app.include_router(health.router, tags=["core"])
     app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
@@ -146,6 +156,27 @@ def _register_core_routes(app: FastAPI) -> None:
 
     agent_registry = get_registry()
     agent_registry.mount_all(app)
+
+    @app.post("/api/v1/export/html")
+    async def export_html(
+        body: ExportRequest,
+        user: Annotated[User, Depends(get_current_user)],
+    ):
+        html = markdown_to_html(body.content, title=body.title)
+
+        return Response(
+            content=html,
+            media_type="text/html",
+            headers={"Content-Disposition": 'attachment; filename="report.html"'},
+        )
+
+    @app.post("/api/v1/export/pdf")
+    async def export_pdf(
+        body: ExportRequest,
+        user: Annotated[User, Depends(get_current_user)],
+    ):
+        html = generate_pdf_print_page(body.content, title=body.title)
+        return HTMLResponse(content=html)
 
 
 def _run_alembic_upgrade() -> None:

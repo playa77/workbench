@@ -80,10 +80,12 @@
       var emailOrUsername = document.getElementById('login-email-or-username').value.trim();
       var password = document.getElementById('login-password').value;
       if (!emailOrUsername || !password) return;
+      Utils.setButtonLoading(this, 'Signing in...');
       try {
         await API.passwordLogin(emailOrUsername, password);
         boot();
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('login-message').innerHTML = '<div class="alert alert-error">Invalid credentials</div>';
       }
     });
@@ -91,10 +93,12 @@
     document.getElementById('btn-login-apikey').addEventListener('click', async function () {
       var key = document.getElementById('login-api-key').value.trim();
       if (!key) return;
+      Utils.setButtonLoading(this, 'Signing in...');
       try {
         await API.apiKeyLogin(key);
         boot();
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('login-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       }
     });
@@ -125,10 +129,13 @@
     document.getElementById('btn-send-reset-link').addEventListener('click', async function () {
       var email = document.getElementById('forgot-email').value.trim();
       if (!email) return;
+      Utils.setButtonLoading(this, 'Sending...');
       try {
         await API.forgotPassword(email);
+        Utils.resetButton(this);
         document.getElementById('forgot-message').innerHTML = '<div class="alert alert-success">If an account with that email exists, a reset link has been sent.</div>';
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('forgot-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       }
     });
@@ -180,10 +187,13 @@
         document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
         return;
       }
+      Utils.setButtonLoading(this, 'Creating...');
       try {
         await API.setup(username, email, password);
+        Utils.showToast('Account created', 'success');
         boot();
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       }
     });
@@ -218,10 +228,13 @@
         document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
         return;
       }
+      Utils.setButtonLoading(this, 'Creating...');
       try {
         await API.acceptInvite(token, password);
+        Utils.showToast('Account created', 'success');
         boot();
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       }
     });
@@ -256,10 +269,13 @@
         document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
         return;
       }
+      Utils.setButtonLoading(this, 'Resetting...');
       try {
         await API.resetPassword(token, password);
+        Utils.showToast('Password reset', 'success');
         boot();
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       }
     });
@@ -400,10 +416,15 @@
     document.getElementById('btn-save-or-key') && document.getElementById('btn-save-or-key').addEventListener('click', async function () {
       var val = document.getElementById('or-key-input').value.trim();
       if (!val) return;
+      Utils.setButtonLoading(this, 'Saving...');
       try {
         await API.setOpenRouterKey(val);
+        Utils.setButtonSuccess(this, 'Saved!');
         document.getElementById('or-key-status').textContent = 'Key saved.';
-      } catch (e) { document.getElementById('or-key-status').textContent = 'Error: ' + e.message; }
+      } catch (e) {
+        Utils.resetButton(this);
+        document.getElementById('or-key-status').textContent = 'Error: ' + e.message;
+      }
     });
 
     document.getElementById('btn-delete-or-key') && document.getElementById('btn-delete-or-key').addEventListener('click', async function () {
@@ -430,12 +451,15 @@
         document.getElementById('change-password-message').textContent = 'New password must be at least 8 characters.';
         return;
       }
+      Utils.setButtonLoading(this, 'Saving...');
       try {
         await API.changePassword(current, newPass);
+        Utils.setButtonSuccess(this, 'Saved!');
         document.getElementById('change-password-message').textContent = 'Password changed.';
         document.getElementById('change-password-current').value = '';
         document.getElementById('change-password-new').value = '';
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('change-password-message').textContent = 'Error: ' + e.message;
       }
     });
@@ -444,13 +468,16 @@
       var email = document.getElementById('invite-email').value.trim();
       var username = document.getElementById('invite-username').value.trim();
       if (!email || !username) return;
+      Utils.setButtonLoading(this, 'Sending...');
       try {
         await API.createInvite(email, username);
+        Utils.setButtonSuccess(this, 'Sent!');
         document.getElementById('invite-email').value = '';
         document.getElementById('invite-username').value = '';
         document.getElementById('invite-status').textContent = 'Invite sent.';
         loadInviteList();
       } catch (e) {
+        Utils.resetButton(this);
         document.getElementById('invite-status').textContent = 'Error: ' + e.message;
       }
     });
@@ -551,11 +578,14 @@
             sett[key] = el.value;
           }
         });
+        Utils.setButtonLoading(this, 'Saving...');
         try {
           await API.updateAgentSettings(agentName, { settings: sett });
+          Utils.setButtonSuccess(this, 'Saved!');
           var status = document.getElementById('save-status-' + agentName);
           if (status) { status.textContent = 'Saved'; setTimeout(function () { status.textContent = ''; }, 2000); }
         } catch (e) {
+          Utils.resetButton(this);
           var status = document.getElementById('save-status-' + agentName);
           if (status) { status.textContent = 'Error: ' + e.message; }
         }
@@ -606,15 +636,18 @@
       section.querySelectorAll('[data-delete-key]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
           await API.deleteApiKey(btn.dataset.deleteKey);
+          Utils.showToast('Key deleted', 'info');
           loadApiKeys();
         });
       });
 
       document.getElementById('btn-create-key') && document.getElementById('btn-create-key').addEventListener('click', async function () {
         var label = document.getElementById('new-key-label').value.trim();
-        if (!label) { alert('Please enter a name for the key.'); return; }
+        if (!label) { Utils.showToast('Please enter a name for the key', 'error'); return; }
+        Utils.setButtonLoading(this, 'Creating...');
         try {
           var result = await API.createApiKey(label);
+          Utils.setButtonSuccess(this, 'Created!');
           await loadApiKeys();
           document.getElementById('new-key-display').innerHTML =
             '<div class="alert alert-success">' +
@@ -632,7 +665,7 @@
             var self = this;
             setTimeout(function () { self.textContent = 'Copy'; }, 2000);
           });
-        } catch (e) { alert(e.message); }
+        } catch (e) { Utils.resetButton(this); Utils.showToast(e.message, 'error'); }
       });
     } catch (e) { /* silently fail */ }
   }

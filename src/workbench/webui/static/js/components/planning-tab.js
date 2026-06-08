@@ -80,7 +80,8 @@
     var btnStart = document.getElementById('btn-start-plan');
     if (!btnStart) return;
     var btnStop = document.getElementById('btn-stop-plan');
-    btnStart.disabled = true;
+    Utils.setButtonLoading(btnStart, 'Generating...');
+    Utils.showToast('Generating plan...', 'info');
     btnStop.style.display = 'inline-flex';
 
     var output = document.getElementById('planning-output');
@@ -146,6 +147,7 @@
         if (e.name === 'AbortError') return;
         output.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
         resetPlanning();
+        Utils.showToast(e.message, 'error');
       });
   }
 
@@ -163,11 +165,13 @@
       case 'completed':
         setPhase('Completed');
         renderPlanResult(data.content || '');
+        Utils.showToast('Plan complete', 'success');
         break;
       case 'error':
         var streamBox2 = document.getElementById('pl-stream-box');
         if (streamBox2) streamBox2.innerHTML += '<span style="color:var(--danger)">Error: ' + Utils.escapeHtml(data.message || data) + '</span>';
         resetPlanning();
+        Utils.showToast(data.message || 'Error generating plan', 'error');
         break;
     }
   }
@@ -195,8 +199,10 @@
       + '<div class="card">'
       +   '<div class="card-header">Plan Result</div>'
       +   '<div style="line-height:1.7;font-size:13px"><p style="margin-bottom:8px;line-height:1.7">' + md + '</p></div>'
-      +   '<div style="margin-top:16px;display:flex;gap:8px">'
+      +   '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">'
       +     '<button class="btn btn-primary btn-sm" onclick="window.planningCopyResult()">Copy</button>'
+      +     '<button class="btn btn-secondary btn-sm" onclick="window.planningExportHtml()">Export HTML</button>'
+      +     '<button class="btn btn-secondary btn-sm" onclick="window.planningExportPdf()">Export PDF</button>'
       +     '<button class="btn btn-secondary btn-sm" onclick="Router.setActive(\'planning\')">New Plan</button>'
       +   '</div>'
       + '</div>';
@@ -206,6 +212,19 @@
   window.planningCopyResult = function () {
     if (window._planningResultContent) {
       navigator.clipboard.writeText(window._planningResultContent).catch(function () {});
+    }
+  };
+
+  window.planningExportHtml = function () {
+    if (window._planningResultContent) {
+      Utils.exportMarkdownAsHtml(window._planningResultContent, 'Planning Report');
+      Utils.showToast('HTML exported', 'success');
+    }
+  };
+
+  window.planningExportPdf = function () {
+    if (window._planningResultContent) {
+      Utils.exportMarkdownAsPdf(window._planningResultContent, 'Planning Report');
     }
   };
 
@@ -230,7 +249,7 @@
   function resetPlanning() {
     var s = document.getElementById('btn-start-plan');
     var t = document.getElementById('btn-stop-plan');
-    if (s) s.disabled = false;
+    if (s) Utils.resetButton(s);
     if (t) t.style.display = 'none';
     activeReader = null;
     activeRunId = null;
