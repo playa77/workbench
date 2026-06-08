@@ -1,6 +1,7 @@
 """Admin routes — invite management (admin-only)."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -33,7 +34,7 @@ class InviteResponse(BaseModel):
     is_revoked: bool
 
 
-async def _require_admin(user: User) -> User:
+async def _require_admin(user: Annotated[User, Depends(get_current_user)]) -> User:
     if not user.is_admin:
         raise HTTPException(status_code=403, detail="Admin access required")
     return user
@@ -44,8 +45,8 @@ async def _require_admin(user: User) -> User:
 async def create_invite(
     body: CreateInviteRequest,
     request: Request,
-    user: User = Depends(_require_admin),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(_require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     config = request.app.state.config
     email = body.email.strip().lower()
@@ -98,8 +99,8 @@ async def create_invite(
 
 @router.get("/admin/invites", response_model=list[InviteResponse])
 async def list_invites(
-    user: User = Depends(_require_admin),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(_require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(
         select(UserInvite).order_by(UserInvite.created_at.desc())
@@ -122,8 +123,8 @@ async def list_invites(
 @router.delete("/admin/invites/{invite_id}")
 async def revoke_invite(
     invite_id: str,
-    user: User = Depends(_require_admin),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(_require_admin)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     from uuid import UUID
 

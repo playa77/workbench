@@ -7,6 +7,7 @@ import importlib
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -197,8 +198,8 @@ def _auto_register_agents(app: FastAPI, registry) -> None:
 
     @app.get("/api/v1/tabs")
     async def list_tabs(
-        user: User = Depends(get_current_user),
-        session: AsyncSession = Depends(get_session),
+        user: Annotated[User, Depends(get_current_user)],
+        session: Annotated[AsyncSession, Depends(get_session)],
     ):
         user_settings = await get_user_agent_settings(str(user.id), session)
         tabs = []

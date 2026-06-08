@@ -16,6 +16,7 @@
   async function boot() {
     try {
       currentUser = await API.me();
+      document.getElementById('active-tab-content').innerHTML = '';
       await renderTabs();
       renderMain();
       var firstTab = document.querySelector('#header-tabs .tab-btn');

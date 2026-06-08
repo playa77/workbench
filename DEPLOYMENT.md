@@ -35,7 +35,7 @@ This document covers production deployment of Workbench. For local development s
 
 ```
                            ┌─────────────────────────────────────┐
-Internet ──→ nginx (:80) ──┤  /             → workbench :8420    │ 127.0.0.1 only
+Internet ──→ nginx (:80/:443) ──┤  /             → workbench :8420    │ 127.0.0.1 only
                            │  /open-webui/  → open-webui :3000   │ 127.0.0.1 only
                            └─────────────────────────────────────┘
 ```
@@ -212,12 +212,16 @@ docker compose ps
 
 ```bash
 docker compose exec workbench workbench create-user admin
-# Save the API key output — it is shown only once.
 ```
+
+The command prompts for a password (if not provided via `--password`), creates the user, and prints an API key. **Save both the password and the API key output — they are shown only once.**
 
 ### Step 8: Access
 
-Open `http://<your-server>` in a browser. Log in with the API key from step 7.
+Open `http://<your-server>` (or `https://your-domain.com` after TLS setup) in a browser. Log in with either:
+
+- Your **email/username and password** (set during `create-user`), or
+- Your **API key** (the `wb-...` key printed during `create-user`)
 
 ---
 
@@ -862,6 +866,18 @@ Use a different username, or connect to the database directly to check existing 
 
 ```bash
 docker compose exec db psql -U workbench -c "SELECT username, id FROM workbench_users;"
+```
+
+### Login form remains visible after successful authentication
+
+After a successful login, if the sign-in form stays on screen beneath the tabs, the `boot()` function in `app.js` is not clearing the `#active-tab-content` container before rendering tabs. This was a regression introduced when the auth flow was refactored to support password + API key login alongside setup/invite/reset-password flows.
+
+**Fix:** Ensure `boot()` clears `#active-tab-content` after `API.me()` succeeds and before calling `renderTabs()`:
+
+```javascript
+currentUser = await API.me();
+document.getElementById('active-tab-content').innerHTML = '';
+await renderTabs();
 ```
 
 ---

@@ -1,6 +1,7 @@
 """Authentication routes — login, logout, password management, API key management."""
 
 from datetime import UTC, datetime, timedelta
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import Response
@@ -124,7 +125,7 @@ def _login_response(user: User) -> dict:
 
 @router.get("/auth/setup-status")
 async def setup_status(
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(select(func.count(User.id)))
     count = result.scalar() or 0
@@ -137,7 +138,7 @@ async def setup(
     body: SetupRequest,
     request: Request,
     response: Response,
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(select(func.count(User.id)))
     count = result.scalar() or 0
@@ -163,7 +164,7 @@ async def setup(
 async def login(
     request: Request,
     response: Response,
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     content_type = request.headers.get("content-type", "")
     body = await request.json()
@@ -228,7 +229,7 @@ async def _api_key_login(raw_key: str, request: Request, response: Response, ses
 async def logout(
     request: Request,
     response: Response,
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     cookie_token = request.cookies.get("workbench_session")
     if cookie_token:
@@ -256,7 +257,7 @@ async def logout(
 async def forgot_password(
     body: ForgotPasswordRequest,
     request: Request,
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     config = request.app.state.config
     email = body.email.strip().lower()
@@ -286,7 +287,7 @@ async def reset_password(
     body: ResetPasswordRequest,
     request: Request,
     response: Response,
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     config = request.app.state.config
     token_hash = _hash_token(body.token)
@@ -315,7 +316,7 @@ async def accept_invite(
     body: AcceptInviteRequest,
     request: Request,
     response: Response,
-    session: AsyncSession = Depends(get_session),
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     config = request.app.state.config
     token_hash = _hash_token(body.token)
@@ -356,8 +357,8 @@ async def accept_invite(
 
 @router.get("/me", response_model=UserProfile)
 async def get_profile(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     has_key = await get_user_openrouter_key(user, session)
     return UserProfile(
@@ -376,8 +377,8 @@ async def get_profile(
 async def change_password(
     body: ChangePasswordRequest,
     request: Request,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     if not user.password_hash or not verify_password(body.current_password, user.password_hash):
         raise HTTPException(status_code=400, detail="Current password is incorrect")
@@ -394,8 +395,8 @@ async def change_password(
 async def set_openrouter_key(
     body: OpenRouterKeyRequest,
     request: Request,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     if not body.api_key.startswith("sk-or-v1-"):
         raise HTTPException(
@@ -410,8 +411,8 @@ async def set_openrouter_key(
 
 @router.delete("/me/openrouter-key")
 async def delete_openrouter_key(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(
         select(UserOpenRouterKey).where(UserOpenRouterKey.user_id == user.id)
@@ -425,8 +426,8 @@ async def delete_openrouter_key(
 
 @router.get("/me/api-keys", response_model=list[ApiKeyResponse])
 async def list_api_keys(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     result = await session.execute(select(UserApiKey).where(UserApiKey.user_id == user.id))
     keys = result.scalars().all()
@@ -448,8 +449,8 @@ async def list_api_keys(
 async def create_api_key(
     body: ApiKeyLabel,
     request: Request,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     count_result = await session.execute(
         select(func.count(UserApiKey.id)).where(UserApiKey.user_id == user.id)
@@ -479,8 +480,8 @@ async def create_api_key(
 @router.delete("/me/api-keys/{key_id}")
 async def delete_api_key(
     key_id: str,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     from uuid import UUID
 

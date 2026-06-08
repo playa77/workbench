@@ -1,5 +1,7 @@
 """Agent management routes — list, enable/disable, get/set settings."""
 
+from typing import Annotated
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,8 +30,8 @@ class AgentSettingsUpdate(BaseModel):
 
 @router.get("/agents", response_model=list[AgentInfo])
 async def list_agents(
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     registry = get_registry()
     user_settings = await get_user_agent_settings(str(user.id), session)
@@ -52,8 +54,8 @@ async def list_agents(
 @router.get("/agents/{agent_name}/settings")
 async def get_agent_settings(
     agent_name: str,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     registry = get_registry()
     agent = registry.get(agent_name)
@@ -75,8 +77,8 @@ async def get_agent_settings(
 async def update_agent_settings(
     agent_name: str,
     body: AgentSettingsUpdate,
-    user: User = Depends(get_current_user),
-    session: AsyncSession = Depends(get_session),
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
 ):
     registry = get_registry()
     agent = registry.get(agent_name)
