@@ -8,6 +8,7 @@ and token usage logging.
 from __future__ import annotations
 
 import asyncio
+import json as _json
 import logging
 import os
 import time
@@ -324,7 +325,7 @@ class OpenRouterClient:
                     if attempt < effective_max_retries:
                         await asyncio.sleep(2 ** (attempt - 1))
                     continue
-                except (KeyError, IndexError) as exc:
+                except (KeyError, IndexError, _json.JSONDecodeError) as exc:
                     self._log_malformed(
                         exc, current_model, attempt, effective_max_retries, req_start
                     )

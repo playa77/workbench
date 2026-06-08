@@ -668,6 +668,7 @@ class ResearchOrchestrator:
 
                 self._emit("status", {
                     "iteration": self._state.iteration,
+                    "max_iterations": self._state.max_iterations,
                     "sources": self._state.mind_map.source_count(),
                 })
 
