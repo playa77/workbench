@@ -7,6 +7,7 @@ Provides:
 """
 
 import re
+from weasyprint import HTML
 
 # Placeholder markers used to protect HTML structural elements during escaping.
 _PH_BQ_START = "\x00BQ\x00"
@@ -253,3 +254,363 @@ def generate_pdf_print_page(content: str, title: str = "Report") -> str:
     html_doc = html_doc.replace("</body>", script + "</body>")
 
     return html_doc
+
+
+def markdown_to_pdf_bytes(content: str, title: str = "Report") -> bytes:
+    """Generate a professional PDF from markdown content using WeasyPrint."""
+    html = _build_professional_pdf_html(content, title)
+    return HTML(string=html).write_pdf()
+
+
+def _build_professional_pdf_html(content: str, title: str = "Report") -> str:
+    """Build a polished, print-oriented HTML document for PDF generation.
+
+    Design requirements:
+    - A4 page size, 25mm margins
+    - Georgia body, Helvetica Neue headings, Menlo monospace
+    - Title page with centered title and date
+    - Running headers with report title and page numbers (not on first page)
+    - Auto-numbered headings via CSS counters
+    - Professional table/blockquote/code styling
+    - Page break before major sections
+    """
+    import datetime
+
+    # Use the existing markdown_to_html conversion but with print CSS
+    md = content
+
+    # ---- Phase 1: structural elements (before HTML escaping) ----
+    md = re.sub(
+        r"^> (.+)$",
+        _PH_BQ_START + r"\1" + _PH_BQ_END,
+        md,
+        flags=re.MULTILINE,
+    )
+    md = re.sub(
+        r"^---+$",
+        _PH_HR,
+        md,
+        flags=re.MULTILINE,
+    )
+
+    # ---- Phase 2: HTML escaping ----
+    md = _escape_html(md)
+
+    # ---- Phase 3: restore structural HTML with print styling ----
+    blockquote_html = (
+        '<blockquote class="report-blockquote">'
+    )
+    md = md.replace(_PH_BQ_START, blockquote_html)
+    md = md.replace(_PH_BQ_END, "</blockquote>")
+    md = md.replace(
+        _PH_HR,
+        '<hr class="report-hr">',
+    )
+
+    # ---- Phase 4: inline markdown patterns ----
+    md = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", md)
+    md = re.sub(r"\*(.+?)\*", r"<em>\1</em>", md)
+    md = re.sub(r"`([^`]+)`", r"<code>\1</code>", md)
+    md = re.sub(
+        r"!\[([^\]]*)\]\(([^)]+)\)",
+        r'<img src="\2" alt="\1" class="report-img">',
+        md,
+    )
+    md = re.sub(
+        r"\[([^\]]+)\]\(([^)]+)\)",
+        r'<a href="\2">\1</a>',
+        md,
+    )
+    md = re.sub(
+        r"^### (.+)$",
+        r'<h3>\1</h3>',
+        md,
+        flags=re.MULTILINE,
+    )
+    md = re.sub(
+        r"^## (.+)$",
+        r'<h2>\1</h2>',
+        md,
+        flags=re.MULTILINE,
+    )
+    md = re.sub(
+        r"^# (.+)$",
+        r'<h1>\1</h1>',
+        md,
+        flags=re.MULTILINE,
+    )
+    md = re.sub(
+        r"^(  -|  \*) (.+)$",
+        r'<li class="report-li-indent">\2</li>',
+        md,
+        flags=re.MULTILINE,
+    )
+    md = re.sub(
+        r"^[-*] (.+)$",
+        r'<li>\1</li>',
+        md,
+        flags=re.MULTILINE,
+    )
+    md = re.sub(
+        r"^\d+\. (.+)$",
+        r'<li>\1</li>',
+        md,
+        flags=re.MULTILINE,
+    )
+    md = re.sub(r"\n\n", '</p><p class="report-p">', md)
+    md = re.sub(r"\n", "<br>", md)
+
+    body_content = '<p class="report-p">' + md + "</p>"
+
+    # Process superscript citations after escaping
+    body_content = re.sub(
+        r"\[(\d+)\]",
+        r'<sup class="citation">[\1]</sup>',
+        body_content,
+    )
+
+    css = """\
+/* ---------- Page Setup ---------- */
+@page {
+    size: A4;
+    margin: 25mm 20mm 25mm 20mm;
+    @top-center {
+        content: string(doctitle);
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-size: 9pt;
+        color: #666;
+        border-bottom: 0.5pt solid #ccc;
+        padding-bottom: 4pt;
+    }
+    @bottom-center {
+        content: counter(page);
+        font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+        font-size: 9pt;
+        color: #666;
+    }
+}
+@page :first {
+    @top-center { content: none; }
+    margin-top: 25mm;
+    @bottom-center { content: none; }
+}
+@page titlepage {
+    @top-center { content: none; }
+    @bottom-center { content: none; }
+}
+
+/* ---------- Document Body ---------- */
+body {
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 11pt;
+    line-height: 1.7;
+    color: #1a1a1a;
+    background: #ffffff;
+    widows: 3;
+    orphans: 3;
+}
+
+/* ---------- Title Page ---------- */
+.title-page {
+    page: titlepage;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    text-align: center;
+}
+.title-page h1 {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 28pt;
+    font-weight: 300;
+    color: #1a1a1a;
+    margin-bottom: 16pt;
+    string-set: doctitle content();
+}
+.title-page .title-date {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 11pt;
+    color: #888;
+    margin-bottom: 40pt;
+}
+.title-page .title-footer {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 9pt;
+    color: #aaa;
+    margin-top: 60pt;
+}
+
+/* ---------- Headings with Auto-Numbering ---------- */
+body {
+    counter-reset: h1counter;
+}
+h1 {
+    counter-reset: h2counter;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 18pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 28pt 0 12pt 0;
+    page-break-before: always;
+}
+h1::before {
+    counter-increment: h1counter;
+    content: counter(h1counter) ". ";
+}
+h1:first-of-type {
+    page-break-before: avoid;
+}
+h2 {
+    counter-reset: h3counter;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 14pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 22pt 0 10pt 0;
+    page-break-before: always;
+}
+h2::before {
+    counter-increment: h2counter;
+    content: counter(h1counter) "." counter(h2counter) " ";
+}
+h3 {
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 12pt;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin: 16pt 0 8pt 0;
+}
+h3::before {
+    counter-increment: h3counter;
+    content: counter(h1counter) "." counter(h2counter) "." counter(h3counter) " ";
+}
+
+/* ---------- Paragraphs ---------- */
+.report-p {
+    margin-bottom: 8pt;
+    text-align: justify;
+    hyphens: auto;
+}
+
+/* ---------- Blockquotes ---------- */
+.report-blockquote {
+    border-left: 3pt solid #2c5aa0;
+    padding: 6pt 14pt;
+    margin: 10pt 0;
+    color: #444;
+    font-style: italic;
+    font-size: 10.5pt;
+    background: #f9f9fb;
+}
+
+/* ---------- Code ---------- */
+code {
+    font-family: Menlo, "Courier New", Courier, monospace;
+    background: #f5f5f5;
+    color: #333;
+    padding: 1pt 4pt;
+    border-radius: 2pt;
+    font-size: 9.5pt;
+}
+pre {
+    background: #f5f5f5;
+    border: 1pt solid #ddd;
+    border-radius: 4pt;
+    padding: 10pt 14pt;
+    margin: 10pt 0;
+    overflow-x: auto;
+    font-size: 9pt;
+}
+pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    color: #1a1a1a;
+}
+
+/* ---------- Links ---------- */
+a {
+    color: #2c5aa0;
+    text-decoration: underline;
+}
+
+/* ---------- Horizontal Rules ---------- */
+.report-hr {
+    border: none;
+    border-top: 1pt solid #2c5aa0;
+    margin: 20pt 0;
+}
+
+/* ---------- Tables ---------- */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12pt 0;
+    font-size: 10pt;
+}
+th {
+    background: #f0f0f0;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-weight: 600;
+    text-align: left;
+    padding: 6pt 8pt;
+    border: 1pt solid #ccc;
+}
+td {
+    padding: 5pt 8pt;
+    border: 1pt solid #ddd;
+}
+tr:nth-child(even) td {
+    background: #fafafa;
+}
+
+/* ---------- Lists ---------- */
+ul, ol {
+    margin: 6pt 0;
+    padding-left: 24pt;
+}
+li {
+    margin-bottom: 3pt;
+    font-family: Georgia, "Times New Roman", serif;
+}
+.report-li-indent {
+    margin-left: 20pt;
+}
+
+/* ---------- Images ---------- */
+.report-img {
+    max-width: 100%;
+    display: block;
+    margin: 12pt auto;
+}
+
+/* ---------- Citations ---------- */
+.citation {
+    font-size: 8pt;
+    color: #2c5aa0;
+    line-height: 0;
+}
+""".strip()
+
+    today = datetime.date.today().strftime("%B %d, %Y")
+
+    return f"""\
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{_escape_html(title)}</title>
+    <style>
+{css}
+    </style>
+</head>
+<body>
+    <div class="title-page">
+        <h1>{_escape_html(title)}</h1>
+        <div class="title-date">{today}</div>
+        <div class="title-footer">Generated by Workbench</div>
+    </div>
+    {body_content}
+</body>
+</html>"""

@@ -143,40 +143,33 @@ def _register_core_routes(app: FastAPI) -> None:
     from workbench.api.routes import admin as admin_routes
     from workbench.api.routes import auth, health
     from workbench.api.routes import config as config_routes
-    from workbench.services.export_service import (
-        generate_pdf_print_page,
-        markdown_to_html,
-    )
-
+    from workbench.api.routes import reports as report_routes
     app.include_router(health.router, tags=["core"])
     app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
     app.include_router(admin_routes.router, prefix="/api/v1", tags=["admin"])
     app.include_router(config_routes.router, prefix="/api/v1", tags=["config"])
     app.include_router(agent_routes.router, prefix="/api/v1", tags=["agents"])
+    app.include_router(report_routes.router, prefix="/api/v1", tags=["reports"])
 
     agent_registry = get_registry()
     agent_registry.mount_all(app)
-
-    @app.post("/api/v1/export/html")
-    async def export_html(
-        body: ExportRequest,
-        user: Annotated[User, Depends(get_current_user)],
-    ):
-        html = markdown_to_html(body.content, title=body.title)
-
-        return Response(
-            content=html,
-            media_type="text/html",
-            headers={"Content-Disposition": 'attachment; filename="report.html"'},
-        )
 
     @app.post("/api/v1/export/pdf")
     async def export_pdf(
         body: ExportRequest,
         user: Annotated[User, Depends(get_current_user)],
     ):
-        html = generate_pdf_print_page(body.content, title=body.title)
-        return HTMLResponse(content=html)
+        from workbench.services.export_service import markdown_to_pdf_bytes
+
+        pdf_bytes = await asyncio.to_thread(markdown_to_pdf_bytes, body.content, body.title)
+        return Response(
+            content=pdf_bytes,
+            media_type="application/pdf",
+            headers={
+                "Content-Disposition": f'attachment; filename="{body.title.replace(" ", "_")}.pdf"',
+                "Content-Length": str(len(pdf_bytes)),
+            },
+        )
 
 
 def _run_alembic_upgrade() -> None:

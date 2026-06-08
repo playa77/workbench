@@ -46,11 +46,12 @@ class ResearchAgent(AgentBase):
         return router
 
     @staticmethod
-    def _parse_query_params(body: ResearchRequest) -> tuple[str, int, str | None]:
-        """Extract research parameters from the request."""
-        max_iter = body.max_iterations or 20
+    def _parse_query_params(body: ResearchRequest) -> tuple[str, int, int, int, str | None]:
+        """Extract research parameters from the request. Returns (question, max_iter, tree_depth, branching_factor, brave_key)."""
+        leaf_count = body.branching_factor ** body.tree_depth
+        max_iter = min(leaf_count * 3, 100)
         brave_key = body.brave_api_key or None
-        return body.question, max_iter, brave_key
+        return body.question, max_iter, body.tree_depth, body.branching_factor, brave_key
 
     # ---- SSE: start research query ----
 
@@ -64,14 +65,14 @@ class ResearchAgent(AgentBase):
         if not or_key:
             raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
 
-        question, max_iter, brave_key = self._parse_query_params(body)
+        question, max_iter, tree_depth, branching_factor, brave_key = self._parse_query_params(body)
 
         from workbench.services.research_orchestrator import (
             ResearchOrchestrator,
             ResearchState,
         )
 
-        state = ResearchState.create(question, max_iterations=max_iter)
+        state = ResearchState.create(question, max_iterations=max_iter, tree_depth=tree_depth, branching_factor=branching_factor, language=body.language)
         run_id = state.run_id
 
         client = OpenRouterClient(api_key=or_key)
@@ -254,5 +255,7 @@ class ResearchAgent(AgentBase):
 
 class ResearchRequest(BaseModel):
     question: str = Field(..., max_length=10000)
-    max_iterations: int | None = None
+    tree_depth: int = 2
+    branching_factor: int = 5
     brave_api_key: str | None = None
+    language: str = "auto"

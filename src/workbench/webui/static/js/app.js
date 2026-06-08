@@ -305,6 +305,14 @@
       owuiBtn.innerHTML = getIcon('globe') + ' OpenWebUI';
       owuiBtn.addEventListener('click', function () { Router.setActive('owui'); });
       headerTabs.appendChild(owuiBtn);
+
+      var historyBtn = document.createElement('button');
+      historyBtn.className = 'tab-btn';
+      historyBtn.dataset.tab = 'history';
+      historyBtn.dataset.js = '/static/js/components/history-tab.js';
+      historyBtn.innerHTML = getIcon('database') + ' History';
+      historyBtn.addEventListener('click', function () { Router.setActive('history'); });
+      headerTabs.appendChild(historyBtn);
     } catch (e) {
       headerTabs.innerHTML = '<span style="color:var(--text-muted);font-size:12px;">No agents</span>';
     }

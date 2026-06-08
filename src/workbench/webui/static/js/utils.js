@@ -136,35 +136,35 @@ const Utils = (() => {
 
   function exportMarkdownAsPdf(markdown, title) {
     title = title || 'Report';
-    // Use the backend endpoint to generate a PDF print page
     var apiKey = '';
     try { apiKey = (typeof API !== 'undefined' && API.getApiKey) ? API.getApiKey() : ''; } catch(e) {}
+
+    var pdfBtn = document.getElementById('btn-export-pdf');
+    setButtonLoading(pdfBtn, 'Generating PDF...');
+
     fetch('/api/v1/export/pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
       body: JSON.stringify({ content: markdown, title: title }),
     })
-      .then(function (resp) { return resp.text(); })
-      .then(function (html) {
-        var w = window.open('', '_blank', 'width=900,height=700');
-        if (w) {
-          w.document.write(html);
-          w.document.close();
-          // Small delay so the browser can parse the document before printing
-          setTimeout(function () { w.print(); }, 500);
-        } else {
-          // Fallback: open in same window
-          var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-          var url = URL.createObjectURL(blob);
-          var a = document.createElement('a');
-          a.href = url;
-          a.target = '_blank';
-          a.click();
-          URL.revokeObjectURL(url);
-          showToast('Opening print dialog...', 'info');
-        }
+      .then(function (resp) {
+        if (!resp.ok) throw new Error('Export failed: ' + resp.status);
+        return resp.blob();
+      })
+      .then(function (blob) {
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = title.replace(/[^a-zA-Z0-9]/g, '_') + '.pdf';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        resetButton(pdfBtn);
+        showToast('PDF downloaded', 'success');
       })
       .catch(function (e) {
+        resetButton(pdfBtn);
         showToast('Export failed: ' + e.message, 'error');
       });
   }

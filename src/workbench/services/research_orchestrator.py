@@ -167,6 +167,9 @@ class ResearchState(BaseModel):
     mind_map: MindMap
     iteration: int = 0
     max_iterations: int = 20
+    tree_depth: int = 2
+    branching_factor: int = 5
+    language: str = "auto"
     actions_log: list[ActionLog] = Field(default_factory=list)
     token_usage: TokenUsage = Field(default_factory=TokenUsage)
     draft_requested: bool = False
@@ -176,12 +179,37 @@ class ResearchState(BaseModel):
     error: str = ""
 
     @classmethod
-    def create(cls, query: str, max_iterations: int = 20) -> ResearchState:
+    def create(cls, query: str, max_iterations: int = 20, tree_depth: int = 2, branching_factor: int = 5, language: str = "auto") -> ResearchState:
+        if language == "auto":
+            language = cls._detect_language(query)
         return cls(
             query=query,
             mind_map=MindMap.create(query),
             max_iterations=max_iterations,
+            tree_depth=tree_depth,
+            branching_factor=branching_factor,
+            language=language,
         )
+
+    @staticmethod
+    def _detect_language(text: str) -> str:
+        """Simple heuristic: count common German vs English words."""
+        german_words = ["der", "die", "das", "und", "ist", "ein", "eine", "einen", "nicht",
+                        "mit", "auf", "für", "von", "zu", "den", "dem", "des", "sich",
+                        "werden", "wird", "hat", "war", "sind", "kann", "muss", "soll",
+                        "würde", "könnte", "möchte"]
+        english_words = ["the", "and", "that", "have", "for", "not", "with", "this",
+                         "but", "from", "they", "will", "would", "there", "their",
+                         "what", "about", "which", "when", "make", "like", "just",
+                         "over", "take", "into", "year", "also"]
+
+        text_lower = text.lower()
+        de_count = sum(1 for w in german_words if f" {w} " in f" {text_lower} ")
+        en_count = sum(1 for w in english_words if f" {w} " in f" {text_lower} ")
+
+        if de_count > en_count * 2:
+            return "de"
+        return "en"
 
     def increment_iteration(self) -> int:
         self.iteration += 1
@@ -489,6 +517,13 @@ You are an autonomous deep research agent. You conduct rigorous, multi-source
 investigations and produce publication-quality reports where every factual claim
 is backed by a citation. You are methodical and thorough.
 
+LANGUAGE REQUIREMENT:
+You MUST write the ENTIRE final report in {language_name} ({language_code}).
+- Think in {language_name} throughout the research process.
+- Write ALL findings, summaries, and the final report directly in {language_name}.
+- Do NOT write in English then translate — produce the output natively in {language_name}.
+- ALL section headings, citations, and metadata must be in {language_name}.
+
 RESEARCH METHODOLOGY:
 
 Phase 1 — Decompose:
@@ -511,6 +546,20 @@ ONLY when you have findings across ALL sub-questions with real sources,
 log contradictions, investigate low-confidence areas — THEN call draft_report()
 and write the complete report.
 
+TREE TOPOLOGY — Current level: {current_depth}/{tree_depth}, Branching: {branching_factor}
+
+You are conducting research as a recursive decomposition tree:
+- At level 1, decompose the query into {branching_factor} distinct sub-questions.
+- For EACH sub-question: search + read 2–3 sources + record findings.
+- Then identify the 2–3 most promising or under-explored branches and descend to level 2.
+- At level 2, for each branch: decompose into {branching_factor} sub-sub-questions.
+- Repeat until you reach level {tree_depth} (terminal leaves).
+- At terminal leaves: produce a thorough, cited summary for that branch.
+- After all branches are complete: synthesize upward into a single cohesive report.
+
+For a shallow tree (depth=1), you spread wide but never descend — each of the {branching_factor} sub-questions gets one round of research then you synthesize.
+For a deep tree (depth=4–5), you drill down methodically, narrowing scope at each level.
+
 TOOL DISTANCE RULE:
 Between draft_report() and your final report text, you may make AT MOST one
 more tool call (e.g. one last web_search or read_webpage to fill a critical
@@ -524,19 +573,21 @@ CITATION RULES:
 REQUIRED REPORT FORMAT (markdown):
 # Research Report: {{Descriptive Title}}
 ## Executive Summary (6-8 dense sentences)
-## {{Thematic Section}} — at least 3 sections, each with 3-5 paragraphs
+## {{Thematic Section}} — at least 3 sections, each with {depth_paragraphs} paragraphs
 ## Contradictions & Debates
 ## Limitations
 ## Sources — [1] Title - URL, numbered by first citation
 
 QUALITY STANDARDS:
-- DEPTH: 3-5 paragraphs per section
+- DEPTH: {depth_paragraphs} paragraphs per section
 - SPECIFICITY: Exact numbers, dates, names
 - BALANCE: Multiple perspectives
 - LENGTH: Minimum 1500 words
 
 CURRENT STATE:
 Query: "{query}"
+Language: {language_name} ({language_code})
+Tree: depth {current_depth}/{tree_depth}, branching {branching_factor}
 Findings so far: {mind_map_summary}
 Knowledge gaps: {gaps}
 Contradictions: {contradictions}
@@ -875,8 +926,26 @@ class ResearchOrchestrator:
         state = self._state
         gaps = state.mind_map.get_gaps()
         contradictions = state.mind_map.get_contradictions()
+
+        # Map language code to display name
+        lang_names = {"en": "English", "de": "German (Deutsch)"}
+        language_name = lang_names.get(state.language, "English")
+        language_code = state.language
+
+        # Determine current depth: count deepest MindMapNode level visited
+        current_depth = self._compute_current_depth()
+
+        # Depth-based paragraph requirement
+        depth_paragraphs = state.tree_depth * 2
+
         return SYSTEM_TEMPLATE.format(
             query=state.query,
+            language_name=language_name,
+            language_code=language_code,
+            current_depth=current_depth,
+            tree_depth=state.tree_depth,
+            branching_factor=state.branching_factor,
+            depth_paragraphs=depth_paragraphs,
             mind_map_summary=state.mind_map.get_summary() or "(no findings yet)",
             gaps=", ".join(gaps) if gaps else "none identified yet",
             contradictions=(
@@ -888,6 +957,17 @@ class ResearchOrchestrator:
             iteration=state.iteration,
             max_iterations=str(state.max_iterations) if state.max_iterations else "unlimited",
         )
+
+    def _compute_current_depth(self) -> int:
+        """Compute the deepest level of the MindMap tree currently explored."""
+        def max_depth(node, depth=0):
+            if not node.children:
+                return depth
+            return max(max_depth(c, depth + 1) for c in node.children)
+        try:
+            return max_depth(self._state.mind_map.root)
+        except Exception:
+            return 1
 
     def _emit(self, event_type: str, data: Any) -> None:
         payload = {"event": event_type, "data": data}

@@ -1,6 +1,9 @@
 const API = (() => {
   async function request(method, path, body) {
     var opts = { method: method, headers: { 'Content-Type': 'application/json' } };
+    var apiKey = '';
+    try { apiKey = (API && API.getApiKey) ? API.getApiKey() : ''; } catch(e) {}
+    if (apiKey) opts.headers['Authorization'] = 'Bearer ' + apiKey;
     if (body !== undefined) opts.body = JSON.stringify(body);
     var resp = await fetch(path, opts);
     var data = await resp.json().catch(function() { return null; });
@@ -37,5 +40,8 @@ const API = (() => {
     listTabs: function() { return request('GET', '/api/v1/tabs'); },
     getApiKey: function() { return ''; },
     health: function() { return request('GET', '/health'); },
+    listReports: function() { return request('GET', '/api/v1/reports'); },
+    getReport: function(id) { return request('GET', '/api/v1/reports/' + id); },
+    deleteReport: function(id) { return request('DELETE', '/api/v1/reports/' + id); },
   };
 })();

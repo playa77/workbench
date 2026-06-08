@@ -26,6 +26,7 @@ dependencies = [
     "jinja2>=3.1.0",
     "chromadb>=0.6.0",
     "PyMuPDF>=1.24",
+    "weasyprint>=62",
 ]
 
 [project.optional-dependencies]

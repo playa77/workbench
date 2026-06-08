@@ -24,13 +24,28 @@
       +     '</div>'
       +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
       +       '<div class="form-group">'
-      +         '<label>Max Iterations</label>'
-      +         '<input class="form-input" id="rq-iterations" type="number" value="15" min="1" max="50" />'
+      +         '<label>Tree Depth (levels, 1–5)</label>'
+      +         '<input class="form-input" id="rq-depth" type="number" value="2" min="1" max="5" />'
       +       '</div>'
       +       '<div class="form-group">'
-      +         '<label>Brave API Key (optional)</label>'
-      +         '<input class="form-input" id="rq-brave-key" type="password" placeholder="BSA-..." />'
+      +         '<label>Branching Factor (per node, 1–10)</label>'
+      +         '<input class="form-input" id="rq-branching" type="number" value="5" min="1" max="10" />'
       +       '</div>'
+      +     '</div>'
+      +     '<div style="margin-top:4px;font-size:11px;color:var(--text-muted)" id="rq-leaf-display">'
+      +       'Estimated research leaves: 25 — leaf count = branches<sup>depth</sup>'
+      +     '</div>'
+      +     '<div class="form-group">'
+      +       '<label>Report Language</label>'
+      +       '<select class="form-input" id="rq-language">'
+      +         '<option value="auto" selected>Auto (detect from question)</option>'
+      +         '<option value="en">English</option>'
+      +         '<option value="de">Deutsch (German)</option>'
+      +       '</select>'
+      +     '</div>'
+      +     '<div class="form-group">'
+      +       '<label>Brave API Key (optional)</label>'
+      +       '<input class="form-input" id="rq-brave-key" type="password" placeholder="BSA-..." />'
       +     '</div>'
       +     '<div style="display:flex;gap:8px">'
       +       '<button class="btn btn-primary" id="btn-start-research">Start Research</button>'
@@ -42,14 +57,44 @@
 
     document.getElementById('btn-start-research').addEventListener('click', startResearch);
     document.getElementById('btn-stop-research').addEventListener('click', stopResearch);
+
+    // Live leaf count display
+    var depthEl = document.getElementById('rq-depth');
+    var branchEl = document.getElementById('rq-branching');
+    var leafDisplay = document.getElementById('rq-leaf-display');
+    function updateLeafCount() {
+      var d = parseInt(depthEl.value) || 2;
+      var b = parseInt(branchEl.value) || 5;
+      var leafCount = Math.pow(b, d);
+      var color = leafCount > 512 ? 'orange' : (leafCount > 256 ? 'orange' : 'var(--text-muted)');
+      if (leafCount > 1000) color = 'red';
+      leafDisplay.innerHTML = 'Estimated research leaves: ' + leafCount + ' — leaf count = branches<sup>depth</sup>';
+      leafDisplay.style.color = color;
+    }
+    depthEl.addEventListener('input', updateLeafCount);
+    branchEl.addEventListener('input', updateLeafCount);
   }
 
   function startResearch() {
     var question = document.getElementById('rq-question').value.trim();
     if (!question) return alert('Enter a research question');
 
-    var maxIter = parseInt(document.getElementById('rq-iterations').value) || 15;
+    var depth = parseInt(document.getElementById('rq-depth').value) || 2;
+    var branching = parseInt(document.getElementById('rq-branching').value) || 5;
+    var leafCount = Math.pow(branching, depth);
+
+    if (leafCount > 1000) {
+      alert('Too many leaves (' + leafCount + '). Reduce depth or branching to stay under 1,000.');
+      return;
+    }
+    if (leafCount > 512) {
+      if (!confirm('This will explore ' + leafCount + ' research leaves. This is a very deep investigation and will consume significant tokens. Continue?')) {
+        return;
+      }
+    }
+
     var braveKey = document.getElementById('rq-brave-key').value.trim() || undefined;
+    var language = document.getElementById('rq-language').value;
 
     var btnStart = document.getElementById('btn-start-research');
     if (!btnStart) return;
@@ -59,11 +104,13 @@
     btnStop.style.display = 'inline-flex';
 
     var output = document.getElementById('research-output');
-    output.innerHTML = renderStatusPanel(0, 0, maxIter, 0, 'starting');
+    // Compute approximate max iterations for status display
+    var estMaxIter = Math.min(leafCount * 3, 100);
+    output.innerHTML = renderStatusPanel(0, 0, estMaxIter, 0, 'starting');
 
     cleanup();
 
-    var body = { question: question, max_iterations: maxIter };
+    var body = { question: question, tree_depth: depth, branching_factor: branching, language: language };
     if (braveKey) body.brave_api_key = braveKey;
 
     activeAbortController = new AbortController();
@@ -228,8 +275,7 @@
       +   '<div style="line-height:1.7;font-size:13px"><p style="margin-bottom:8px;line-height:1.7">' + md + '</p></div>'
       +   '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">'
       +     '<button class="btn btn-primary btn-sm" onclick="window.researchCopyReport()">Copy Markdown</button>'
-      +     '<button class="btn btn-secondary btn-sm" onclick="window.researchExportHtml()">Export HTML</button>'
-      +     '<button class="btn btn-secondary btn-sm" onclick="window.researchExportPdf()">Export PDF</button>'
+      +     '<button class="btn btn-primary btn-sm" id="btn-export-pdf" onclick="window.researchExportPdf()">Export PDF</button>'
       +     '<button class="btn btn-secondary btn-sm" onclick="Router.setActive(\'research\')">New Research</button>'
       +   '</div>'
       + '</div>';
@@ -242,16 +288,8 @@
     }
   };
 
-  window.researchExportHtml = function () {
-    if (window._researchReportContent) {
-      Utils.exportMarkdownAsHtml(window._researchReportContent, 'Research Report');
-      Utils.showToast('HTML exported', 'success');
-    }
-  };
-
   window.researchExportPdf = function () {
     if (window._researchReportContent) {
-      Utils.setButtonLoading(document.querySelector('#research-output .btn-secondary:nth-of-type(2)'), 'Generating...');
       Utils.exportMarkdownAsPdf(window._researchReportContent, 'Research Report');
     }
   };
