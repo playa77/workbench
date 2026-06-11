@@ -157,20 +157,29 @@ server {
         proxy_buffering off;
         proxy_read_timeout 1800s;
         proxy_send_timeout 1800s;
+        proxy_set_header Accept-Encoding "";
 
-        # Rewrite absolute paths so the SPA works under /open-webui/
-        sub_filter_types application/javascript application/json text/css text/html;
+        sub_filter_types application/javascript application/ecmascript text/javascript application/json text/css;
         sub_filter_once off;
         sub_filter 'href="/' 'href="/open-webui/';
         sub_filter "href='/" "href='/open-webui/";
-        sub_filter ' "/_app/' ' "/open-webui/_app/';
+        sub_filter 'src="/' 'src="/open-webui/';
+        sub_filter "src='/" "src='/open-webui/";
+        sub_filter "'/static/" "'/open-webui/static/";
+        sub_filter '}/_app/' '}/open-webui/_app/';
+        sub_filter '}/api/' '}/open-webui/api/';
+        sub_filter '}/static/' '}/open-webui/static/';
+        sub_filter '"/_app/' '"/open-webui/_app/';
         sub_filter " '/_app/" " '/open-webui/_app/";
-        sub_filter ' "/api/' ' "/open-webui/api/';
+        sub_filter '"/api/' '"/open-webui/api/';
         sub_filter " '/api/" " '/open-webui/api/";
-        sub_filter ' "/ws/' ' "/open-webui/ws/';
+        sub_filter '"/ws/' '"/open-webui/ws/';
+        sub_filter '"/static/' '"/open-webui/static/';
         sub_filter ' "/static/' ' "/open-webui/static/';
         sub_filter ' "/favicon' ' "/open-webui/favicon';
         sub_filter ' "/opensearch' ' "/open-webui/opensearch';
+        sub_filter '"start_url":"/"' '"start_url":"/open-webui/"';
+        sub_filter '"action":"/"' '"action":"/open-webui/"';
     }
 }
 ```
