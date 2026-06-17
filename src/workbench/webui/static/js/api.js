@@ -31,6 +31,8 @@ const API = (() => {
     deleteInvite: function(id) { return request('DELETE', '/api/v1/admin/invites/' + id); },
     setOpenRouterKey: function(key) { return request('POST', '/api/v1/me/openrouter-key', { api_key: key }); },
     deleteOpenRouterKey: function() { return request('DELETE', '/api/v1/me/openrouter-key'); },
+    setBraveKey: function(key) { return request('POST', '/api/v1/me/brave-key', { api_key: key }); },
+    deleteBraveKey: function() { return request('DELETE', '/api/v1/me/brave-key'); },
     listApiKeys: function() { return request('GET', '/api/v1/me/api-keys'); },
     createApiKey: function(label) { return request('POST', '/api/v1/me/api-keys', { label: label }); },
     deleteApiKey: function(id) { return request('DELETE', '/api/v1/me/api-keys/' + id); },

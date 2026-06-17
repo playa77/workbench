@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
-from workbench.core.auth import get_current_user, get_user_openrouter_key
+from workbench.core.auth import get_current_user, get_user_brave_key, get_user_openrouter_key
 from workbench.core.db import get_session
 from workbench.core.models import AgentSession, StoredReport, User
 from workbench.shared.llm.router import OpenRouterClient
@@ -46,12 +46,11 @@ class ResearchAgent(AgentBase):
         return router
 
     @staticmethod
-    def _parse_query_params(body: ResearchRequest) -> tuple[str, int, int, int, str | None]:
-        """Extract research parameters from the request. Returns (question, max_iter, tree_depth, branching_factor, brave_key)."""
+    def _parse_query_params(body: ResearchRequest) -> tuple[str, int, int, int]:
+        """Extract research parameters from the request. Returns (question, max_iter, tree_depth, branching_factor)."""
         leaf_count = body.branching_factor ** body.tree_depth
         max_iter = min(leaf_count * 3, 100)
-        brave_key = body.brave_api_key or None
-        return body.question, max_iter, body.tree_depth, body.branching_factor, brave_key
+        return body.question, max_iter, body.tree_depth, body.branching_factor
 
     # ---- SSE: start research query ----
 
@@ -65,7 +64,23 @@ class ResearchAgent(AgentBase):
         if not or_key:
             raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
 
-        question, max_iter, tree_depth, branching_factor, brave_key = self._parse_query_params(body)
+        question, max_iter, tree_depth, branching_factor = self._parse_query_params(body)
+
+        # Resolve brave key: per-run > user stored > env var
+        brave_key = body.brave_api_key or None
+        if not brave_key:
+            try:
+                stored_key = await get_user_brave_key(user, session)
+                if stored_key:
+                    brave_key = stored_key
+            except Exception:
+                pass
+        if not brave_key:
+            import os
+            brave_key = os.environ.get("BRAVE_SEARCH_API_KEY") or os.environ.get("BRAVE_API_KEY") or None
+
+        # Report title: user-provided or fallback to question
+        report_title = body.report_title or body.question
 
         from workbench.services.research_orchestrator import (
             ResearchOrchestrator,
@@ -95,7 +110,7 @@ class ResearchAgent(AgentBase):
 
                 await task
                 report = task.result()
-                await self._save_report(user, session, question, report, run_id, state)
+                await self._save_report(user, session, report_title, report, run_id, state)
             except asyncio.CancelledError:
                 orchestrator.stop()
                 yield 'event: error\ndata: {"message": "Client disconnected"}\n\n'
@@ -120,18 +135,18 @@ class ResearchAgent(AgentBase):
     async def _save_report(
         user: User,
         session: AsyncSession,
-        question: str,
+        title: str,
         report: str,
         run_id: str,
         state: Any,
     ) -> None:
         try:
             from workbench.core.encryption import encrypt_report_content
-            title = question[:200] if len(question) <= 200 else question[:197] + "..."
+            safe_title = title[:200] if len(title) <= 200 else title[:197] + "..."
             stored = StoredReport(
                 user_id=user.id,
                 agent_name="research",
-                title=title,
+                title=safe_title,
                 content=encrypt_report_content(report),
                 content_format="markdown",
                 metadata_json={
@@ -148,7 +163,7 @@ class ResearchAgent(AgentBase):
                 user_id=user.id,
                 agent_name="research",
                 session_id=run_id,
-                title=title,
+                title=safe_title,
                 state_json=state.model_dump(),
                 content=report,
                 content_format="markdown",
@@ -277,3 +292,4 @@ class ResearchRequest(BaseModel):
     branching_factor: int = 5
     brave_api_key: str | None = None
     language: str = "auto"
+    report_title: str | None = Field(default=None, max_length=500)

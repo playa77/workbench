@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from workbench.core import encryption
 from workbench.core.db import get_session
-from workbench.core.models import User, UserApiKey, UserInvite, UserOpenRouterKey, UserSession
+from workbench.core.models import User, UserApiKey, UserBraveKey, UserInvite, UserOpenRouterKey, UserSession
 
 _T = TypeVar("_T")
 
@@ -188,4 +188,27 @@ async def set_user_openrouter_key(user: User, api_key: str, session: AsyncSessio
         row.encrypted_key = encrypted
     else:
         session.add(UserOpenRouterKey(user_id=user.id, encrypted_key=encrypted))
+    await session.commit()
+
+
+async def get_user_brave_key(user: User, session: AsyncSession) -> str | None:
+    result = await session.execute(
+        select(UserBraveKey).where(UserBraveKey.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return None
+    return encryption.decrypt(row.encrypted_key)
+
+
+async def set_user_brave_key(user: User, api_key: str, session: AsyncSession) -> None:
+    encrypted = encryption.encrypt(api_key)
+    result = await session.execute(
+        select(UserBraveKey).where(UserBraveKey.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is not None:
+        row.encrypted_key = encrypted
+    else:
+        session.add(UserBraveKey(user_id=user.id, encrypted_key=encrypted))
     await session.commit()

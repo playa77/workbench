@@ -39,6 +39,7 @@ class User(Base):
     api_keys: Mapped[list["UserApiKey"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     openrouter_key: Mapped["UserOpenRouterKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+    brave_key: Mapped["UserBraveKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     agent_settings: Mapped[list["UserAgentSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     agent_sessions: Mapped[list["AgentSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
@@ -79,6 +80,17 @@ class UserOpenRouterKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="openrouter_key")
+
+
+class UserBraveKey(Base):
+    __tablename__ = "workbench_brave_keys"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="brave_key")
 
 
 class UserAgentSettings(Base):

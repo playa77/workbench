@@ -22,6 +22,10 @@
       +       '<label>What would you like to research?</label>'
       +       '<textarea class="form-input" id="rq-question" placeholder="Enter a research question..." style="min-height:80px"></textarea>'
       +     '</div>'
+      +     '<div class="form-group">'
+      +       '<label>Report Title (optional)</label>'
+      +       '<input class="form-input" id="rq-report-title" type="text" placeholder="Leave empty to use the question as title" maxlength="200" />'
+      +     '</div>'
       +     '<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">'
       +       '<div class="form-group">'
       +         '<label>Tree Depth (levels, 1–5)</label>'
@@ -97,6 +101,9 @@
 
     var braveKey = document.getElementById('rq-brave-key').value.trim() || undefined;
     var language = document.getElementById('rq-language').value;
+    var reportTitle = document.getElementById('rq-report-title').value.trim() || undefined;
+    // Capture the title for this run so the report + PDF export use it.
+    window._researchReportTitle = reportTitle || question;
 
     var btnStart = document.getElementById('btn-start-research');
     if (!btnStart) return;
@@ -114,6 +121,7 @@
 
     var body = { question: question, tree_depth: depth, branching_factor: branching, language: language };
     if (braveKey) body.brave_api_key = braveKey;
+    if (reportTitle) body.report_title = reportTitle;
 
     activeAbortController = new AbortController();
 
@@ -255,7 +263,9 @@
       + '</div>';
   }
 
-  function renderReport(content) {
+  function renderReport(content, title) {
+    title = title || window._researchReportTitle || 'Research Report';
+    window._researchReportTitle = title;
     var md = content
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
@@ -292,7 +302,8 @@
 
   window.researchExportPdf = function () {
     if (window._researchReportContent) {
-      Utils.exportMarkdownAsPdf(window._researchReportContent, 'Research Report');
+      var title = window._researchReportTitle || 'Research Report';
+      Utils.exportMarkdownAsPdf(window._researchReportContent, title);
     }
   };
 
@@ -381,7 +392,8 @@
     var output = document.getElementById('research-output');
     output.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text-muted)">Loading session...</div>';
     API.getSession(id).then(function (session) {
-      renderReport(session.content || '');
+      window._researchReportTitle = session.title || 'Research Report';
+      renderReport(session.content || '', session.title);
       // Re-add past sessions after the report
       researchPastLoaded = false;
       renderResearchPastSessions();

@@ -102,6 +102,8 @@ POSTGRES_DB=workbench
 ENCRYPTION_KEY=<64-hex-char-key>
 # Optional: server-wide OpenRouter fallback key
 OPENROUTER_API_KEY=sk-or-v1-...
+# Optional: server-wide Brave Search fallback key
+BRAVE_SEARCH_API_KEY=BSA-...
 ```
 
 **All four values are mandatory.** Docker Compose will fail with an error if `POSTGRES_USER`, `POSTGRES_PASSWORD`, or `ENCRYPTION_KEY` is missing or empty.
@@ -458,6 +460,7 @@ python3 -c "import secrets; print(secrets.token_hex(32))"
 export ENCRYPTION_KEY="<64-hex-char-key>"
 # Optional:
 export OPENROUTER_API_KEY="sk-or-v1-..."
+export BRAVE_SEARCH_API_KEY="BSA-..."
 ```
 
 ### Step 6: Create an Admin User
@@ -494,6 +497,7 @@ WorkingDirectory=/opt/workbench
 Environment="DATABASE_URL=postgresql+asyncpg://workbench:<password>@localhost:5432/workbench"
 Environment="ENCRYPTION_KEY=<64-hex-key>"
 Environment="OPENROUTER_API_KEY=sk-or-v1-..."
+Environment="BRAVE_SEARCH_API_KEY=BSA-..."
 ExecStart=/opt/workbench/.venv/bin/workbench serve --host 127.0.0.1 --port 8420
 Restart=always
 RestartSec=5
@@ -946,6 +950,7 @@ All variables that can appear in `.env` or the environment.
 |---|---|---|
 | `DATABASE_URL` | `postgresql+asyncpg://...` or `data/workbench.db` | Full database connection string. If unset, SQLite is used. |
 | `OPENROUTER_API_KEY` | (none) | Server-wide fallback OpenRouter API key |
+| `BRAVE_SEARCH_API_KEY` | (none) | Server-wide fallback Brave Search API key for Deep Research |
 | `WORKBENCH_GENERAL__LOG_LEVEL` | `INFO` | Logging level: DEBUG, INFO, WARNING, ERROR |
 | `WORKBENCH_GENERAL__DATA_DIR` | `data` | Directory for data files |
 

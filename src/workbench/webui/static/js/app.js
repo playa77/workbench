@@ -397,6 +397,20 @@
       '<div id="or-key-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
       '</div>';
 
+    var hasBraveKey = currentUser && currentUser.has_brave_key;
+    content.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Brave Search API Key</h3>' +
+      '<p>Optional — used for web search in Deep Research. Falls back to the server-wide BRAVE_SEARCH_API_KEY if set.</p>' +
+      '<div class="form-group">' +
+      '<input class="form-input" id="brave-key-input" type="password" placeholder="' +
+      (hasBraveKey ? '(stored — enter new to replace)' : 'BSA-...') + '" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-save-brave-key">Save Key</button>' +
+      (hasBraveKey ? '<button class="btn btn-danger btn-sm" id="btn-delete-brave-key" style="margin-left:8px">Remove Key</button>' : '') +
+      '<div id="brave-key-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+      '</div>';
+
     content.innerHTML +=
       '<div class="settings-section">' +
       '<h3>Theme</h3>' +
@@ -437,6 +451,25 @@
 
     document.getElementById('btn-delete-or-key') && document.getElementById('btn-delete-or-key').addEventListener('click', async function () {
       await API.deleteOpenRouterKey();
+      renderSettings(container);
+    });
+
+    document.getElementById('btn-save-brave-key') && document.getElementById('btn-save-brave-key').addEventListener('click', async function () {
+      var val = document.getElementById('brave-key-input').value.trim();
+      if (!val) return;
+      Utils.setButtonLoading(this, 'Saving...');
+      try {
+        await API.setBraveKey(val);
+        Utils.setButtonSuccess(this, 'Saved!');
+        document.getElementById('brave-key-status').textContent = 'Key saved.';
+      } catch (e) {
+        Utils.resetButton(this);
+        document.getElementById('brave-key-status').textContent = 'Error: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-delete-brave-key') && document.getElementById('btn-delete-brave-key').addEventListener('click', async function () {
+      await API.deleteBraveKey();
       renderSettings(container);
     });
 

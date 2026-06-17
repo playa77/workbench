@@ -15,8 +15,10 @@ from workbench.core.auth import (
     generate_api_key,
     generate_token,
     get_current_user,
+    get_user_brave_key,
     get_user_openrouter_key,
     hash_password,
+    set_user_brave_key,
     set_user_openrouter_key,
     verify_api_key,
     verify_password,
@@ -29,7 +31,7 @@ from workbench.core.email import (
     send_reset_email,
     send_welcome_email,
 )
-from workbench.core.models import User, UserApiKey, UserInvite, UserOpenRouterKey, UserSession
+from workbench.core.models import User, UserApiKey, UserBraveKey, UserInvite, UserOpenRouterKey, UserSession
 from workbench.core.rate_limiter import limiter
 
 router = APIRouter()
@@ -90,6 +92,10 @@ class OpenRouterKeyRequest(BaseModel):
     api_key: str = Field(..., min_length=1)
 
 
+class BraveKeyRequest(BaseModel):
+    api_key: str = Field(..., min_length=1)
+
+
 class UserProfile(BaseModel):
     id: str
     username: str
@@ -98,6 +104,7 @@ class UserProfile(BaseModel):
     has_password: bool = False
     created_at: str
     has_openrouter_key: bool
+    has_brave_key: bool = False
 
 
 def _set_session_cookie(request: Request, response: Response, token: str, hours: int = 24) -> None:
@@ -361,6 +368,7 @@ async def get_profile(
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     has_key = await get_user_openrouter_key(user, session)
+    has_brave = await get_user_brave_key(user, session)
     return UserProfile(
         id=str(user.id),
         username=user.username,
@@ -369,6 +377,7 @@ async def get_profile(
         has_password=user.password_hash is not None,
         created_at=user.created_at.isoformat() if user.created_at else "",
         has_openrouter_key=has_key is not None,
+        has_brave_key=has_brave is not None,
     )
 
 
@@ -422,6 +431,35 @@ async def delete_openrouter_key(
         await session.delete(row)
         await session.commit()
     return {"status": "ok", "message": "OpenRouter key removed"}
+
+
+@router.post("/me/brave-key")
+@limiter.limit("10/minute")
+async def set_brave_key(
+    body: BraveKeyRequest,
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    if len(body.api_key) < 8:
+        raise HTTPException(status_code=400, detail="Brave Search API key too short.")
+    await set_user_brave_key(user, body.api_key, session)
+    return {"status": "ok", "message": "Brave Search API key saved"}
+
+
+@router.delete("/me/brave-key")
+async def delete_brave_key(
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    result = await session.execute(
+        select(UserBraveKey).where(UserBraveKey.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is not None:
+        await session.delete(row)
+        await session.commit()
+    return {"status": "ok", "message": "Brave Search API key removed"}
 
 
 @router.get("/me/api-keys", response_model=list[ApiKeyResponse])
