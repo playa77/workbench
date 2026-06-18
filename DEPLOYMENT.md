@@ -812,6 +812,39 @@ docker compose --profile openwebui down -v
 docker compose --profile openwebui up -d
 ```
 
+### Workbench container restarts with "Temporary failure in name resolution"
+
+The workbench container cannot resolve the `db` hostname to reach PostgreSQL. This happens when Docker's embedded DNS is stale after a daemon restart or system sleep.
+
+**Symptoms:** Container keeps restarting (exit code 1), logs show `socket.gaierror: [Errno -3] Temporary failure in name resolution`.
+
+**Fix:** Tear down and recreate the Compose network:
+
+```bash
+docker compose down
+docker compose up -d
+```
+
+If that doesn't help, restart the Docker daemon:
+
+```bash
+sudo systemctl restart docker
+docker compose up -d
+```
+
+### certbot fails with "no valid A records found"
+
+Let's Encrypt validates domain ownership via HTTP challenge, which requires the domain to resolve publicly to your server's IP.
+
+**Fix:** Verify the DNS A record exists and points to your server:
+
+```bash
+dig +short your-domain.com A
+# Must return your server's IP address
+```
+
+If empty, add an A record in your DNS provider (e.g. Cloudflare) pointing the domain to your server's IP. Wait for propagation (~1–5 minutes), then re-run certbot.
+
 ### nginx returns 502 Bad Gateway
 
 One of the backend containers isn't running or listening:
