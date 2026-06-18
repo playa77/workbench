@@ -27,6 +27,7 @@ from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_openrouter_key
 from workbench.core.db import get_session
 from workbench.core.models import AgentSession, User
+from workbench.services.debate_engine import Message as DebateMessage
 from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
@@ -194,91 +195,104 @@ class DebateAgent(AgentBase):
         client = OpenRouterClient(api_key=openrouter_key)
 
         try:
-            while engine.is_running() and not engine.is_completed():
-                if debate_id in self._last_activity:
-                    if time.monotonic() - self._last_activity[debate_id] > DEBATE_TIMEOUT_SECONDS:
-                        engine.state.status = "TIMED_OUT"
-                        logger.warning("Debate %s timed out after %ds of inactivity", debate_id, DEBATE_TIMEOUT_SECONDS)
+            try:
+                while engine.is_running() and not engine.is_completed():
+                    if debate_id in self._last_activity:
+                        if time.monotonic() - self._last_activity[debate_id] > DEBATE_TIMEOUT_SECONDS:
+                            engine.state.status = "TIMED_OUT"
+                            logger.warning("Debate %s timed out after %ds of inactivity", debate_id, DEBATE_TIMEOUT_SECONDS)
+                            break
+
+                    try:
+                        system, user = engine.build_prompt_for_agent(history_limit=12)
+                        agent = engine.get_current_agent()
+                        response = await client.chat_completion(
+                            messages=[
+                                {"role": "system", "content": system},
+                                {"role": "user", "content": user},
+                            ],
+                            model=agent.model_name,
+                            temperature=agent.temperature,
+                        )
+                    except Exception as exc:
+                        logger.exception("Debate %s API call failed", debate_id)
+                        engine.pause()
+                        engine.append_message(
+                            DebateMessage(
+                                sender_id="system",
+                                sender_name="System",
+                                role="system",
+                                content=f"API Error: {exc}",
+                            )
+                        )
                         break
 
-                try:
-                    system, user = engine.build_prompt_for_agent(history_limit=12)
-                    agent = engine.get_current_agent()
-                    response = await client.chat_completion(
-                        messages=[
-                            {"role": "system", "content": system},
-                            {"role": "user", "content": user},
-                        ],
-                        model=agent.model_name,
-                        temperature=agent.temperature,
-                        max_tokens=800,
+                    msg = DebateMessage(
+                        sender_id=agent.id,
+                        sender_name=agent.name,
+                        role="assistant",
+                        content=response,
                     )
-                except Exception as exc:
-                    engine.pause()
+                    engine.append_message(msg)
+                    engine.advance_turn()
+
+                    await asyncio.sleep(2.5)
+
+                if engine.is_completed():
                     engine.append_message(
-                        __import__("workbench.services.debate_engine").Message(
+                        DebateMessage(
                             sender_id="system",
                             sender_name="System",
                             role="system",
-                            content=f"API Error: {exc}",
+                            content=f"Debate completed after {engine.state.rounds_completed} rounds.",
                         )
                     )
-                    break
-
-                from workbench.services.debate_engine import Message
-
-                msg = Message(
-                    sender_id=agent.id,
-                    sender_name=agent.name,
-                    role="assistant",
-                    content=response,
-                )
-                engine.append_message(msg)
-                engine.advance_turn()
-
-                await asyncio.sleep(2.5)
-
-            if engine.is_completed():
-                engine.append_message(
-                    __import__("workbench.services.debate_engine").Message(
-                        sender_id="system",
-                        sender_name="System",
-                        role="system",
-                        content=f"Debate completed after {engine.state.rounds_completed} rounds.",
-                    )
-                )
-                # Save AgentSession
+                    # Save AgentSession
+                    try:
+                        from workbench.core.db import get_session_factory
+                        session_factory = get_session_factory()
+                        async with session_factory() as db_session:
+                            state = engine.state
+                            agent_session = AgentSession(
+                                user_id=uuid4(),
+                                agent_name="debate",
+                                session_id=debate_id,
+                                title=state.topic,
+                                state_json=state.model_dump(),
+                                content=None,
+                                content_format="markdown",
+                                metadata_json={
+                                    "rounds": state.rounds_completed,
+                                    "max_rounds": state.max_rounds,
+                                    "agent_count": len(state.agents),
+                                    "status": state.status,
+                                },
+                            )
+                            entry = self._engines.get(debate_id)
+                            if entry:
+                                from uuid import UUID
+                                try:
+                                    agent_session.user_id = UUID(entry.get("user_id", ""))
+                                except Exception:
+                                    pass
+                            db_session.add(agent_session)
+                            await db_session.commit()
+                    except Exception:
+                        logger.exception("Failed to save AgentSession for debate %s", debate_id)
+            except Exception:
+                logger.exception("Debate %s loop crashed", debate_id)
                 try:
-                    from workbench.core.db import get_session_factory
-                    session_factory = get_session_factory()
-                    async with session_factory() as db_session:
-                        state = engine.state
-                        agent_session = AgentSession(
-                            user_id=uuid4(),  # placeholder — actual user stored in entry
-                            agent_name="debate",
-                            session_id=debate_id,
-                            title=state.topic,
-                            state_json=state.model_dump(),
-                            content=None,
-                            content_format="markdown",
-                            metadata_json={
-                                "rounds": state.rounds_completed,
-                                "max_rounds": state.max_rounds,
-                                "agent_count": len(state.agents),
-                                "status": state.status,
-                            },
+                    engine.pause()
+                    engine.append_message(
+                        DebateMessage(
+                            sender_id="system",
+                            sender_name="System",
+                            role="system",
+                            content=f"Internal error: the debate engine encountered an unexpected failure.",
                         )
-                        entry = self._engines.get(debate_id)
-                        if entry:
-                            from uuid import UUID
-                            try:
-                                agent_session.user_id = UUID(entry.get("user_id", ""))
-                            except Exception:
-                                pass
-                        db_session.add(agent_session)
-                        await db_session.commit()
+                    )
                 except Exception:
-                    logger.exception("Failed to save AgentSession for debate %s", debate_id)
+                    pass
         finally:
             await client.close()
 
