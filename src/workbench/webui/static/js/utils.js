@@ -134,8 +134,9 @@ const Utils = (() => {
     URL.revokeObjectURL(url);
   }
 
-  function exportMarkdownAsPdf(markdown, title) {
+  function exportMarkdownAsPdf(markdown, title, template) {
     title = title || 'Report';
+    template = template || 'professional';
     var apiKey = '';
     try { apiKey = (typeof API !== 'undefined' && API.getApiKey) ? API.getApiKey() : ''; } catch(e) {}
 
@@ -145,7 +146,7 @@ const Utils = (() => {
     fetch('/api/v1/export/pdf', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-      body: JSON.stringify({ content: markdown, title: title }),
+      body: JSON.stringify({ content: markdown, title: title, template: template }),
     })
       .then(function (resp) {
         if (!resp.ok) throw new Error('Export failed: ' + resp.status);
@@ -179,3 +180,28 @@ const Utils = (() => {
     exportMarkdownAsPdf: exportMarkdownAsPdf,
   };
 })();
+
+window.renderTemplateSelector = function(containerId) {
+    fetch('/api/v1/export/templates', {
+      headers: { 'Authorization': 'Bearer ' + (typeof API !== 'undefined' && API.getApiKey ? API.getApiKey() : '') },
+    })
+      .then(function(resp) { return resp.json(); })
+      .then(function(templates) {
+        var container = document.getElementById(containerId);
+        if (!container || !templates || !templates.length) return;
+        var sel = '<select id="template-select" style="padding:4px 8px;border-radius:4px;border:1px solid #444;background:#1a1f2e;color:#cbd5e1;font-size:12px;margin-right:4px">';
+        for (var i = 0; i < templates.length; i++) {
+          var t = templates[i];
+          sel += '<option value="' + t.key + '"' + (t.key === 'professional' ? ' selected' : '') + '>' + t.name + '</option>';
+        }
+        sel += '</select>';
+        container.innerHTML = sel + container.innerHTML;
+        window._templateSelectorLoaded = true;
+      })
+      .catch(function() {});
+};
+
+window.getSelectedTemplate = function() {
+    var sel = document.getElementById('template-select');
+    return sel ? sel.value : 'professional';
+};

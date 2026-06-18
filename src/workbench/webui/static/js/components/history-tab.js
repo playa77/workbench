@@ -39,6 +39,7 @@
       +       '<option value="deliberation">Deliberation</option>'
       +       '<option value="news">News</option>'
       +     '</select>'
+      +     '<span id="history-template-picker"></span>'
       +   '</div>'
       +   '<div class="card">'
       +     '<div class="card-header">Saved Sessions</div>'
@@ -79,6 +80,10 @@
           + '</tr></thead><tbody id="history-table-body"></tbody></table>';
 
         content.innerHTML = tableHtml;
+
+        if (window.renderTemplateSelector) {
+          window.renderTemplateSelector('history-template-picker');
+        }
 
         var tbody = document.getElementById('history-table-body');
         sessions.forEach(function (s) {
@@ -190,9 +195,10 @@
   }
 
   function exportSessionPdf(id, title) {
+    var template = window.getSelectedTemplate ? window.getSelectedTemplate() : 'professional';
     API.getSession(id)
       .then(function (session) {
-        Utils.exportMarkdownAsPdf(session.content || '', title || session.title || 'Session');
+        Utils.exportMarkdownAsPdf(session.content || '', title || session.title || 'Session', template);
       })
       .catch(function (e) {
         Utils.showToast('Export failed: ' + e.message, 'error');

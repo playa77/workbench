@@ -201,14 +201,18 @@
       + '<div class="card">'
       +   '<div class="card-header">Plan Result</div>'
       +   '<div style="line-height:1.7;font-size:13px"><p style="margin-bottom:8px;line-height:1.7">' + md + '</p></div>'
-      +   '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">'
+      +   '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
       +     '<button class="btn btn-primary btn-sm" onclick="window.planningCopyResult()">Copy</button>'
+      +     '<span id="planning-template-picker"></span>'
       +     '<button class="btn btn-secondary btn-sm" onclick="window.planningExportHtml()">Export HTML</button>'
       +     '<button class="btn btn-secondary btn-sm" onclick="window.planningExportPdf()">Export PDF</button>'
       +     '<button class="btn btn-secondary btn-sm" onclick="Router.setActive(\'planning\')">New Plan</button>'
       +   '</div>'
       + '</div>';
     window._planningResultContent = content;
+    if (window.renderTemplateSelector) {
+      window.renderTemplateSelector('planning-template-picker');
+    }
   }
 
   window.planningCopyResult = function () {
@@ -226,7 +230,8 @@
 
   window.planningExportPdf = function () {
     if (window._planningResultContent) {
-      Utils.exportMarkdownAsPdf(window._planningResultContent, 'Planning Report');
+      var template = window.getSelectedTemplate ? window.getSelectedTemplate() : 'professional';
+      Utils.exportMarkdownAsPdf(window._planningResultContent, 'Planning Report', template);
     }
   };
 

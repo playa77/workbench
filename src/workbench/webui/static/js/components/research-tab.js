@@ -285,13 +285,17 @@
       + '<div class="card">'
       +   '<div class="card-header">Research Report</div>'
       +   '<div style="line-height:1.7;font-size:13px"><p style="margin-bottom:8px;line-height:1.7">' + md + '</p></div>'
-      +   '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">'
+      +   '<div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
       +     '<button class="btn btn-primary btn-sm" onclick="window.researchCopyReport()">Copy Markdown</button>'
+      +     '<span id="research-template-picker"></span>'
       +     '<button class="btn btn-primary btn-sm" id="btn-export-pdf" onclick="window.researchExportPdf()">Export PDF</button>'
       +     '<button class="btn btn-secondary btn-sm" onclick="Router.setActive(\'research\')">New Research</button>'
       +   '</div>'
       + '</div>';
     window._researchReportContent = content;
+    if (window.renderTemplateSelector) {
+      window.renderTemplateSelector('research-template-picker');
+    }
   }
 
   window.researchCopyReport = function () {
@@ -303,7 +307,8 @@
   window.researchExportPdf = function () {
     if (window._researchReportContent) {
       var title = window._researchReportTitle || 'Research Report';
-      Utils.exportMarkdownAsPdf(window._researchReportContent, title);
+      var template = window.getSelectedTemplate ? window.getSelectedTemplate() : 'professional';
+      Utils.exportMarkdownAsPdf(window._researchReportContent, title, template);
     }
   };
 

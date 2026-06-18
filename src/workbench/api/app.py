@@ -136,6 +136,7 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
 class ExportRequest(BaseModel):
     content: str
     title: str = "Report"
+    template: str = "professional"
 
 
 def _register_core_routes(app: FastAPI) -> None:
@@ -156,6 +157,11 @@ def _register_core_routes(app: FastAPI) -> None:
     agent_registry = get_registry()
     agent_registry.mount_all(app)
 
+    @app.get("/api/v1/export/templates")
+    async def export_templates():
+        from workbench.services.export_service import list_templates
+        return list_templates()
+
     @app.post("/api/v1/export/pdf")
     async def export_pdf(
         body: ExportRequest,
@@ -163,7 +169,7 @@ def _register_core_routes(app: FastAPI) -> None:
     ):
         from workbench.services.export_service import markdown_to_pdf_bytes
 
-        pdf_bytes = await asyncio.to_thread(markdown_to_pdf_bytes, body.content, body.title)
+        pdf_bytes = await asyncio.to_thread(markdown_to_pdf_bytes, body.content, body.title, body.template)
         return Response(
             content=pdf_bytes,
             media_type="application/pdf",

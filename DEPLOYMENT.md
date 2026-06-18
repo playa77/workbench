@@ -224,17 +224,19 @@ docker compose ps
 ### Step 7: Create Admin User
 
 ```bash
-docker compose exec workbench workbench create-user admin
+docker compose exec workbench workbench create-user --username admin --email admin@workbench.local --password admin123 --admin
 ```
 
-The command prompts for a password (if not provided via `--password`), creates the user, and prints an API key. **Save both the password and the API key output — they are shown only once.**
+The default deployment credentials are **admin** / **admin123**. The command creates the user and prints an API key. **Save the API key output — it is shown only once.**
 
 ### Step 8: Access
 
 Open `http://<your-server>` (or `https://your-domain.com` after TLS setup) in a browser. Log in with either:
 
-- Your **email/username and password** (set during `create-user`), or
+- Your **email/username and password** (default: `admin` / `admin123`), or
 - Your **API key** (the `wb-...` key printed during `create-user`)
+
+> **Security note:** Change the default password after first login via the Settings panel.
 
 ---
 
@@ -466,8 +468,10 @@ export BRAVE_SEARCH_API_KEY="BSA-..."
 ### Step 6: Create an Admin User
 
 ```bash
-workbench create-user admin
+workbench create-user --username admin --email admin@workbench.local --password admin123 --admin
 ```
+
+Default credentials: **admin** / **admin123**. Change the password after first login.
 
 ### Step 7: Start
 
@@ -567,6 +571,37 @@ if [ "$HEALTH" != "200" ]; then
 fi
 echo "Workbench is healthy"
 ```
+
+---
+
+## PDF Export and LaTeX Templates
+
+PDF export uses **tectonic** (XeTeX-based LaTeX engine) for server-side compilation.
+It offers six templates accessible via the `template` parameter on `POST /api/v1/export/pdf`:
+
+| Template | Key | Description |
+|---|---|---|
+| Professional | `professional` | Default clean report |
+| Tufte | `tufte` | Tufte-inspired with wide margins |
+| Classic | `classic` | Thesis-style with chapter openings |
+| Modern | `modern` | Sans-serif institutional |
+| Compact | `compact` | Two-column dense layout |
+| Manuscript | `manuscript` | Wide outer margins, elegant |
+
+Tectonic auto-fetches needed LaTeX packages from CTAN on first use.
+For air-gapped deployments, pre-warm the cache:
+
+```bash
+# Generate a sample report to populate the tectonic cache
+echo '\documentclass{article}\begin{document}Warmup\end{document}' > /tmp/warm.tex
+tectonic -X compile /tmp/warm.tex
+```
+
+Fonts: Linux Libertine, Biolinum, and Inconsolata are installed in the Docker image.
+For bare-metal deployments, install the `fonts-linuxlibertine` and `fonts-inconsolata`
+system packages.
+
+Template listing: `GET /api/v1/export/templates`
 
 ---
 

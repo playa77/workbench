@@ -95,7 +95,12 @@ workbench version                       Print version
 cp .env.example .env
 # Fill in POSTGRES_PASSWORD and ENCRYPTION_KEY
 docker compose --profile openwebui up -d
+
+# Create the default admin user
+docker compose exec workbench workbench create-user --username admin --email admin@workbench.local --password admin123 --admin
 ```
+
+Default login credentials: **admin** / **admin123**. Change the password after first login.
 
 This starts PostgreSQL 16 (pgvector), Workbench on port 8420, and Open WebUI on port 3000. All bind to `127.0.0.1` only. The workbench service uses `restart: unless-stopped` so containers auto-restart on crash.
 
@@ -281,10 +286,44 @@ Check that the agent is toggled on in Settings. Each agent only activates when e
 Default limits are 5/min for auth, 60/min for agents, 120/min general. Adjust via `config/default.toml` or environment variables.
 
 **PDF export fails or "tectonic command not found"**
-On bare-metal, the tectonic LaTeX engine is not installed by pip. Install it manually — see the Troubleshooting section of [DEPLOYMENT.md](DEPLOYMENT.md) for instructions.
+On bare-metal, the tectonic LaTeX engine is not installed by pip. Install it manually — see the Troubleshooting section of [DEPLOYMENT.md](DEPLOYMENT.md) for instructions. If compilation fails after installing tectonic, pre-warm the package cache by running `tectonic -X compile` on a sample `.tex` file once (requires internet on first run; packages are cached at `~/.cache/Tectonic/`).
+
+**PDF template compilation errors**
+Tectonic auto-fetches LaTeX packages from CTAN. If a template fails, ensure
+your server has internet access on first compilation (packages are cached after).
+If you're behind a firewall, pre-warm the cache by running `tectonic -X compile`
+on a sample `.tex` file once. To compile PDFs offline, ensure the tectonic user
+cache at `~/.cache/Tectonic/` is populated.
 
 **The server won't start on port 8420**
 The port is already in use. Change it: `workbench serve --port 9000`.
+
+---
+
+## PDF Templates
+
+Workbench ships with six professional LaTeX templates for PDF export, selectable per-export:
+
+| Template | Key | Style |
+|---|---|---|
+| **Professional** | `professional` | Default — clean single-column, Linux Libertine fonts, TOC, accent color, professional layout |
+| **Tufte** | `tufte` | Tufte-inspired elegance with wide margins, small caps, and generous whitespace |
+| **Classic** | `classic` | Thesis-style with chapter openings, Bringhurst proportions, and elegant running headers |
+| **Modern** | `modern` | Sans-serif, color-accented, clean institutional feel (McKinsey/Deutsche Bank style) |
+| **Compact** | `compact` | Two-column dense technical layout for maximum information density |
+| **Manuscript** | `manuscript` | Kaobook-inspired with wide outer margins and luxurious typography |
+
+Templates are compiled via tectonic (XeTeX engine, auto-fetches LaTeX packages from CTAN).
+They can be selected from the dropdown next to the Export PDF button in Research, Planning,
+and History tabs.
+
+### Fonts
+
+All templates ship with [Linux Libertine](https://libertine-fonts.org/) (serif),
+[Linux Biolinum](https://libertine-fonts.org/) (sans-serif), and
+[Inconsolata](https://levien.com/type/myfonts/inconsolata.html) (monospace) for
+consistent, high-quality typography across platforms. These are installed automatically
+in the Docker image.
 
 ---
 
