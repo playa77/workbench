@@ -20,7 +20,7 @@
     planning: 'Planning',
     debate: 'Debate',
     chat: 'Chat',
-    deliberation: 'Deliberation',
+    deliberation: 'Consigliere',
     news: 'News',
   };
 
@@ -36,7 +36,7 @@
       +       '<option value="planning">Planning</option>'
       +       '<option value="debate">Debate</option>'
       +       '<option value="chat">Chat</option>'
-      +       '<option value="deliberation">Deliberation</option>'
+      +       '<option value="deliberation">Consigliere</option>'
       +       '<option value="news">News</option>'
       +     '</select>'
       +     '<span id="history-template-picker"></span>'

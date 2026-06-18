@@ -1,7 +1,7 @@
-"""Deliberation Agent — multi-frame reasoning with critique and synthesis.
+"""Consigliere Agent — your contrarian idea stress-tester.
 
 Adapted from stoa's capabilities/deliberation/engine.py. Provides:
-- Multi-frame deliberation with 8 built-in skill frames
+- Multi-frame analysis with 8 built-in skill frames
 - Multi-round critique (pair-wise frame evaluation)
 - Rhetoric analysis (devices, biases, inconsistencies, cross-frame contradictions)
 - Disagreement surface mapping (agreements, disagreements, open questions)
@@ -34,10 +34,10 @@ SESSION_TTL_SECONDS = 3600
 
 class DeliberationAgent(AgentBase):
     name = "deliberation"
-    display_name = "Deliberation"
+    display_name = "Consigliere"
     description = (
-        "Multi-frame AI deliberation engine — explore topics from "
-        "multiple perspectives with rigorous critique"
+        "Your contrarian consigliere — stress-tests any idea by finding weak "
+        "links, probing blind spots, and iterating with you toward a bulletproof version"
     )
     version = "0.2.0"
     icon = "scale"

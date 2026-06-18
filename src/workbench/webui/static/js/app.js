@@ -80,27 +80,49 @@
       var emailOrUsername = document.getElementById('login-email-or-username').value.trim();
       var password = document.getElementById('login-password').value;
       if (!emailOrUsername || !password) return;
-      Utils.setButtonLoading(this, 'Signing in...');
-      try {
-        await API.passwordLogin(emailOrUsername, password);
+      await doPasswordLogin(this);
+    });
+
+    function doPasswordLogin(btn) {
+      var emailOrUsername = document.getElementById('login-email-or-username').value.trim();
+      var password = document.getElementById('login-password').value;
+      if (!emailOrUsername || !password) return;
+      Utils.setButtonLoading(btn, 'Signing in...');
+      return API.passwordLogin(emailOrUsername, password).then(function () {
         boot();
-      } catch (e) {
-        Utils.resetButton(this);
+      }).catch(function (e) {
+        Utils.resetButton(btn);
         document.getElementById('login-message').innerHTML = '<div class="alert alert-error">Invalid credentials</div>';
-      }
+      });
+    }
+
+    var loginEmailEl = document.getElementById('login-email-or-username');
+    var loginPasswordEl = document.getElementById('login-password');
+    loginEmailEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') loginPasswordEl.focus(); });
+    loginPasswordEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') doPasswordLogin(document.getElementById('btn-login-password'));
     });
 
     document.getElementById('btn-login-apikey').addEventListener('click', async function () {
       var key = document.getElementById('login-api-key').value.trim();
       if (!key) return;
-      Utils.setButtonLoading(this, 'Signing in...');
-      try {
-        await API.apiKeyLogin(key);
+      await doApiKeyLogin(this);
+    });
+
+    function doApiKeyLogin(btn) {
+      var key = document.getElementById('login-api-key').value.trim();
+      if (!key) return;
+      Utils.setButtonLoading(btn, 'Signing in...');
+      return API.apiKeyLogin(key).then(function () {
         boot();
-      } catch (e) {
-        Utils.resetButton(this);
+      }).catch(function (e) {
+        Utils.resetButton(btn);
         document.getElementById('login-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
-      }
+      });
+    }
+
+    document.getElementById('login-api-key').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') doApiKeyLogin(document.getElementById('btn-login-apikey'));
     });
 
     document.getElementById('link-forgot-password').addEventListener('click', function (e) {
@@ -144,6 +166,10 @@
       e.preventDefault();
       renderLogin();
     });
+
+    document.getElementById('forgot-email').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') document.getElementById('btn-send-reset-link').click();
+    });
   }
 
   function renderSetup() {
@@ -178,6 +204,10 @@
       var email = document.getElementById('setup-email').value.trim();
       var password = document.getElementById('setup-password').value;
       var confirmPassword = document.getElementById('setup-confirm-password').value;
+      await doSetup(this, username, email, password, confirmPassword);
+    });
+
+    function doSetup(btn, username, email, password, confirmPassword) {
       if (!username || !email || !password) return;
       if (password.length < 8) {
         document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
@@ -187,14 +217,24 @@
         document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
         return;
       }
-      Utils.setButtonLoading(this, 'Creating...');
-      try {
-        await API.setup(username, email, password);
+      Utils.setButtonLoading(btn, 'Creating...');
+      return API.setup(username, email, password).then(function () {
         Utils.showToast('Account created', 'success');
         boot();
-      } catch (e) {
-        Utils.resetButton(this);
+      }).catch(function (e) {
+        Utils.resetButton(btn);
         document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+      });
+    }
+
+    var setupConfirmEl = document.getElementById('setup-confirm-password');
+    setupConfirmEl.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        var username = document.getElementById('setup-username').value.trim();
+        var email = document.getElementById('setup-email').value.trim();
+        var password = document.getElementById('setup-password').value;
+        var confirmPassword = document.getElementById('setup-confirm-password').value;
+        doSetup(document.getElementById('btn-setup'), username, email, password, confirmPassword);
       }
     });
   }
@@ -220,6 +260,10 @@
     document.getElementById('btn-accept-invite').addEventListener('click', async function () {
       var password = document.getElementById('invite-password').value;
       var confirmPassword = document.getElementById('invite-confirm-password').value;
+      await doAcceptInvite(this, token, password, confirmPassword);
+    });
+
+    function doAcceptInvite(btn, token, password, confirmPassword) {
       if (password.length < 8) {
         document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
         return;
@@ -228,14 +272,21 @@
         document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
         return;
       }
-      Utils.setButtonLoading(this, 'Creating...');
-      try {
-        await API.acceptInvite(token, password);
+      Utils.setButtonLoading(btn, 'Creating...');
+      return API.acceptInvite(token, password).then(function () {
         Utils.showToast('Account created', 'success');
         boot();
-      } catch (e) {
-        Utils.resetButton(this);
+      }).catch(function (e) {
+        Utils.resetButton(btn);
         document.getElementById('invite-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+      });
+    }
+
+    document.getElementById('invite-confirm-password').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        doAcceptInvite(document.getElementById('btn-accept-invite'), token,
+          document.getElementById('invite-password').value,
+          document.getElementById('invite-confirm-password').value);
       }
     });
   }
@@ -261,6 +312,10 @@
     document.getElementById('btn-reset-password').addEventListener('click', async function () {
       var password = document.getElementById('reset-password').value;
       var confirmPassword = document.getElementById('reset-confirm-password').value;
+      await doResetPassword(this, token, password, confirmPassword);
+    });
+
+    function doResetPassword(btn, token, password, confirmPassword) {
       if (password.length < 8) {
         document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">Password must be at least 8 characters.</div>';
         return;
@@ -269,14 +324,21 @@
         document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">Passwords do not match.</div>';
         return;
       }
-      Utils.setButtonLoading(this, 'Resetting...');
-      try {
-        await API.resetPassword(token, password);
+      Utils.setButtonLoading(btn, 'Resetting...');
+      return API.resetPassword(token, password).then(function () {
         Utils.showToast('Password reset', 'success');
         boot();
-      } catch (e) {
-        Utils.resetButton(this);
+      }).catch(function (e) {
+        Utils.resetButton(btn);
         document.getElementById('reset-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
+      });
+    }
+
+    document.getElementById('reset-confirm-password').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') {
+        doResetPassword(document.getElementById('btn-reset-password'), token,
+          document.getElementById('reset-password').value,
+          document.getElementById('reset-confirm-password').value);
       }
     });
   }
@@ -487,23 +549,36 @@
     document.getElementById('btn-change-password') && document.getElementById('btn-change-password').addEventListener('click', async function () {
       var current = document.getElementById('change-password-current').value;
       var newPass = document.getElementById('change-password-new').value;
+      await doChangePassword(this, current, newPass);
+    });
+
+    function doChangePassword(btn, current, newPass) {
       if (!current || !newPass) return;
       if (newPass.length < 8) {
         document.getElementById('change-password-message').textContent = 'New password must be at least 8 characters.';
         return;
       }
-      Utils.setButtonLoading(this, 'Saving...');
-      try {
-        await API.changePassword(current, newPass);
-        Utils.setButtonSuccess(this, 'Saved!');
+      Utils.setButtonLoading(btn, 'Saving...');
+      return API.changePassword(current, newPass).then(function () {
+        Utils.setButtonSuccess(btn, 'Saved!');
         document.getElementById('change-password-message').textContent = 'Password changed.';
         document.getElementById('change-password-current').value = '';
         document.getElementById('change-password-new').value = '';
-      } catch (e) {
-        Utils.resetButton(this);
+      }).catch(function (e) {
+        Utils.resetButton(btn);
         document.getElementById('change-password-message').textContent = 'Error: ' + e.message;
-      }
-    });
+      });
+    }
+
+    if (document.getElementById('btn-change-password')) {
+      document.getElementById('change-password-new').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          doChangePassword(document.getElementById('btn-change-password'),
+            document.getElementById('change-password-current').value,
+            document.getElementById('change-password-new').value);
+        }
+      });
+    }
 
     document.getElementById('btn-send-invite') && document.getElementById('btn-send-invite').addEventListener('click', async function () {
       var email = document.getElementById('invite-email').value.trim();

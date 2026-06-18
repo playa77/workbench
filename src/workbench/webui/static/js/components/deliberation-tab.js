@@ -1,4 +1,4 @@
-/** Deliberation Agent Tab Component
+/** Consigliere Agent Tab Component
  * SSE streaming multi-frame deliberation with critique and synthesis.
  * Events: started, phase, frame_start, frame_done, critique_start, critique_done,
  *   rhetoric_start, rhetoric_done, surface, completed, error, done
@@ -16,12 +16,12 @@
 
     container.innerHTML = ''
       + '<div style="max-width:900px;margin:0 auto">'
-      +   '<h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Deliberation</h2>'
+      +   '<h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Consigliere</h2>'
       +   '<div class="card">'
-      +     '<div class="card-header">Deliberation Setup</div>'
+      +     '<div class="card-header">Consigliere Setup</div>'
       +     '<div class="form-group">'
       +       '<label>Question or Topic</label>'
-      +       '<textarea class="form-input" id="dl-question" placeholder="Enter a question to deliberate..." style="min-height:80px"></textarea>'
+      +       '<textarea class="form-input" id="dl-question" placeholder="Enter an idea to stress-test..." style="min-height:80px"></textarea>'
       +     '</div>'
       +     '<div class="form-group">'
       +       '<label>Reasoning Frames (select 2-6)</label>'
@@ -41,7 +41,7 @@
       +       '<label class="toggle"><input type="checkbox" id="dl-rhetoric" checked><span class="toggle-switch"></span><span class="toggle-label">Rhetoric Analysis</span></label>'
       +       '<label class="toggle"><input type="checkbox" id="dl-synthesis" checked><span class="toggle-switch"></span><span class="toggle-label">Synthesis</span></label>'
       +     '</div>'
-      +     '<button class="btn btn-primary" id="btn-start-deliberation">Start Deliberation</button>'
+      +     '<button class="btn btn-primary" id="btn-start-deliberation">Stress-Test Idea</button>'
       +   '</div>'
       +   '<div id="deliberation-output" style="margin-top:24px"></div>'
       + '</div>';
@@ -95,7 +95,7 @@
 
     var btn = document.getElementById('btn-start-deliberation');
     Utils.setButtonLoading(btn, 'Running...');
-    Utils.showToast('Deliberation started', 'info');
+    Utils.showToast('Consigliere engaged', 'info');
 
     var output = document.getElementById('deliberation-output');
     output.innerHTML = ''
@@ -170,7 +170,7 @@
       case 'started':
         activeDeliberationId = data.deliberation_id || activeDeliberationId;
         setPhase('Initializing');
-        logEvent('Started deliberation: ' + Utils.escapeHtml((data.question || '').substring(0, 80)));
+        logEvent('Started session: ' + Utils.escapeHtml((data.question || '').substring(0, 80)));
         break;
       case 'phase':
         setPhase(data.phase || data.message || '');
@@ -197,13 +197,13 @@
         break;
       case 'completed':
         setPhase('Complete');
-        logEvent('Deliberation finished. Loading results...');
+        logEvent('Analysis finished. Loading results...');
         loadDeliberationResults(activeDeliberationId);
-        Utils.showToast('Deliberation complete', 'success');
+        Utils.showToast('Consigliere complete', 'success');
         break;
       case 'error':
         logEvent('<span style="color:var(--danger)">Error: ' + Utils.escapeHtml(data.message || data) + '</span>');
-        Utils.showToast(data.message || 'Error during deliberation', 'error');
+        Utils.showToast(data.message || 'Error during analysis', 'error');
         break;
       case 'done':
         break;
@@ -286,7 +286,7 @@
       + surfaceHtml
       + (data.synthesis_available ? '<div class="card"><div class="card-header">Synthesis</div><p style="font-size:12px;color:var(--text-muted)">Synthesis available — use Export for full details.</p>'
         +   '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-export" data-deliberation-id="' + Utils.escapeHtml(activeDeliberationId || '') + '">Export JSON</button></div>' : '')
-      + '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-new">New Deliberation</button>';
+      + '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-new">New Session</button>';
 
     var exportBtn = output.querySelector('[data-action="deliberation-export"]');
     if (exportBtn) {
@@ -315,7 +315,7 @@
         var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = 'deliberation-' + did + '.json';
+        a.download = 'consigliere-' + did + '.json';
         a.click();
       });
   };
@@ -332,7 +332,7 @@
     activeAbortController = null;
   }
 
-  // Past Deliberation Sessions
+  // Past Sessions
   var deliberationPastLoaded = false;
 
   function renderDeliberationPastSessions() {
@@ -341,7 +341,7 @@
     output.insertAdjacentHTML('afterend', ''
       + '<div class="card" style="margin-top:24px">'
       +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="deliberation-past-toggle">'
-      +     '<span>Past Deliberation Sessions</span>'
+      +     '<span>Past Sessions</span>'
       +     '<span id="deliberation-past-arrow" style="font-size:12px">&#x25BC;</span>'
       +   '</div>'
       +   '<div id="deliberation-past-sessions" style="display:none;padding:8px 0">'
@@ -371,13 +371,13 @@
     var body = document.getElementById('deliberation-past-sessions');
     API.listSessions('deliberation').then(function (sessions) {
       if (!sessions || sessions.length === 0) {
-        body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No past deliberation sessions</div>';
+        body.innerHTML = '<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:12px">No past sessions</div>';
         return;
       }
       var recent = sessions.slice(0, 10);
       body.innerHTML = recent.map(function (s) {
         var date = s.created_at ? s.created_at.split('T')[0] : '';
-        var title = Utils.escapeHtml((s.title || 'Deliberation').length > 60 ? s.title.substring(0, 57) + '...' : s.title || 'Deliberation');
+        var title = Utils.escapeHtml((s.title || 'Consigliere session').length > 60 ? s.title.substring(0, 57) + '...' : s.title || 'Consigliere session');
         return '<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 12px;border-bottom:1px solid var(--border-color);cursor:pointer" data-session-id="' + s.id + '" class="deliberation-past-item">'
           + '<span style="font-size:12px;color:var(--text-muted);flex-shrink:0;margin-right:12px">' + date + '</span>'
           + '<span style="font-size:13px;flex:1">' + title + '</span>'
@@ -400,8 +400,8 @@
     API.getSession(id).then(function (session) {
       var content = session.content || '{}';
       var data;
-      try { data = JSON.parse(content); } catch (_e) { data = { question: session.title || 'Deliberation' }; }
-      data.question = data.question || session.title || 'Deliberation';
+      try { data = JSON.parse(content); } catch (_e) { data = { question: session.title || 'Consigliere session' }; }
+      data.question = data.question || session.title || 'Consigliere session';
       renderDeliberationResults(data);
     }).catch(function (e) {
       output.innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';

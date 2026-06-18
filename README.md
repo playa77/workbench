@@ -18,7 +18,7 @@ Run locally or deploy to a VPS with full HTTPS (Let's Encrypt + nginx). Bring yo
 | **News Pipeline** | News | RSS feed monitoring with AI theme extraction, scheduled background runs, and email delivery. Configure interests, the pipeline fetches, scrapes, analyzes, and delivers. |
 | **Debate Arena** | Debate | Structured multi-agent debates with 12 persona roles. Use Director Mode to inject interventions, pause/resume debates, and observe how perspectives clash. |
 | **Deep Research** | Research | Autonomous web research driven by function-calling. Multiple search iterations, source gathering, contradiction detection, and a single cited report at the end. |
-| **Deliberation** | Deliberation | Multi-frame reasoning with 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...). Pairwise critique, rhetoric analysis, disagreement surface mapping, and a final synthesis. |
+| **Consigliere** | Consigliere | Your contrarian idea stress-tester. Brings 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...) to bear, runs pairwise critique, surfaces biases and contradictions, then synthesizes. Iteratively refine any idea until it's bulletproof. |
 | **Strategic Planning** | Planning | Generates any of 9 plan types: project plans, SWOT analyses, WBS, schedules, root cause analyses, pitch decks, governance frameworks, team compositions, or executive summaries. |
 | **Math Tutor** | Math | Step-by-step problem solving with LaTeX rendering. Explains reasoning, not just answers. |
 | **Knowledge Base** | Knowledge | Create document collections, upload files, and query them with RAG-style retrieval. |
