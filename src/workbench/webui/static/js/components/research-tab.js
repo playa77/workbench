@@ -47,10 +47,6 @@
       +         '<option value="de">Deutsch (German)</option>'
       +       '</select>'
       +     '</div>'
-      +     '<div class="form-group">'
-      +       '<label>Brave API Key (optional)</label>'
-      +       '<input class="form-input" id="rq-brave-key" type="password" placeholder="BSA-..." />'
-      +     '</div>'
       +     '<div style="display:flex;gap:8px">'
       +       '<button class="btn btn-primary" id="btn-start-research">Start Research</button>'
       +       '<button class="btn btn-danger" id="btn-stop-research" style="display:none">Stop</button>'
@@ -99,7 +95,6 @@
       }
     }
 
-    var braveKey = document.getElementById('rq-brave-key').value.trim() || undefined;
     var language = document.getElementById('rq-language').value;
     var reportTitle = document.getElementById('rq-report-title').value.trim() || undefined;
     // Capture the title for this run so the report + PDF export use it.
@@ -120,7 +115,6 @@
     cleanup();
 
     var body = { question: question, tree_depth: depth, branching_factor: branching, language: language };
-    if (braveKey) body.brave_api_key = braveKey;
     if (reportTitle) body.report_title = reportTitle;
 
     activeAbortController = new AbortController();

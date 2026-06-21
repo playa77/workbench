@@ -263,7 +263,7 @@ class DeliberationAgent(AgentBase):
 
 
 class DeliberationRunRequest(BaseModel):
-    question: str = Field(..., max_length=10000)
+    question: str = Field(..., max_length=100000)
     frames: list[str] | None = None
     rounds: int = Field(default=2, ge=0, le=5)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)

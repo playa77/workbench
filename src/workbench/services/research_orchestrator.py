@@ -387,7 +387,7 @@ async def _tool_web_search(
     return {"results": results, "count": len(results), "query": query}
 
 
-MAX_CONTENT_LEN = 15_000
+MAX_CONTENT_LEN = 100_000
 
 
 async def _tool_read_webpage(args: dict, state: ResearchState) -> dict:

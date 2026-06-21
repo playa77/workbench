@@ -120,3 +120,6 @@ ideas.txt
 *.tar.gz
 *.tgz
 *.bak
+
+# --- Session state ---
+.slim/deepwork/

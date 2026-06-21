@@ -66,15 +66,14 @@ class ResearchAgent(AgentBase):
 
         question, max_iter, tree_depth, branching_factor = self._parse_query_params(body)
 
-        # Resolve brave key: per-run > user stored > env var
-        brave_key = body.brave_api_key or None
-        if not brave_key:
-            try:
-                stored_key = await get_user_brave_key(user, session)
-                if stored_key:
-                    brave_key = stored_key
-            except Exception:
-                pass
+        # Resolve brave key: user-stored > server env var
+        brave_key = None
+        try:
+            stored_key = await get_user_brave_key(user, session)
+            if stored_key:
+                brave_key = stored_key
+        except Exception:
+            pass
         if not brave_key:
             import os
             brave_key = os.environ.get("BRAVE_SEARCH_API_KEY") or os.environ.get("BRAVE_API_KEY") or None
@@ -287,9 +286,8 @@ class ResearchAgent(AgentBase):
 
 
 class ResearchRequest(BaseModel):
-    question: str = Field(..., max_length=10000)
+    question: str = Field(..., max_length=100000)
     tree_depth: int = 2
     branching_factor: int = 5
-    brave_api_key: str | None = None
     language: str = "auto"
     report_title: str | None = Field(default=None, max_length=500)
