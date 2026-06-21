@@ -473,6 +473,41 @@
       '<div id="brave-key-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
       '</div>';
 
+    var infCfg = currentUser ? currentUser.inference_config || {} : {};
+    var isCustom = currentUser && !!(currentUser.inference_config && currentUser.inference_config.has_api_key !== undefined);
+    content.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Inference Provider</h3>' +
+      '<p>Configure any OpenAI-compatible endpoint. API key is encrypted at rest.</p>' +
+      '<div class="form-group">' +
+      '<label>API Key <span style="font-size:11px;color:var(--text-muted)">(leave blank to use existing OpenRouter key)</span></label>' +
+      '<input class="form-input" id="inf-key-input" type="password" placeholder="sk-..." />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Provider URL</label>' +
+      '<input class="form-input" id="inf-url-input" type="text" value="' + Utils.escapeHtml(infCfg.provider_url || '') + '" placeholder="https://openrouter.ai/api/v1" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Strong Model <span style="font-size:11px;color:var(--text-muted)">(primary, used by most agents)</span></label>' +
+      '<input class="form-input" id="inf-strong-input" type="text" value="' + Utils.escapeHtml(infCfg.strong_model || '') + '" placeholder="deepseek/deepseek-v4-pro" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Quick Model <span style="font-size:11px;color:var(--text-muted)">(faster/cheaper, for light tasks)</span></label>' +
+      '<input class="form-input" id="inf-quick-input" type="text" value="' + Utils.escapeHtml(infCfg.quick_model || '') + '" placeholder="google/gemini-2.0-flash-001" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Medium Model <span style="font-size:11px;color:var(--text-muted)">(second opinion, debate judge)</span></label>' +
+      '<input class="form-input" id="inf-medium-input" type="text" value="' + Utils.escapeHtml(infCfg.medium_model || '') + '" placeholder="anthropic/claude-sonnet-4-20250514" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Rate Limit <span style="font-size:11px;color:var(--text-muted)">(LLM calls per minute, 0 = unlimited)</span></label>' +
+      '<input class="form-input" id="inf-rpm-input" type="number" min="0" value="' + (infCfg.requests_per_minute || 0) + '" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-save-inf-cfg">Save Config</button>' +
+      (isCustom ? '<button class="btn btn-danger btn-sm" id="btn-reset-inf-cfg" style="margin-left:8px">Reset to Defaults</button>' : '') +
+      '<div id="inf-cfg-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+      '</div>';
+
     content.innerHTML +=
       '<div class="settings-section">' +
       '<h3>Theme</h3>' +
@@ -532,6 +567,35 @@
 
     document.getElementById('btn-delete-brave-key') && document.getElementById('btn-delete-brave-key').addEventListener('click', async function () {
       await API.deleteBraveKey();
+      renderSettings(container);
+    });
+
+    document.getElementById('btn-save-inf-cfg') && document.getElementById('btn-save-inf-cfg').addEventListener('click', async function () {
+      var data = {};
+      var key = document.getElementById('inf-key-input').value.trim();
+      if (key) data.api_key = key;
+      data.provider_url = document.getElementById('inf-url-input').value.trim();
+      data.strong_model = document.getElementById('inf-strong-input').value.trim();
+      data.quick_model = document.getElementById('inf-quick-input').value.trim();
+      data.medium_model = document.getElementById('inf-medium-input').value.trim();
+      data.requests_per_minute = parseInt(document.getElementById('inf-rpm-input').value, 10) || 0;
+
+      // Only send non-empty fields
+      Object.keys(data).forEach(function (k) { if (data[k] === '' || data[k] === undefined) delete data[k]; });
+
+      Utils.setButtonLoading(this, 'Saving...');
+      try {
+        await API.updateInferenceConfig(data);
+        Utils.setButtonSuccess(this, 'Saved!');
+        document.getElementById('inf-cfg-status').textContent = 'Provider config saved.';
+      } catch (e) {
+        Utils.resetButton(this);
+        document.getElementById('inf-cfg-status').textContent = 'Error: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-reset-inf-cfg') && document.getElementById('btn-reset-inf-cfg').addEventListener('click', async function () {
+      await API.deleteInferenceConfig();
       renderSettings(container);
     });
 

@@ -52,6 +52,11 @@ class WorkbenchConfig(BaseModel):
     rate_limit_auth: str = "5/minute"
     rate_limit_agents: str = "60/minute"
     rate_limit_general: str = "120/minute"
+    inference_provider_url: str = "https://openrouter.ai/api/v1"
+    inference_strong_model: str = "deepseek/deepseek-v4-pro"
+    inference_quick_model: str = "google/gemini-2.0-flash-001"
+    inference_medium_model: str = "anthropic/claude-sonnet-4-20250514"
+    inference_requests_per_minute: int = 0
     api_csp_header: str = (
         "default-src 'self'; "
         "script-src 'self' 'unsafe-inline'; "
@@ -119,6 +124,11 @@ def _flatten_env_overrides(env_overrides: dict[str, Any]) -> dict[str, Any]:
         "rate_limit.auth": "rate_limit_auth",
         "rate_limit.agents": "rate_limit_agents",
         "rate_limit.general": "rate_limit_general",
+        "inference.provider_url": "inference_provider_url",
+        "inference.strong_model": "inference_strong_model",
+        "inference.quick_model": "inference_quick_model",
+        "inference.medium_model": "inference_medium_model",
+        "inference.requests_per_minute": "inference_requests_per_minute",
     }
     flat: dict[str, Any] = {}
     for section_key, section in env_overrides.items():
@@ -175,7 +185,7 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
     for key in WorkbenchConfig.model_fields:
         if key in raw:
             flat[key] = raw[key]
-    for section_name in ("general", "api", "openrouter", "auth", "rate_limit", "smtp"):
+    for section_name in ("general", "api", "openrouter", "auth", "rate_limit", "smtp", "inference"):
         if section_name in raw and isinstance(raw[section_name], dict):
             section = raw[section_name]
             section_to_flat = {
@@ -191,6 +201,13 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
                 "auth": {"api_key_prefix": "auth_api_key_prefix", "max_keys_per_user": "auth_max_keys_per_user", "session_expiry_hours": "auth_session_expiry_hours"},
                 "rate_limit": {"enabled": "rate_limit_enabled", "auth": "rate_limit_auth", "agents": "rate_limit_agents", "general": "rate_limit_general"},
                 "smtp": {"host": "smtp_host", "port": "smtp_port", "user": "smtp_user", "password": "smtp_password", "from_address": "smtp_from_address", "use_tls": "smtp_use_tls"},
+                "inference": {
+                    "provider_url": "inference_provider_url",
+                    "strong_model": "inference_strong_model",
+                    "quick_model": "inference_quick_model",
+                    "medium_model": "inference_medium_model",
+                    "requests_per_minute": "inference_requests_per_minute",
+                },
             }
             mapping = section_to_flat.get(section_name, {})
             for src, dst in mapping.items():

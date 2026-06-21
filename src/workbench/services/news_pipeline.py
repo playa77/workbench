@@ -64,7 +64,7 @@ class NewsPipeline:
 
     async def run(self, user_id: str, interest: dict, openrouter_key: str) -> int:
         interest_id = interest["id"]
-        llm = OpenRouterClient(api_key=openrouter_key)
+        llm = OpenRouterClient(api_key=openrouter_key, rate_limit_user_id=user_id)
         run_record = await self._store.create_run(interest_id)
         run_id = run_record["id"]
 

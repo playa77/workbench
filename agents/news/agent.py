@@ -13,12 +13,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
-from workbench.core.auth import get_current_user, get_user_openrouter_key
+from workbench.core.auth import get_current_user, get_user_inference_api_key
 from workbench.core.db import get_session
 from workbench.core.models import AgentSession, User
 
@@ -126,20 +126,20 @@ class NewsAgent(AgentBase):
         return {"status": "ok"}
 
     # ---- Pipeline ----
-    async def trigger_run(self, interest_id: int, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
+    async def trigger_run(self, interest_id: int, request: Request, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
         from workbench.services.news_store import NewsStore
         store = NewsStore(session)
         interest = await store.get_interest(str(user.id), interest_id)
         if not interest:
             raise HTTPException(status_code=404, detail="Interest not found")
 
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
+        api_key = await get_user_inference_api_key(user, session)
+        if not api_key:
             raise HTTPException(status_code=400, detail="OpenRouter API key not configured — set it in Settings")
 
         from workbench.services.news_pipeline import NewsPipeline
         pipeline = NewsPipeline(store, session)
-        run_id = await pipeline.run(str(user.id), interest, or_key)
+        run_id = await pipeline.run(str(user.id), interest, api_key)
 
         # Save AgentSession
         try:

@@ -20,14 +20,14 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, ClassVar
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
 from workbench.core.agents import get_user_agent_settings as _get_agent_settings
-from workbench.core.auth import get_current_user, get_user_openrouter_key
+from workbench.core.auth import get_current_user, get_user_llm_client
 from workbench.core.db import get_session
 from workbench.core.models import User
 from workbench.shared.llm.router import OpenRouterClient
@@ -168,13 +168,12 @@ class MathTutorAgent(AgentBase):
     async def start_session(
         self,
         body: StartSessionRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         await self._require_enabled(user, session)
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         user_settings = await self._load_user_settings(str(user.id), session)
         competency = user_settings.get("initial_competency", "smart_high_school")
@@ -192,8 +191,6 @@ class MathTutorAgent(AgentBase):
         )
         self._sessions[session_id] = tutor_session
         self._session_timestamps[session_id] = time.monotonic()
-
-        client = OpenRouterClient(api_key=or_key)
 
         async def generate_sse():
             try:
@@ -230,13 +227,12 @@ class MathTutorAgent(AgentBase):
     async def chat(
         self,
         body: ChatRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         await self._require_enabled(user, session)
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         tutor_session = self._sessions.get(body.session_id)
         if not tutor_session or tutor_session.user_id != str(user.id):
@@ -244,8 +240,6 @@ class MathTutorAgent(AgentBase):
         self._session_timestamps[body.session_id] = time.monotonic()
 
         tutor_session.chat_history.append({"role": "user", "content": body.message})
-
-        client = OpenRouterClient(api_key=or_key)
 
         async def generate_sse():
             try:
@@ -310,13 +304,12 @@ class MathTutorAgent(AgentBase):
     async def deep_dive(
         self,
         body: DeepDiveRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         await self._require_enabled(user, session)
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         tutor_session = self._sessions.get(body.session_id)
         if not tutor_session or tutor_session.user_id != str(user.id):
@@ -330,8 +323,6 @@ class MathTutorAgent(AgentBase):
             "Break it down from first principles. The student may ask follow-ups."
         )
         tutor_session.chat_history.append({"role": "user", "content": dive_prompt})
-
-        client = OpenRouterClient(api_key=or_key)
 
         async def generate_sse():
             try:
@@ -374,13 +365,12 @@ class MathTutorAgent(AgentBase):
     async def update_equation(
         self,
         body: EquationUpdateRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         await self._require_enabled(user, session)
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         tutor_session = self._sessions.get(body.session_id)
         if not tutor_session or tutor_session.user_id != str(user.id):
@@ -391,8 +381,6 @@ class MathTutorAgent(AgentBase):
             tutor_session.equation_json = body.equation_json
         if body.equation_latex is not None:
             tutor_session.equation_latex = body.equation_latex
-
-        client = OpenRouterClient(api_key=or_key)
 
         message = (
             "I'd like to introduce a new equation to our discussion:\n\n"
@@ -444,20 +432,17 @@ class MathTutorAgent(AgentBase):
     async def generate_assessment(
         self,
         body: AssessmentRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         await self._require_enabled(user, session)
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         tutor_session = self._sessions.get(body.session_id)
         if not tutor_session or tutor_session.user_id != str(user.id):
             raise HTTPException(status_code=404, detail="Session not found")
         self._session_timestamps[body.session_id] = time.monotonic()
-
-        client = OpenRouterClient(api_key=or_key)
 
         try:
             mcq = await self._generate_mcq(client, tutor_session, body.scope or "current concept")
@@ -468,20 +453,17 @@ class MathTutorAgent(AgentBase):
     async def check_assessment_answer(
         self,
         body: CheckAnswerRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         await self._require_enabled(user, session)
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         tutor_session = self._sessions.get(body.session_id)
         if not tutor_session or tutor_session.user_id != str(user.id):
             raise HTTPException(status_code=404, detail="Session not found")
         self._session_timestamps[body.session_id] = time.monotonic()
-
-        client = OpenRouterClient(api_key=or_key)
 
         try:
             prompt = (

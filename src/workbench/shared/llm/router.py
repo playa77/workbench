@@ -17,9 +17,26 @@ from typing import Any
 
 import httpx
 
+from workbench.core.llm_rate_limiter import LLMRateLimiter
 from workbench.shared.errors import EmbeddingError, RouterExhaustedError
 
 logger = logging.getLogger(__name__)
+
+# Lazy import to avoid circular deps — set at first use
+_llm_rate_limiter: LLMRateLimiter | None = None
+
+
+def _get_rate_limiter() -> LLMRateLimiter:
+    global _llm_rate_limiter
+    if _llm_rate_limiter is None:
+        from workbench.core.llm_rate_limiter import get_llm_rate_limiter
+        _llm_rate_limiter = get_llm_rate_limiter()
+    return _llm_rate_limiter
+
+
+class RateLimitExceededError(RuntimeError):
+    """Raised when the per-user LLM call rate limit is hit."""
+    pass
 
 
 def _deduplicate_preserve_order(items: list[str]) -> list[str]:
@@ -87,6 +104,8 @@ class OpenRouterClient:
         embed_dim: int = 1536,
         referer: str = "https://workbench.local",
         title: str = "Workbench",
+        rate_limit_user_id: str | None = None,
+        rate_limit_rpm: int = 0,
     ) -> None:
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
@@ -96,6 +115,8 @@ class OpenRouterClient:
         self._embed_dim = embed_dim
         self._referer = referer
         self._title = title
+        self._rate_limit_user_id = rate_limit_user_id
+        self._rate_limit_rpm = rate_limit_rpm
 
         self._client = httpx.AsyncClient(
             base_url=self._base_url,
@@ -127,6 +148,8 @@ class OpenRouterClient:
         embed_dim: int = 1536,
         referer: str = "https://workbench.local",
         title: str = "Workbench",
+        rate_limit_user_id: str | None = None,
+        rate_limit_rpm: int = 0,
     ) -> OpenRouterClient:
         api_key = os.environ.get(env_var, "")
         if not api_key:
@@ -142,7 +165,22 @@ class OpenRouterClient:
             embed_dim=embed_dim,
             referer=referer,
             title=title,
+            rate_limit_user_id=rate_limit_user_id,
+            rate_limit_rpm=rate_limit_rpm,
         )
+
+    # ------------------------------------------------------------------
+    # Rate limiting
+    # ------------------------------------------------------------------
+
+    async def _check_rate_limit(self) -> None:
+        """Raise RateLimitExceededError if the per-user rate limit is hit."""
+        limiter = _get_rate_limiter()
+        allowed = await limiter.check(self._rate_limit_user_id, self._rate_limit_rpm)
+        if not allowed:
+            raise RateLimitExceededError(
+                f"LLM call rate limit ({self._rate_limit_rpm}/min) exceeded"
+            )
 
     # ------------------------------------------------------------------
     # Public API — chat completions
@@ -173,7 +211,9 @@ class OpenRouterClient:
 
         Raises:
             RouterExhaustedError: If every model / retry attempt fails.
+            RateLimitExceededError: If per-user LLM call rate limit is hit.
         """
+        await self._check_rate_limit()
         effective_max_retries = max_retries if max_retries is not None else self._max_retries
         timeout_config = httpx.Timeout(timeout) if timeout is not None else None
 
@@ -257,7 +297,11 @@ class OpenRouterClient:
         - ``tool_calls`` (list[dict] | None): Function call requests, if any.
         - ``usage`` (dict): ``{prompt_tokens, completion_tokens, total_tokens}``.
         - ``finish_reason`` (str): Reason the model stopped (e.g. ``"stop"``, ``"tool_calls"``).
+
+        Raises:
+            RateLimitExceededError: If per-user LLM call rate limit is hit.
         """
+        await self._check_rate_limit()
         effective_max_retries = max_retries if max_retries is not None else self._max_retries
         timeout_config = httpx.Timeout(timeout) if timeout is not None else None
 
@@ -365,9 +409,11 @@ class OpenRouterClient:
 
         Raises:
             RouterExhaustedError: If every model / retry attempt fails.
+            RateLimitExceededError: If per-user LLM call rate limit is hit.
         """
         import json as _json
 
+        await self._check_rate_limit()
         effective_max_retries = max_retries if max_retries is not None else self._max_retries
         timeout_config = httpx.Timeout(timeout) if timeout is not None else None
 
@@ -541,6 +587,7 @@ class OpenRouterClient:
         if not texts:
             return []
 
+        await self._check_rate_limit()
         semaphore = asyncio.Semaphore(concurrency)
 
         async def embed_one(text: str) -> list[float]:

@@ -15,20 +15,26 @@ from __future__ import annotations
 import asyncio
 import logging
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
-from workbench.core.auth import get_current_user, get_user_openrouter_key
+from workbench.core.auth import (
+    get_current_user,
+    get_user_inference_config,
+    get_user_llm_client,
+)
 from workbench.core.db import get_session
 from workbench.core.models import AgentSession, User
 from workbench.services.debate_engine import Message as DebateMessage
-from workbench.shared.llm.router import OpenRouterClient
+
+if TYPE_CHECKING:
+    from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +69,12 @@ class DebateAgent(AgentBase):
     async def start_debate(
         self,
         body: DebateRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        cfg = await get_user_inference_config(user, session, request.app.state.config)
+        client = await get_user_llm_client(user, session, request.app.state.config, model=cfg["medium_model"])
 
         from workbench.services.debate_engine import (
             AgentConfig as EngAgentConfig,
@@ -104,7 +110,7 @@ class DebateAgent(AgentBase):
         self._engines[debate_id] = {"engine": engine, "user_id": str(user.id)}
         self._last_activity[debate_id] = time.monotonic()
 
-        task = asyncio.create_task(self._run_debate_loop(debate_id, or_key))
+        task = asyncio.create_task(self._run_debate_loop(debate_id, client))
         self._debate_tasks[debate_id] = task
         return {"debate_id": debate_id, "topic": body.topic, "agents": [a.model_dump() for a in agents], "status": "RUNNING"}
 
@@ -159,6 +165,7 @@ class DebateAgent(AgentBase):
     async def debate_resume(
         self,
         debate_id: str,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
@@ -166,13 +173,12 @@ class DebateAgent(AgentBase):
         if not engine.state.status == "PAUSED":
             raise HTTPException(status_code=400, detail="Debate is not paused")
 
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        cfg = await get_user_inference_config(user, session, request.app.state.config)
+        client = await get_user_llm_client(user, session, request.app.state.config, model=cfg["medium_model"])
 
         self._last_activity[debate_id] = time.monotonic()
         engine.resume()
-        task = asyncio.create_task(self._run_debate_loop(debate_id, or_key))
+        task = asyncio.create_task(self._run_debate_loop(debate_id, client))
         self._debate_tasks[debate_id] = task
         return {"status": "RUNNING"}
 
@@ -184,15 +190,15 @@ class DebateAgent(AgentBase):
         engine = self._get_debate(debate_id, str(user.id))
         return engine.to_dict()
 
-    async def _run_debate_loop(self, debate_id: str, openrouter_key: str) -> None:
+    async def _run_debate_loop(self, debate_id: str, client: "OpenRouterClient") -> None:
         entry: Any = self._engines.get(debate_id)
         if not entry:
+            await client.close()
             return
         engine = entry.get("engine")
         if not engine:
+            await client.close()
             return
-
-        client = OpenRouterClient(api_key=openrouter_key)
 
         try:
             try:

@@ -5,6 +5,6 @@ Kept as a compatibility shim for existing import paths.
 """
 
 from workbench.shared.errors import RouterExhaustedError
-from workbench.shared.llm.router import OpenRouterClient
+from workbench.shared.llm.router import OpenRouterClient, RateLimitExceededError
 
-__all__ = ["OpenRouterClient", "RouterExhaustedError"]
+__all__ = ["OpenRouterClient", "RateLimitExceededError", "RouterExhaustedError"]

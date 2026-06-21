@@ -40,6 +40,7 @@ class User(Base):
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     openrouter_key: Mapped["UserOpenRouterKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     brave_key: Mapped["UserBraveKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+    inference_config: Mapped["UserInferenceConfig | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     agent_settings: Mapped[list["UserAgentSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     agent_sessions: Mapped[list["AgentSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
@@ -91,6 +92,25 @@ class UserBraveKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="brave_key")
+
+
+class UserInferenceConfig(Base):
+    """Per-user inference provider configuration — endpoint URL, API key, models, rate limit."""
+
+    __tablename__ = "workbench_inference_config"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    provider_url: Mapped[str] = mapped_column(String(500), nullable=False, default="https://openrouter.ai/api/v1")
+    strong_model: Mapped[str] = mapped_column(String(200), nullable=False, default="deepseek/deepseek-v4-pro")
+    quick_model: Mapped[str] = mapped_column(String(200), nullable=False, default="google/gemini-2.0-flash-001")
+    medium_model: Mapped[str] = mapped_column(String(200), nullable=False, default="anthropic/claude-sonnet-4-20250514")
+    requests_per_minute: Mapped[int] = mapped_column(default=0, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+    user: Mapped["User"] = relationship(back_populates="inference_config")
 
 
 class UserAgentSettings(Base):

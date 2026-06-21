@@ -265,32 +265,37 @@ def _start_news_scheduler_if_agent_enabled(app: FastAPI):
 
             from workbench.services.news_pipeline import NewsPipeline
 
+            from workbench.core.auth import get_user_inference_api_key
+            from workbench.core.models import User
+
             async with session_factory() as sess:
                 store = NewsStore(sess)
                 interest = await store.get_interest(user_id, interest_id)
                 if not interest:
                     return
 
-                # Get user's OpenRouter key
+                # Get user's inference API key
                 from sqlalchemy import select
 
-                from workbench.core import encryption
-                from workbench.core.models import UserOpenRouterKey
-
-                result = await sess.execute(
-                    select(UserOpenRouterKey).where(
-                        UserOpenRouterKey.user_id == user_id
-                    )
+                user_result = await sess.execute(
+                    select(User).where(User.id == user_id)
                 )
-                or_key_row = result.scalar_one_or_none()
-                if not or_key_row:
+                user = user_result.scalar_one_or_none()
+                if not user:
                     logger.warning(
-                        "Skipping scheduled run for interest %d: user %s has no OpenRouter key",
+                        "Skipping scheduled run for interest %d: user %s not found",
                         interest_id, user_id,
                     )
                     return
 
-                api_key = encryption.decrypt(or_key_row.encrypted_key)
+                api_key = await get_user_inference_api_key(user, sess)
+                if not api_key:
+                    logger.warning(
+                        "Skipping scheduled run for interest %d: user %s has no API key",
+                        interest_id, user_id,
+                    )
+                    return
+
                 pipeline = NewsPipeline(store, sess)
                 await pipeline.run(user_id, interest, api_key)
 

@@ -20,6 +20,14 @@ default_model = "deepseek/deepseek-v4-pro"
 timeout_seconds = 120
 max_retries = 2
 
+[inference]
+# User-configurable inference provider defaults (overridable per-user in Settings)
+provider_url = "https://openrouter.ai/api/v1"
+strong_model = "deepseek/deepseek-v4-pro"
+quick_model = "google/gemini-2.0-flash-001"
+medium_model = "anthropic/claude-sonnet-4-20250514"
+requests_per_minute = 0
+
 [encryption]
 key_env = "ENCRYPTION_KEY"
 

@@ -2,15 +2,14 @@
 
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
-from workbench.core.auth import get_current_user, get_user_openrouter_key
+from workbench.core.auth import get_current_user, get_user_llm_client
 from workbench.core.db import get_session
 from workbench.core.models import AgentSession, User
-from workbench.core.router import OpenRouterClient
 
 
 class ChatAgent(AgentBase):
@@ -28,13 +27,11 @@ class ChatAgent(AgentBase):
     async def chat_send(
         self,
         body: "ChatRequest",
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
-        client = OpenRouterClient(api_key=or_key)
+        client = await get_user_llm_client(user, session, request.app.state.config, model=body.model or None)
         try:
             response = await client.chat_completion(
                 messages=[{"role": "user", "content": body.message}],

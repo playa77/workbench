@@ -16,9 +16,11 @@ from workbench.core.auth import (
     generate_token,
     get_current_user,
     get_user_brave_key,
+    get_user_inference_config,
     get_user_openrouter_key,
     hash_password,
     set_user_brave_key,
+    set_user_inference_config,
     set_user_openrouter_key,
     verify_api_key,
     verify_password,
@@ -31,7 +33,7 @@ from workbench.core.email import (
     send_reset_email,
     send_welcome_email,
 )
-from workbench.core.models import User, UserApiKey, UserBraveKey, UserInvite, UserOpenRouterKey, UserSession
+from workbench.core.models import User, UserApiKey, UserBraveKey, UserInferenceConfig, UserInvite, UserOpenRouterKey, UserSession
 from workbench.core.rate_limiter import limiter
 
 router = APIRouter()
@@ -96,6 +98,25 @@ class BraveKeyRequest(BaseModel):
     api_key: str = Field(..., min_length=1)
 
 
+class InferenceConfigRequest(BaseModel):
+    model_config = {"extra": "forbid"}
+    api_key: str | None = None
+    provider_url: str | None = None
+    strong_model: str | None = None
+    quick_model: str | None = None
+    medium_model: str | None = None
+    requests_per_minute: int | None = None
+
+
+class InferenceConfigResponse(BaseModel):
+    provider_url: str
+    strong_model: str
+    quick_model: str
+    medium_model: str
+    requests_per_minute: int
+    has_api_key: bool
+
+
 class UserProfile(BaseModel):
     id: str
     username: str
@@ -105,6 +126,7 @@ class UserProfile(BaseModel):
     created_at: str
     has_openrouter_key: bool
     has_brave_key: bool = False
+    inference_config: InferenceConfigResponse
 
 
 def _set_session_cookie(request: Request, response: Response, token: str, hours: int = 24) -> None:
@@ -364,11 +386,13 @@ async def accept_invite(
 
 @router.get("/me", response_model=UserProfile)
 async def get_profile(
+    request: Request,
     user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
     has_key = await get_user_openrouter_key(user, session)
     has_brave = await get_user_brave_key(user, session)
+    inf_cfg = await get_user_inference_config(user, session, request.app.state.config)
     return UserProfile(
         id=str(user.id),
         username=user.username,
@@ -378,6 +402,7 @@ async def get_profile(
         created_at=user.created_at.isoformat() if user.created_at else "",
         has_openrouter_key=has_key is not None,
         has_brave_key=has_brave is not None,
+        inference_config=InferenceConfigResponse(**inf_cfg),
     )
 
 
@@ -535,3 +560,51 @@ async def delete_api_key(
     await session.delete(key)
     await session.commit()
     return {"status": "ok"}
+
+
+# ── Inference provider config ───────────────────────────────────────
+
+@router.get("/me/inference-config", response_model=InferenceConfigResponse)
+async def get_inference_config(
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    inf_cfg = await get_user_inference_config(user, session, request.app.state.config)
+    return InferenceConfigResponse(**inf_cfg)
+
+
+@router.put("/me/inference-config", response_model=InferenceConfigResponse)
+@limiter.limit("10/minute")
+async def update_inference_config(
+    body: InferenceConfigRequest,
+    request: Request,
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    await set_user_inference_config(
+        user, session,
+        api_key=body.api_key,
+        provider_url=body.provider_url,
+        strong_model=body.strong_model,
+        quick_model=body.quick_model,
+        medium_model=body.medium_model,
+        requests_per_minute=body.requests_per_minute,
+    )
+    inf_cfg = await get_user_inference_config(user, session, request.app.state.config)
+    return InferenceConfigResponse(**inf_cfg)
+
+
+@router.delete("/me/inference-config")
+async def delete_inference_config(
+    user: Annotated[User, Depends(get_current_user)],
+    session: Annotated[AsyncSession, Depends(get_session)],
+):
+    result = await session.execute(
+        select(UserInferenceConfig).where(UserInferenceConfig.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is not None:
+        await session.delete(row)
+        await session.commit()
+    return {"status": "ok", "message": "Inference config reset to defaults"}

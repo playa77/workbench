@@ -16,16 +16,15 @@ import logging
 import time
 from typing import Any, ClassVar
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
-from workbench.core.auth import get_current_user, get_user_openrouter_key
+from workbench.core.auth import get_current_user, get_user_llm_client
 from workbench.core.db import get_session
 from workbench.core.models import AgentSession, User
-from workbench.shared.llm.router import OpenRouterClient
 
 logger = logging.getLogger(__name__)
 
@@ -65,12 +64,11 @@ class DeliberationAgent(AgentBase):
     async def run_deliberation(
         self,
         body: DeliberationRunRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
-            raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         frame_ids = body.frames or ["pro_con", "swot"]
         if len(frame_ids) < 2:
@@ -99,7 +97,6 @@ class DeliberationAgent(AgentBase):
             for fid in frame_ids
         ]
 
-        client = OpenRouterClient(api_key=or_key)
         service = DeliberationService(client)
 
         async def generate_sse():

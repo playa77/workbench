@@ -10,7 +10,7 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select
@@ -21,7 +21,7 @@ from agents.knowledge.ingestion import IngestPipeline, get_ingestion_progress
 from agents.knowledge.models import KnowledgeBase, KnowledgeDocument
 from agents.knowledge.vector_store import VectorStore
 from workbench.core.agents import get_user_agent_settings as _get_agent_settings
-from workbench.core.auth import get_current_user, get_user_openrouter_key
+from workbench.core.auth import get_current_user, get_user_inference_api_key, get_user_llm_client
 from workbench.core.db import get_session
 from workbench.core.models import User
 from workbench.shared.llm.router import OpenRouterClient
@@ -136,10 +136,10 @@ class KnowledgeBaseAgent(AgentBase):
             )
 
     async def _get_or_key(self, user: User, session: AsyncSession) -> str:
-        or_key = await get_user_openrouter_key(user, session)
-        if not or_key:
+        api_key = await get_user_inference_api_key(user, session)
+        if not api_key:
             raise HTTPException(status_code=400, detail="Set your OpenRouter key in Settings")
-        return or_key
+        return api_key
 
     # ---- Knowledge Bases ----
 
@@ -378,15 +378,15 @@ class KnowledgeBaseAgent(AgentBase):
         self,
         kb_id: str,
         body: QueryRequest,
+        request: Request,
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
         await self._require_enabled(user, session)
-        or_key = await self._get_or_key(user, session)
         kb = await self._get_kb(kb_id, user, session)
         top_k = body.top_k or 5
 
-        client = OpenRouterClient(api_key=or_key)
+        client = await get_user_llm_client(user, session, request.app.state.config)
 
         async def generate_sse():
             try:

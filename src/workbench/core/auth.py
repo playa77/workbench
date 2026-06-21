@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import secrets
 from datetime import UTC, datetime, timedelta
-from typing import TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 import bcrypt
 from fastapi import Depends, HTTPException, Request, Security
@@ -15,7 +15,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from workbench.core import encryption
 from workbench.core.db import get_session
-from workbench.core.models import User, UserApiKey, UserBraveKey, UserInvite, UserOpenRouterKey, UserSession
+from workbench.core.models import (
+    User,
+    UserApiKey,
+    UserBraveKey,
+    UserInferenceConfig,
+    UserInvite,
+    UserOpenRouterKey,
+    UserSession,
+)
+
+if TYPE_CHECKING:
+    from workbench.core.config import WorkbenchConfig
+    from workbench.shared.llm.router import OpenRouterClient
 
 _T = TypeVar("_T")
 
@@ -212,3 +224,108 @@ async def set_user_brave_key(user: User, api_key: str, session: AsyncSession) ->
     else:
         session.add(UserBraveKey(user_id=user.id, encrypted_key=encrypted))
     await session.commit()
+
+
+async def get_user_inference_config(
+    user: User, session: AsyncSession, config: "WorkbenchConfig | None" = None
+) -> dict:
+    """Get inference config for user. Falls back to system defaults."""
+    result = await session.execute(
+        select(UserInferenceConfig).where(UserInferenceConfig.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        if config is None:
+            from workbench.core.config import load_config
+            config = load_config()
+        return {
+            "provider_url": config.inference_provider_url,
+            "strong_model": config.inference_strong_model,
+            "quick_model": config.inference_quick_model,
+            "medium_model": config.inference_medium_model,
+            "requests_per_minute": config.inference_requests_per_minute,
+            "has_api_key": False,
+        }
+    return {
+        "provider_url": row.provider_url,
+        "strong_model": row.strong_model,
+        "quick_model": row.quick_model,
+        "medium_model": row.medium_model,
+        "requests_per_minute": row.requests_per_minute,
+        "has_api_key": row.api_key is not None,
+    }
+
+
+async def get_user_inference_api_key(user: User, session: AsyncSession) -> str | None:
+    """Get the decrypted inference API key, or fall back to OpenRouter key."""
+    result = await session.execute(
+        select(UserInferenceConfig).where(UserInferenceConfig.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is not None and row.api_key:
+        return encryption.decrypt(row.api_key)
+    return await get_user_openrouter_key(user, session)
+
+
+async def set_user_inference_config(
+    user: User,
+    session: AsyncSession,
+    *,
+    api_key: str | None = None,
+    provider_url: str | None = None,
+    strong_model: str | None = None,
+    quick_model: str | None = None,
+    medium_model: str | None = None,
+    requests_per_minute: int | None = None,
+) -> None:
+    """Create or update per-user inference config. api_key=None means don't change; empty string means clear."""
+    result = await session.execute(
+        select(UserInferenceConfig).where(UserInferenceConfig.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = UserInferenceConfig(user_id=user.id)
+        session.add(row)
+
+    if api_key is not None:
+        row.api_key = encryption.encrypt(api_key) if len(api_key) > 0 else None
+
+    if provider_url is not None:
+        row.provider_url = provider_url
+    if strong_model is not None:
+        row.strong_model = strong_model
+    if quick_model is not None:
+        row.quick_model = quick_model
+    if medium_model is not None:
+        row.medium_model = medium_model
+    if requests_per_minute is not None:
+        row.requests_per_minute = requests_per_minute
+
+    await session.commit()
+
+
+async def get_user_llm_client(
+    user: User,
+    session: AsyncSession,
+    config: "WorkbenchConfig | None" = None,
+    *,
+    model: str | None = None,
+) -> "OpenRouterClient":
+    """Build an LLM client for *user* from their inference config (falling back to system defaults).
+
+    If *model* is provided, it overrides the strong model in the fallback chain.
+    """
+    from workbench.shared.llm.router import OpenRouterClient
+
+    cfg = await get_user_inference_config(user, session, config)
+    api_key = await get_user_inference_api_key(user, session)
+    if not api_key:
+        raise RuntimeError("No inference API key configured for this user")
+
+    return OpenRouterClient(
+        api_key=api_key,
+        base_url=cfg["provider_url"],
+        default_model=model or cfg["strong_model"],
+        rate_limit_user_id=str(user.id),
+        rate_limit_rpm=cfg["requests_per_minute"],
+    )
