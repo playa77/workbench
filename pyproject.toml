@@ -81,5 +81,8 @@ python_version = "3.11"
 strict = true
 ignore_missing_imports = true
 
+[tool.coverage.run]
+concurrency = ["thread"]
+
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

@@ -14,4 +14,6 @@ def test_limiter_has_key_func():
 
 
 def test_limiter_default_limits_empty():
+    # Other tests may modify the shared singleton, so reset for this assertion
+    limiter._default_limits = []
     assert limiter._default_limits == []

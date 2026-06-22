@@ -7,7 +7,7 @@ Tables: news_interests, news_feeds, news_runs, news_articles, news_themes, news_
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import text
@@ -21,10 +21,10 @@ class NewsStore:
         self._s = session
 
     def _utcnow_iso(self) -> str:
-        return datetime.now(datetime.UTC).isoformat()
+        return datetime.now(timezone.utc).isoformat()
 
     def _todays_date_str(self) -> str:
-        return datetime.now(datetime.UTC).strftime("%Y-%m-%d")
+        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     # ---- Interests ----
     async def list_interests(self, user_id: str) -> list[dict[str, Any]]:

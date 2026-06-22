@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import feedparser
@@ -75,7 +75,7 @@ class NewsPipeline:
             await self._brief(run_id, interest, llm)
             await self._store.update_run(
                 run_id, status="completed",
-                completed_at=datetime.now(tz=datetime.UTC).isoformat(),
+                    completed_at=datetime.now(tz=timezone.utc).isoformat(),
             )
             logger.info("Pipeline run %d completed successfully", run_id)
         except Exception as exc:

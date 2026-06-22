@@ -8,7 +8,7 @@ from sqlalchemy import select, func as sa_func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from workbench.core.auth import get_current_user
-from workbench.core.db import get_session
+from workbench.core.db import get_session as get_db_session
 from workbench.core.models import AgentSession, User
 
 router = APIRouter()
@@ -42,7 +42,7 @@ class SessionDetail(BaseModel):
 @router.get("/sessions", response_model=list[SessionSummary])
 async def list_sessions(
     user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
     agent: str | None = Query(None, description="Filter by agent name"),
 ):
     """List all saved agent sessions for the current user, optionally filtered by agent."""
@@ -74,10 +74,10 @@ async def list_sessions(
 
 
 @router.get("/sessions/{session_id}", response_model=SessionDetail)
-async def get_session(
+async def get_session_detail(
     session_id: str,
     user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     """Get a single session by its UUID."""
     result = await session.execute(
@@ -107,7 +107,7 @@ async def get_session(
 async def delete_session(
     session_id: str,
     user: Annotated[User, Depends(get_current_user)],
-    session: Annotated[AsyncSession, Depends(get_session)],
+    session: Annotated[AsyncSession, Depends(get_db_session)],
 ):
     """Delete a session by its UUID."""
     result = await session.execute(

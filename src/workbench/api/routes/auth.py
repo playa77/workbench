@@ -548,9 +548,14 @@ async def delete_api_key(
 ):
     from uuid import UUID
 
+    try:
+        key_uuid = UUID(key_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid API key ID format")
+
     result = await session.execute(
         select(UserApiKey).where(
-            UserApiKey.id == UUID(key_id),
+            UserApiKey.id == key_uuid,
             UserApiKey.user_id == user.id,
         )
     )

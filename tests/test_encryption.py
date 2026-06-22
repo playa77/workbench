@@ -98,3 +98,12 @@ def test_empty_key_raises():
     cfg = WorkbenchConfig(encryption_key="")
     with pytest.raises(RuntimeError, match="ENCRYPTION_KEY"):
         init_encryption(cfg)
+
+
+def test_init_with_invalid_length_hex_key():
+    import workbench.core.encryption as enc_mod
+    enc_mod._aes_key = None
+
+    cfg = WorkbenchConfig(encryption_key="aabb")
+    with pytest.raises(RuntimeError, match="32 bytes"):
+        init_encryption(cfg)

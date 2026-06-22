@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import sys
 from pathlib import Path
 from unittest.mock import patch
 
@@ -191,3 +192,25 @@ def test_format_validation_error():
     result = format_validation_error(exc_info.value)
     assert isinstance(result, str)
     assert "name" in result
+
+
+def test_format_validation_error_non_pydantic():
+    """format_validation_error with a plain Exception returns str(error)."""
+    result = format_validation_error(ValueError("test error"))
+    assert result == "test error"
+
+
+def test_format_validation_error_no_pydantic():
+    """format_validation_error falls back when pydantic is not importable."""
+    with patch.dict(sys.modules, {"pydantic": None}):
+        result = format_validation_error(ValueError("test"))
+        assert result == "test"
+
+
+def test_read_env_skips_empty_nested_key(monkeypatch):
+    """Env var with prefix but no nested key is silently skipped."""
+    monkeypatch.setenv("TESTPFX_", "should_be_skipped")
+    monkeypatch.setenv("TESTPFX_VALID", "hello")
+    result = read_env("TESTPFX_")
+    # TESTPFX_ (empty after prefix) should not appear; TESTPFX_VALID should
+    assert result == {"valid": "hello"}

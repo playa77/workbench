@@ -157,3 +157,112 @@ async def test_set_user_agent_setting_no_session_raises():
         await set_user_agent_setting(
             user_id="some-id", agent_name="chat", enabled=True, session=None
         )
+
+
+def test_agent_build_router_override():
+    """Test that _build_router returning a router gets registered."""
+    class _RouterAgent(AgentBase):
+        name = "router_agent"
+        def _build_router(self):
+            from fastapi import APIRouter
+            r = APIRouter()
+            r.add_api_route("/custom", lambda: {"ok": True}, methods=["GET"])
+            return r
+
+    app = FastAPI()
+    agent = _RouterAgent()
+    agent.register_routes(app)
+    routes = [r.path for r in app.routes]
+    assert any("/custom" in r for r in routes)
+
+
+def test_agent_get_static_dir_override():
+    """Test that get_static_dir can be overridden."""
+    from pathlib import Path
+    class _StaticAgent(AgentBase):
+        name = "static_agent"
+        def get_static_dir(self):
+            return Path("/fake/path")
+
+    agent = _StaticAgent()
+    assert agent.get_static_dir() == Path("/fake/path")
+
+
+def test_agent_get_static_dir_default():
+    """Test that get_static_dir default returns None (line 59)."""
+    agent = _DummyAgent()
+    assert agent.get_static_dir() is None
+
+
+def test_agent_build_router_default():
+    """Test that _build_router default returns None (line 42)."""
+    agent = _DummyAgent()
+    assert agent._build_router() is None
+
+
+@pytest.mark.asyncio
+async def test_agent_on_enable_default():
+    """Test that on_enable default is a no-op (line 62)."""
+    agent = _DummyAgent()
+    # Should not raise
+    await agent.on_enable("user1", None)
+
+
+@pytest.mark.asyncio
+async def test_agent_on_disable_default():
+    """Test that on_disable default is a no-op (line 65)."""
+    agent = _DummyAgent()
+    # Should not raise
+    await agent.on_disable("user1", None)
+
+
+@pytest.mark.asyncio
+async def test_agent_on_enable_override():
+    """Test lifecycle hook on_enable is callable and can be overridden."""
+    calls = []
+    class _LifecycleAgent(AgentBase):
+        name = "lifecycle"
+        async def on_enable(self, user_id, session):
+            calls.append(("enable", user_id))
+
+    agent = _LifecycleAgent()
+    await agent.on_enable("user1", None)
+    assert calls == [("enable", "user1")]
+
+
+@pytest.mark.asyncio
+async def test_agent_on_disable_override():
+    """Test lifecycle hook on_disable is callable and can be overridden."""
+    calls = []
+    class _LifecycleAgent(AgentBase):
+        name = "lifecycle"
+        async def on_disable(self, user_id, session):
+            calls.append(("disable", user_id))
+
+    agent = _LifecycleAgent()
+    await agent.on_disable("user1", None)
+    assert calls == [("disable", "user1")]
+
+
+@pytest.mark.asyncio
+async def test_set_user_agent_setting_update_settings_only(db_session: AsyncSession):
+    """Settings update when row already exists (hits line 149)."""
+    user = User(id=uuid4(), username="settings_user4")
+    db_session.add(user)
+    await db_session.commit()
+
+    # Create with initial settings
+    await set_user_agent_setting(
+        user_id=str(user.id), agent_name="chat", enabled=True,
+        settings={"model": "old"}, session=db_session
+    )
+
+    # Update only settings
+    await set_user_agent_setting(
+        user_id=str(user.id), agent_name="chat",
+        settings={"model": "new", "temp": 0.5}, session=db_session
+    )
+
+    settings = await get_user_agent_settings(str(user.id), db_session)
+    assert settings["chat"]["enabled"] is True  # unchanged
+    assert settings["chat"]["settings"] == {"model": "new", "temp": 0.5}

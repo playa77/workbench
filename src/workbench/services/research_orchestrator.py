@@ -883,7 +883,7 @@ class ResearchOrchestrator:
             raise
 
         elapsed = time.monotonic() - t0
-        usage = result.get("usage", {})
+        usage = result.get("usage") or {}
         if usage:
             self._state.token_usage.add(
                 usage.get("prompt_tokens", 0),
