@@ -111,7 +111,7 @@ class NewsPipeline:
                             continue
 
                         title = entry.get("title", "Untitled")
-                        published = entry.get("published", datetime.utcnow().isoformat())
+                        published = entry.get("published", datetime.now(timezone.utc).isoformat())
 
                         content = None
                         content_status = "excerpt"
@@ -183,7 +183,7 @@ class NewsPipeline:
         for i, text in enumerate(article_texts, 1):
             prompt += f"[{i}] {text}\n\n"
 
-        model = interest.get("analysis_model") or "deepseek/deepseek-v4-pro"
+        model = interest.get("analysis_model")
         try:
             response = await llm.chat_completion(
                 messages=[
@@ -216,7 +216,7 @@ class NewsPipeline:
         enable_summary = interest.get("enable_summary", True)
         enable_script = interest.get("enable_script", True)
         enable_script_de = interest.get("enable_script_de", False)
-        model = interest.get("generation_model") or "deepseek/deepseek-v4-pro"
+        model = interest.get("generation_model")
 
         for theme in themes:
             try:
@@ -295,7 +295,7 @@ class NewsPipeline:
             f"## {t['title']}\n{t['description']}" for t in themes
         )
         target_brief = interest.get("target_brief_words", 600)
-        model = interest.get("brief_model") or "deepseek/deepseek-v4-pro"
+        model = interest.get("brief_model")
 
         # Detect language from content
         language = detect_language(theme_summaries)

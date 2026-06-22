@@ -29,7 +29,7 @@
       +       '</div>'
       +       '<div class="form-group">'
       +         '<label>Model</label>'
-      +         '<input class="form-input" id="pl-model" value="deepseek/deepseek-v4-pro" />'
+      +         '<select class="form-input" id="pl-model" disabled><option>Loading models...</option></select>'
       +       '</div>'
       +       '<div class="form-group">'
       +         '<label>Temperature</label>'
@@ -45,6 +45,7 @@
       + '</div>';
 
     loadPlanTypes();
+    loadPlanningModels();
     document.getElementById('btn-start-plan').addEventListener('click', startPlan);
     document.getElementById('btn-stop-plan').addEventListener('click', stopPlan);
 
@@ -68,6 +69,30 @@
       .catch(function () {
         var sel = document.getElementById('pl-type');
         if (sel) sel.innerHTML = '<option value="">Failed to load</option>';
+      });
+  }
+
+  function loadPlanningModels() {
+    var modelSelect = document.getElementById('pl-model');
+    if (!modelSelect) return;
+    fetch('/api/v1/me/inference/models')
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        var models = data.models || [];
+        var defaultModel = data.default_model || (models.length > 0 ? models[0] : '');
+        modelSelect.innerHTML = '';
+        models.forEach(function (m) {
+          var opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          if (m === defaultModel) opt.selected = true;
+          modelSelect.appendChild(opt);
+        });
+        modelSelect.disabled = false;
+      })
+      .catch(function () {
+        modelSelect.innerHTML = '<option value="">No models available</option>';
+        modelSelect.disabled = false;
       });
   }
 
@@ -107,7 +132,7 @@
       body: JSON.stringify({
         goal: goal,
         plan_type: planType || 'project_plan',
-        model: model || 'deepseek/deepseek-v4-pro',
+        model: model || null,
         temperature: temperature,
       }),
       signal: activeAbortController.signal,

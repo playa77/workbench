@@ -26,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from agents.base import AgentBase
 from workbench.core.auth import (
     get_current_user,
-    get_user_inference_config,
+    get_user_inference_providers,
     get_user_llm_client,
 )
 from workbench.core.db import get_session
@@ -73,8 +73,9 @@ class DebateAgent(AgentBase):
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
-        cfg = await get_user_inference_config(user, session, request.app.state.config)
-        client = await get_user_llm_client(user, session, request.app.state.config, model=cfg["medium_model"])
+        providers = await get_user_inference_providers(user, session, request.app.state.config)
+        cfg = next((p for p in providers if p["is_default"]), providers[0]) if providers else {}
+        client = await get_user_llm_client(user, session, request.app.state.config, model=cfg.get("strong_model"))
 
         from workbench.services.debate_engine import (
             AgentConfig as EngAgentConfig,
@@ -99,7 +100,6 @@ class DebateAgent(AgentBase):
                 role_id=role_id,
                 name=role_info["name"],
                 description=role_info["description"],
-                model="deepseek/deepseek-v4-pro",
             ))
 
         engine = DebateEngine()
@@ -173,8 +173,9 @@ class DebateAgent(AgentBase):
         if not engine.state.status == "PAUSED":
             raise HTTPException(status_code=400, detail="Debate is not paused")
 
-        cfg = await get_user_inference_config(user, session, request.app.state.config)
-        client = await get_user_llm_client(user, session, request.app.state.config, model=cfg["medium_model"])
+        providers = await get_user_inference_providers(user, session, request.app.state.config)
+        cfg = next((p for p in providers if p["is_default"]), providers[0]) if providers else {}
+        client = await get_user_llm_client(user, session, request.app.state.config, model=cfg.get("strong_model"))
 
         self._last_activity[debate_id] = time.monotonic()
         engine.resume()

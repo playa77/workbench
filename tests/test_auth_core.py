@@ -16,6 +16,8 @@ from workbench.core.auth import (
     _auth_via_cookie,
     consume_token,
     create_session,
+    create_inference_provider,
+    delete_inference_provider,
     delete_user_sessions,
     generate_api_key,
     generate_session_token,
@@ -23,13 +25,11 @@ from workbench.core.auth import (
     get_current_user,
     get_user_brave_key,
     get_user_inference_api_key,
-    get_user_inference_config,
+    get_user_inference_providers,
     get_user_llm_client,
-    get_user_openrouter_key,
     hash_password,
     set_user_brave_key,
-    set_user_inference_config,
-    set_user_openrouter_key,
+    update_inference_provider,
     verify_api_key,
     verify_password,
 )
@@ -37,9 +37,8 @@ from workbench.core.models import (
     User,
     UserApiKey,
     UserBraveKey,
-    UserInferenceConfig,
+    UserInferenceProvider,
     UserInvite,
-    UserOpenRouterKey,
     UserSession,
 )
 
@@ -229,42 +228,6 @@ async def test_set_brave_key_updates_existing(db_session, setup_encryption):
     await set_user_brave_key(user, "bsk-new", db_session)
     result = await get_user_brave_key(user, db_session)
     assert result == "bsk-new"
-
-
-# ---- get_user_openrouter_key / set_user_openrouter_key (lines 183-204) ----
-
-
-@pytest.mark.asyncio
-async def test_set_and_get_openrouter_key(db_session, setup_encryption):
-    user = User(id=uuid4(), username="orkeyuser")
-    db_session.add(user)
-    await db_session.commit()
-
-    await set_user_openrouter_key(user, "sk-or-test", db_session)
-    result = await get_user_openrouter_key(user, db_session)
-    assert result == "sk-or-test"
-
-
-@pytest.mark.asyncio
-async def test_get_openrouter_key_none(db_session, setup_encryption):
-    user = User(id=uuid4(), username="noorkeyuser")
-    db_session.add(user)
-    await db_session.commit()
-
-    result = await get_user_openrouter_key(user, db_session)
-    assert result is None
-
-
-@pytest.mark.asyncio
-async def test_set_openrouter_key_updates_existing(db_session, setup_encryption):
-    user = User(id=uuid4(), username="orkeyupdateuser")
-    db_session.add(user)
-    await db_session.commit()
-
-    await set_user_openrouter_key(user, "sk-old", db_session)
-    await set_user_openrouter_key(user, "sk-new", db_session)
-    result = await get_user_openrouter_key(user, db_session)
-    assert result == "sk-new"
 
 
 # ---- _auth_via_cookie ----
@@ -493,12 +456,12 @@ async def test_auth_via_api_key_full_scan_user_not_found(db_session, setup_encry
     assert exc_info.value.status_code == 401
 
 
-# ---- get_user_inference_config (lines 237-256) ----
+# ---- get_user_inference_providers ----
 
 
 @pytest.mark.asyncio
-async def test_get_user_inference_config_no_row(db_session, setup_encryption):
-    """No UserInferenceConfig row -> system defaults returned."""
+async def test_get_user_inference_providers_no_rows(db_session, setup_encryption):
+    """No UserInferenceProvider rows -> system defaults returned as single-item list."""
     from workbench.core.config import WorkbenchConfig
 
     user = User(id=uuid4(), username="infodefault")
@@ -506,18 +469,20 @@ async def test_get_user_inference_config_no_row(db_session, setup_encryption):
     await db_session.commit()
 
     config = WorkbenchConfig()
-    result = await get_user_inference_config(user, db_session, config)
-    assert result["provider_url"] == config.inference_provider_url
-    assert result["strong_model"] == config.inference_strong_model
-    assert result["quick_model"] == config.inference_quick_model
-    assert result["medium_model"] == config.inference_medium_model
-    assert result["requests_per_minute"] == config.inference_requests_per_minute
-    assert result["has_api_key"] is False
+    result = await get_user_inference_providers(user, db_session, config)
+    assert len(result) == 1
+    assert result[0]["id"] is None
+    assert result[0]["is_default"] is True
+    assert result[0]["provider_url"] == config.inference_provider_url
+    assert result[0]["strong_model"] == config.inference_strong_model
+    assert result[0]["quick_model"] == config.inference_quick_model
+    assert result[0]["requests_per_minute"] == config.inference_requests_per_minute
+    assert result[0]["has_api_key"] is False
 
 
 @pytest.mark.asyncio
-async def test_get_user_inference_config_no_config_arg_loads_config(db_session, setup_encryption, monkeypatch):
-    """No config arg and no DB row -> calls load_config() internally (lines 239-240)."""
+async def test_get_user_inference_providers_no_config_arg(db_session, setup_encryption):
+    """No config arg and no DB row -> calls load_config() internally."""
     from unittest.mock import patch
     from workbench.core.config import WorkbenchConfig
 
@@ -527,48 +492,53 @@ async def test_get_user_inference_config_no_config_arg_loads_config(db_session, 
 
     dummy_config = WorkbenchConfig(inference_provider_url="https://fallback.test")
     with patch("workbench.core.config.load_config", return_value=dummy_config):
-        result = await get_user_inference_config(user, db_session)
+        result = await get_user_inference_providers(user, db_session)
 
-    assert result["provider_url"] == "https://fallback.test"
-    assert result["has_api_key"] is False
+    assert len(result) == 1
+    assert result[0]["provider_url"] == "https://fallback.test"
+    assert result[0]["has_api_key"] is False
 
 
 @pytest.mark.asyncio
-async def test_get_user_inference_config_with_row(db_session, setup_encryption):
-    """UserInferenceConfig row exists -> row values returned and has_api_key reflects api_key."""
+async def test_get_user_inference_providers_with_rows(db_session, setup_encryption):
+    """UserInferenceProvider rows exist -> row values returned."""
     from workbench.core import encryption
 
     user = User(id=uuid4(), username="infocustom")
     db_session.add(user)
     await db_session.flush()
 
-    cfg_row = UserInferenceConfig(
+    provider = UserInferenceProvider(
         user_id=user.id,
+        name="Test",
         provider_url="https://custom.example.com",
         strong_model="custom-model",
         quick_model="custom-quick",
-        medium_model="custom-medium",
         requests_per_minute=15,
         api_key=encryption.encrypt("sk-test-key"),
+        is_default=True,
     )
-    db_session.add(cfg_row)
+    db_session.add(provider)
     await db_session.commit()
 
-    result = await get_user_inference_config(user, db_session)
-    assert result["provider_url"] == "https://custom.example.com"
-    assert result["strong_model"] == "custom-model"
-    assert result["quick_model"] == "custom-quick"
-    assert result["medium_model"] == "custom-medium"
-    assert result["requests_per_minute"] == 15
-    assert result["has_api_key"] is True
+    result = await get_user_inference_providers(user, db_session)
+    assert len(result) == 1
+    assert result[0]["id"] == str(provider.id)
+    assert result[0]["name"] == "Test"
+    assert result[0]["provider_url"] == "https://custom.example.com"
+    assert result[0]["strong_model"] == "custom-model"
+    assert result[0]["quick_model"] == "custom-quick"
+    assert result[0]["requests_per_minute"] == 15
+    assert result[0]["is_default"] is True
+    assert result[0]["has_api_key"] is True
 
 
-# ---- get_user_inference_api_key (lines 261-267) ----
+# ---- get_user_inference_api_key ----
 
 
 @pytest.mark.asyncio
-async def test_get_user_inference_api_key_from_config(db_session, setup_encryption):
-    """UserInferenceConfig with api_key -> decrypts and returns it."""
+async def test_get_user_inference_api_key_from_provider(db_session, setup_encryption):
+    """UserInferenceProvider with api_key -> decrypts and returns it."""
     from workbench.core import encryption
 
     user = User(id=uuid4(), username="infokeycfg")
@@ -576,161 +546,140 @@ async def test_get_user_inference_api_key_from_config(db_session, setup_encrypti
     await db_session.flush()
 
     encrypted = encryption.encrypt("sk-inference-key")
-    cfg_row = UserInferenceConfig(user_id=user.id, api_key=encrypted)
-    db_session.add(cfg_row)
+    provider = UserInferenceProvider(
+        user_id=user.id,
+        name="Test",
+        api_key=encrypted,
+        is_default=True,
+    )
+    db_session.add(provider)
     await db_session.commit()
 
     result = await get_user_inference_api_key(user, db_session)
     assert result == "sk-inference-key"
 
 
-@pytest.mark.asyncio
-async def test_get_user_inference_api_key_fallback(db_session, setup_encryption):
-    """No UserInferenceConfig -> falls back to UserOpenRouterKey."""
-    from workbench.core import encryption
-
-    user = User(id=uuid4(), username="infofallback")
-    db_session.add(user)
-    await db_session.flush()
-
-    or_key = UserOpenRouterKey(
-        user_id=user.id, encrypted_key=encryption.encrypt("sk-or-key")
-    )
-    db_session.add(or_key)
-    await db_session.commit()
-
-    result = await get_user_inference_api_key(user, db_session)
-    assert result == "sk-or-key"
-
-
-# ---- set_user_inference_config (lines 282-304) ----
+# ---- create_inference_provider ----
 
 
 @pytest.mark.asyncio
-async def test_set_user_inference_config_create(db_session, setup_encryption):
-    """No existing row -> creates one."""
-    user = User(id=uuid4(), username="setcreate")
+async def test_create_inference_provider(db_session, setup_encryption):
+    """Creates a new UserInferenceProvider row."""
+    user = User(id=uuid4(), username="createprov")
     db_session.add(user)
     await db_session.commit()
 
-    await set_user_inference_config(
-        user, db_session, api_key="sk-new", provider_url="https://test.example.com",
+    provider = await create_inference_provider(
+        user, db_session, name="Test", provider_url="https://test.example.com",
     )
+
+    assert provider.name == "Test"
+    assert provider.provider_url == "https://test.example.com"
 
     result = await db_session.execute(
-        select(UserInferenceConfig).where(UserInferenceConfig.user_id == user.id)
+        select(UserInferenceProvider).where(UserInferenceProvider.user_id == user.id)
     )
-    row = result.scalar_one_or_none()
-    assert row is not None
+    row = result.scalar_one()
+    assert row.name == "Test"
     assert row.provider_url == "https://test.example.com"
 
 
-@pytest.mark.asyncio
-async def test_set_user_inference_config_update(db_session, setup_encryption):
-    """Existing row -> updates specified fields."""
-    from workbench.core import encryption
+# ---- update_inference_provider ----
 
-    user = User(id=uuid4(), username="setupd")
+
+@pytest.mark.asyncio
+async def test_update_inference_provider(db_session, setup_encryption):
+    """Update specific fields on an existing provider."""
+    user = User(id=uuid4(), username="updateprov")
     db_session.add(user)
     await db_session.flush()
 
-    cfg_row = UserInferenceConfig(
+    provider = UserInferenceProvider(
         user_id=user.id,
+        name="Old",
         provider_url="https://old.example.com",
-        api_key=encryption.encrypt("sk-old"),
     )
-    db_session.add(cfg_row)
+    db_session.add(provider)
     await db_session.commit()
 
-    await set_user_inference_config(
-        user, db_session, provider_url="https://new.example.com", strong_model="new-model",
+    updated = await update_inference_provider(
+        user, db_session, str(provider.id), provider_url="https://updated.example.com",
     )
-
-    await db_session.refresh(cfg_row)
-    assert cfg_row.provider_url == "https://new.example.com"
-    assert cfg_row.strong_model == "new-model"
+    assert updated is not None
+    assert updated.provider_url == "https://updated.example.com"
     # Unchanged fields stay intact
-    assert cfg_row.api_key is not None
+    assert updated.name == "Old"
 
 
 @pytest.mark.asyncio
-async def test_set_user_inference_config_clear_api_key(db_session, setup_encryption):
-    """Passing api_key='' clears the encrypted api_key."""
-    from workbench.core import encryption
-
-    user = User(id=uuid4(), username="setclear")
-    db_session.add(user)
-    await db_session.flush()
-
-    cfg_row = UserInferenceConfig(
-        user_id=user.id,
-        api_key=encryption.encrypt("sk-old"),
-        provider_url="https://test.example.com",
-        strong_model="m",
-    )
-    db_session.add(cfg_row)
-    await db_session.commit()
-
-    await set_user_inference_config(user, db_session, api_key="")
-
-    await db_session.refresh(cfg_row)
-    assert cfg_row.api_key is None
-    assert cfg_row.provider_url == "https://test.example.com"  # unchanged
-
-
-@pytest.mark.asyncio
-async def test_set_user_inference_config_partial_update(db_session, setup_encryption):
+async def test_update_inference_provider_partial(db_session, setup_encryption):
     """Only provider_url passed -> other fields unchanged."""
-    from workbench.core import encryption
-
-    user = User(id=uuid4(), username="setpartial")
+    user = User(id=uuid4(), username="updatepart")
     db_session.add(user)
     await db_session.flush()
 
-    cfg_row = UserInferenceConfig(
+    from workbench.core import encryption
+
+    provider = UserInferenceProvider(
         user_id=user.id,
+        name="Original",
         api_key=encryption.encrypt("sk-original"),
         provider_url="https://original.example.com",
         strong_model="original-model",
         quick_model="quick-model",
-        medium_model="medium-model",
         requests_per_minute=10,
     )
-    db_session.add(cfg_row)
+    db_session.add(provider)
     await db_session.commit()
 
-    await set_user_inference_config(user, db_session, provider_url="https://updated.example.com")
+    updated = await update_inference_provider(
+        user, db_session, str(provider.id), provider_url="https://updated.example.com",
+    )
+    assert updated is not None
+    assert updated.provider_url == "https://updated.example.com"
+    assert updated.name == "Original"  # unchanged
+    assert updated.strong_model == "original-model"  # unchanged
+    assert updated.quick_model == "quick-model"  # unchanged
+    assert updated.requests_per_minute == 10  # unchanged
+    assert updated.api_key is not None  # unchanged
 
-    await db_session.refresh(cfg_row)
-    assert cfg_row.provider_url == "https://updated.example.com"
-    assert cfg_row.strong_model == "original-model"  # unchanged
-    assert cfg_row.quick_model == "quick-model"  # unchanged
-    assert cfg_row.medium_model == "medium-model"  # unchanged
-    assert cfg_row.requests_per_minute == 10  # unchanged
-    assert cfg_row.api_key is not None  # unchanged (api_key=None means skip)
+
+# ---- delete_inference_provider ----
 
 
 @pytest.mark.asyncio
-async def test_set_user_inference_config_all_fields(db_session, setup_encryption):
-    """Set quick_model, medium_model, and requests_per_minute explicitly (lines 298, 300, 302)."""
-    user = User(id=uuid4(), username="setallfields")
+async def test_delete_inference_provider(db_session, setup_encryption):
+    """Delete an existing provider row."""
+    user = User(id=uuid4(), username="delprov")
+    db_session.add(user)
+    await db_session.flush()
+
+    provider = UserInferenceProvider(
+        user_id=user.id,
+        name="ToDelete",
+        provider_url="https://delete.example.com",
+    )
+    db_session.add(provider)
+    await db_session.commit()
+
+    result = await delete_inference_provider(user, db_session, str(provider.id))
+    assert result is True
+
+    db_row = await db_session.execute(
+        select(UserInferenceProvider).where(UserInferenceProvider.id == provider.id)
+    )
+    assert db_row.scalar_one_or_none() is None
+
+
+@pytest.mark.asyncio
+async def test_delete_inference_provider_not_found(db_session, setup_encryption):
+    """Delete a non-existent provider returns False."""
+    user = User(id=uuid4(), username="delprovnf")
     db_session.add(user)
     await db_session.commit()
 
-    await set_user_inference_config(
-        user, db_session,
-        quick_model="q-model",
-        medium_model="m-model",
-        requests_per_minute=20,
-    )
-
-    result = await db_session.execute(
-        select(UserInferenceConfig).where(UserInferenceConfig.user_id == user.id)
-    )
-    row = result.scalar_one()
-    assert row.quick_model == "q-model"
-    assert row.medium_model == "m-model"
-    assert row.requests_per_minute == 20
+    result = await delete_inference_provider(user, db_session, str(uuid4()))
+    assert result is False
 
 
 # ---- get_user_llm_client (lines 318-331) ----
@@ -747,14 +696,16 @@ async def test_get_user_llm_client_success(db_session, setup_encryption):
 
     from workbench.core import encryption
 
-    cfg_row = UserInferenceConfig(
+    provider = UserInferenceProvider(
         user_id=user.id,
+        name="Test",
         provider_url="https://api.example.com",
         strong_model="strong-model",
         requests_per_minute=30,
         api_key=encryption.encrypt("sk-llm-key"),
+        is_default=True,
     )
-    db_session.add(cfg_row)
+    db_session.add(provider)
     await db_session.commit()
 
     with patch("workbench.shared.llm.router.OpenRouterClient") as MockClient:

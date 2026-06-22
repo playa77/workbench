@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from workbench.core.auth import generate_token, get_current_user, _hash_token
 from workbench.core.db import get_session
-from workbench.core.email import send_invite_email
+from workbench.core.email import get_smtp_overrides_from_db, send_invite_email
 from workbench.core.models import User, UserInvite
 from workbench.core.rate_limiter import limiter
 
@@ -84,7 +84,8 @@ async def create_invite(
 
     origin = str(request.base_url).rstrip("/")
     setup_url = f"{origin}/setup?token={token}"
-    await send_invite_email(config, email, username, setup_url)
+    smtp_overrides = await get_smtp_overrides_from_db(session)
+    await send_invite_email(config, email, username, setup_url, smtp_overrides)
 
     return InviteResponse(
         id=str(invite.id),

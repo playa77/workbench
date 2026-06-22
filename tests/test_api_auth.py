@@ -28,9 +28,8 @@ from workbench.core.models import (
     User,
     UserApiKey,
     UserBraveKey,
-    UserInferenceConfig,
+    UserInferenceProvider,
     UserInvite,
-    UserOpenRouterKey,
     UserSession,
 )
 from workbench.core.rate_limiter import limiter as rate_limiter
@@ -61,8 +60,7 @@ class ConfigStub:
         self.auth_max_keys_per_user = 5
         self.inference_provider_url = "https://openrouter.ai/api/v1"
         self.inference_strong_model = "deepseek/deepseek-v4-pro"
-        self.inference_quick_model = "google/gemini-2.0-flash-001"
-        self.inference_medium_model = "anthropic/claude-sonnet-4-20250514"
+        self.inference_quick_model = "deepseek/deepseek-v4-flash"
         self.inference_requests_per_minute = 0
         self.auth_api_key_prefix = "wb"
         self.encryption_key = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
@@ -871,19 +869,15 @@ class TestGetProfile:
         assert data["email"] == "profile@test.com"
         assert data["is_admin"] is False
         assert data["has_password"] is True
-        assert data["has_openrouter_key"] is False
         assert data["has_brave_key"] is False
-        assert "inference_config" in data
-        assert data["inference_config"]["has_api_key"] is False
+        assert "inference_providers" in data
+        assert isinstance(data["inference_providers"], list)
 
     @pytest.mark.asyncio
     async def test_get_profile_with_keys(self, db_session):
         user = await _make_real_user(db_session, username="keyuser", email="key@test.com")
-        # Add openrouter key
         from workbench.core.encryption import init_encryption, encrypt
         init_encryption(ConfigStub())
-        or_key = UserOpenRouterKey(user_id=user.id, encrypted_key=encrypt("sk-or-v1-testkey123"))
-        db_session.add(or_key)
         # Add brave key
         brave_key = UserBraveKey(user_id=user.id, encrypted_key=encrypt("bsk-testkey123"))
         db_session.add(brave_key)
@@ -893,7 +887,6 @@ class TestGetProfile:
         resp = client.get("/api/v1/me")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["has_openrouter_key"] is True
         assert data["has_brave_key"] is True
 
     @pytest.mark.asyncio
@@ -1009,105 +1002,6 @@ class TestChangePassword:
         )
         assert resp.status_code == 200
         mock_send.assert_not_called()
-
-
-# ===================================================================
-# POST /api/v1/me/openrouter-key
-# ===================================================================
-
-class TestSetOpenRouterKey:
-    @pytest.mark.asyncio
-    async def test_set_openrouter_key_success(self, db_session):
-        user = await _make_real_user(db_session, username="orkeyuser")
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/me/openrouter-key",
-            json={"api_key": "sk-or-v1-testkey1234567890"},
-        )
-        assert resp.status_code == 200
-        assert resp.json() == {"status": "ok", "message": "OpenRouter key saved"}
-
-        # Verify it was saved
-        result = await db_session.execute(
-            select(UserOpenRouterKey).where(UserOpenRouterKey.user_id == user.id)
-        )
-        assert result.scalar_one_or_none() is not None
-
-    @pytest.mark.asyncio
-    async def test_set_openrouter_key_invalid_prefix(self, db_session):
-        user = await _make_real_user(db_session, username="orkeyfail")
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/me/openrouter-key",
-            json={"api_key": "invalid-key-123"},
-        )
-        assert resp.status_code == 400
-        assert "sk-or-v1-" in resp.json()["detail"]
-
-    @pytest.mark.asyncio
-    async def test_set_openrouter_key_too_short(self, db_session):
-        user = await _make_real_user(db_session, username="orkshort")
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        # Valid prefix but too short
-        resp = client.post(
-            "/api/v1/me/openrouter-key",
-            json={"api_key": "sk-or-v1-short"},
-        )
-        assert resp.status_code == 400
-        assert "too short" in resp.json()["detail"].lower()
-
-    @pytest.mark.asyncio
-    async def test_set_openrouter_key_updates_existing(self, db_session):
-        user = await _make_real_user(db_session, username="orkeyupdate")
-        from workbench.core.encryption import init_encryption, encrypt
-        init_encryption(ConfigStub())
-        existing = UserOpenRouterKey(user_id=user.id, encrypted_key=encrypt("sk-or-v1-oldkey1234567890"))
-        db_session.add(existing)
-        await db_session.commit()
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        resp = client.post(
-            "/api/v1/me/openrouter-key",
-            json={"api_key": "sk-or-v1-newkey1234567890"},
-        )
-        assert resp.status_code == 200
-
-
-# ===================================================================
-# DELETE /api/v1/me/openrouter-key
-# ===================================================================
-
-class TestDeleteOpenRouterKey:
-    @pytest.mark.asyncio
-    async def test_delete_openrouter_key_existing(self, db_session):
-        user = await _make_real_user(db_session, username="delorkey")
-        from workbench.core.encryption import init_encryption, encrypt
-        init_encryption(ConfigStub())
-        key_row = UserOpenRouterKey(user_id=user.id, encrypted_key=encrypt("sk-or-v1-test1234567890"))
-        db_session.add(key_row)
-        await db_session.commit()
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        resp = client.delete("/api/v1/me/openrouter-key")
-        assert resp.status_code == 200
-        assert resp.json() == {"status": "ok", "message": "OpenRouter key removed"}
-
-        # Verify deletion
-        result = await db_session.execute(
-            select(UserOpenRouterKey).where(UserOpenRouterKey.user_id == user.id)
-        )
-        assert result.scalar_one_or_none() is None
-
-    @pytest.mark.asyncio
-    async def test_delete_openrouter_key_nonexistent(self, db_session):
-        user = await _make_real_user(db_session, username="nodelorkey")
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        resp = client.delete("/api/v1/me/openrouter-key")
-        assert resp.status_code == 200
 
 
 # ===================================================================
@@ -1410,169 +1304,171 @@ class TestDeleteApiKey:
 
 
 # ===================================================================
-# GET /api/v1/me/inference-config
+# GET /api/v1/me/inference-providers
 # ===================================================================
 
-class TestGetInferenceConfig:
+class TestListInferenceProviders:
     @pytest.mark.asyncio
-    async def test_get_inference_config_defaults(self, db_session):
+    async def test_get_inference_providers_defaults(self, db_session):
         user = await _make_real_user(db_session, username="infodefault")
         app = _make_app(db_session, user_override=user)
         client = TestClient(app)
-        resp = client.get("/api/v1/me/inference-config")
+        resp = client.get("/api/v1/me/inference-providers")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["provider_url"] == "https://openrouter.ai/api/v1"
-        assert data["strong_model"] == "deepseek/deepseek-v4-pro"
-        assert data["quick_model"] == "google/gemini-2.0-flash-001"
-        assert data["medium_model"] == "anthropic/claude-sonnet-4-20250514"
-        assert data["requests_per_minute"] == 0
-        assert data["has_api_key"] is False
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["id"] is None
+        assert data[0]["is_default"] is True
+        assert data[0]["has_api_key"] is False
+        assert data[0]["provider_url"] == "https://openrouter.ai/api/v1"
+        assert data[0]["strong_model"] == "deepseek/deepseek-v4-pro"
+        assert data[0]["quick_model"] == "deepseek/deepseek-v4-flash"
 
     @pytest.mark.asyncio
-    async def test_get_inference_config_custom(self, db_session):
+    async def test_get_inference_providers_custom(self, db_session):
         user = await _make_real_user(db_session, username="infocustom")
         from workbench.core.encryption import init_encryption, encrypt
         init_encryption(ConfigStub())
-        cfg = UserInferenceConfig(
+        provider = UserInferenceProvider(
             user_id=user.id,
+            name="My Provider",
+            is_default=True,
             provider_url="https://custom.api/v1",
             strong_model="custom-model",
             quick_model="custom-quick",
-            medium_model="custom-medium",
             requests_per_minute=10,
             api_key=encrypt("test-api-key"),
         )
-        db_session.add(cfg)
+        db_session.add(provider)
         await db_session.commit()
         app = _make_app(db_session, user_override=user)
         client = TestClient(app)
-        resp = client.get("/api/v1/me/inference-config")
+        resp = client.get("/api/v1/me/inference-providers")
         assert resp.status_code == 200
         data = resp.json()
-        assert data["provider_url"] == "https://custom.api/v1"
-        assert data["strong_model"] == "custom-model"
-        assert data["quick_model"] == "custom-quick"
-        assert data["medium_model"] == "custom-medium"
-        assert data["requests_per_minute"] == 10
-        assert data["has_api_key"] is True
+        assert isinstance(data, list)
+        assert len(data) == 1
+        assert data[0]["id"] == str(provider.id)
+        assert data[0]["name"] == "My Provider"
+        assert data[0]["is_default"] is True
+        assert data[0]["has_api_key"] is True
+        assert data[0]["provider_url"] == "https://custom.api/v1"
+        assert data[0]["strong_model"] == "custom-model"
+        assert data[0]["quick_model"] == "custom-quick"
+        assert data[0]["requests_per_minute"] == 10
 
 
 # ===================================================================
-# PUT /api/v1/me/inference-config
+# PUT /api/v1/me/inference-providers/{id}
 # ===================================================================
 
-class TestUpdateInferenceConfig:
+class TestCreateAndUpdateInferenceProvider:
     @pytest.mark.asyncio
-    async def test_update_full_config(self, db_session):
-        user = await _make_real_user(db_session, username="updateinfofull")
+    async def test_create_provider(self, db_session):
+        user = await _make_real_user(db_session, username="createprov")
         app = _make_app(db_session, user_override=user)
         client = TestClient(app)
-        resp = client.put(
-            "/api/v1/me/inference-config",
+        resp = client.post(
+            "/api/v1/me/inference-providers",
             json={
-                "api_key": "new-api-key",
+                "name": "My API",
                 "provider_url": "https://custom.api/v1",
                 "strong_model": "strong-model",
                 "quick_model": "quick-model",
-                "medium_model": "medium-model",
                 "requests_per_minute": 20,
+            },
+        )
+        assert resp.status_code == 201
+        data = resp.json()
+        assert data["name"] == "My API"
+        assert data["provider_url"] == "https://custom.api/v1"
+        assert data["strong_model"] == "strong-model"
+        assert data["quick_model"] == "quick-model"
+        assert data["requests_per_minute"] == 20
+        assert data["has_api_key"] is False
+        assert data["id"] is not None
+
+    @pytest.mark.asyncio
+    async def test_update_provider(self, db_session):
+        user = await _make_real_user(db_session, username="updateprov")
+        from workbench.core.encryption import init_encryption, encrypt
+        init_encryption(ConfigStub())
+        provider = UserInferenceProvider(
+            user_id=user.id,
+            name="Original",
+            is_default=True,
+            provider_url="https://original.api/v1",
+            api_key=encrypt("existing-key"),
+        )
+        db_session.add(provider)
+        await db_session.commit()
+
+        app = _make_app(db_session, user_override=user)
+        client = TestClient(app)
+        resp = client.put(
+            f"/api/v1/me/inference-providers/{provider.id}",
+            json={
+                "name": "Updated",
+                "provider_url": "https://updated.api/v1",
+                "strong_model": "updated-model",
             },
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["provider_url"] == "https://custom.api/v1"
-        assert data["strong_model"] == "strong-model"
-        assert data["quick_model"] == "quick-model"
-        assert data["medium_model"] == "medium-model"
-        assert data["requests_per_minute"] == 20
-        assert data["has_api_key"] is True
+        assert data["name"] == "Updated"
+        assert data["provider_url"] == "https://updated.api/v1"
+        assert data["strong_model"] == "updated-model"
+        assert data["has_api_key"] is True  # unchanged
 
     @pytest.mark.asyncio
-    async def test_update_partial_config(self, db_session):
-        user = await _make_real_user(db_session, username="updateinfopart")
+    async def test_create_provider_validation(self, db_session):
+        """Extra fields should be rejected with 422."""
+        user = await _make_real_user(db_session, username="createprovval")
         app = _make_app(db_session, user_override=user)
         client = TestClient(app)
-        resp = client.put(
-            "/api/v1/me/inference-config",
-            json={"provider_url": "https://partial.api/v1", "strong_model": "partial-model"},
-        )
-        assert resp.status_code == 200
-        data = resp.json()
-        assert data["provider_url"] == "https://partial.api/v1"
-        assert data["strong_model"] == "partial-model"
-        # Other fields should be defaults
-        assert data["quick_model"] == "google/gemini-2.0-flash-001"
-        assert data["has_api_key"] is False
-
-    @pytest.mark.asyncio
-    async def test_update_forbids_extra_fields(self, db_session):
-        user = await _make_real_user(db_session, username="updateextra")
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        resp = client.put(
-            "/api/v1/me/inference-config",
-            json={"provider_url": "https://x.api/v1", "unknown_field": "should_fail"},
+        resp = client.post(
+            "/api/v1/me/inference-providers",
+            json={"name": "X", "provider_url": "https://x.api/v1", "unknown_field": "should_fail"},
         )
         assert resp.status_code == 422
 
-    @pytest.mark.asyncio
-    async def test_update_clear_api_key(self, db_session):
-        """Setting api_key to '' should clear it."""
-        user = await _make_real_user(db_session, username="clearkey")
-        from workbench.core.encryption import init_encryption, encrypt
-        init_encryption(ConfigStub())
-        cfg = UserInferenceConfig(
-            user_id=user.id,
-            provider_url="https://original.api/v1",
-            api_key=encrypt("existing-key"),
-        )
-        db_session.add(cfg)
-        await db_session.commit()
-        app = _make_app(db_session, user_override=user)
-        client = TestClient(app)
-        resp = client.put(
-            "/api/v1/me/inference-config",
-            json={"api_key": ""},
-        )
-        assert resp.status_code == 200
-        assert resp.json()["has_api_key"] is False
-
 
 # ===================================================================
-# DELETE /api/v1/me/inference-config
+# DELETE /api/v1/me/inference-providers/{id}
 # ===================================================================
 
-class TestDeleteInferenceConfig:
+class TestDeleteInferenceProvider:
     @pytest.mark.asyncio
-    async def test_delete_inference_config_existing(self, db_session):
-        user = await _make_real_user(db_session, username="delinfocfg")
-        cfg = UserInferenceConfig(
+    async def test_delete_provider_existing(self, db_session):
+        user = await _make_real_user(db_session, username="delprov")
+        provider = UserInferenceProvider(
             user_id=user.id,
+            name="ToDelete",
             provider_url="https://custom.api/v1",
-            strong_model="custom-model",
         )
-        db_session.add(cfg)
+        db_session.add(provider)
         await db_session.commit()
+
         app = _make_app(db_session, user_override=user)
         client = TestClient(app)
-        resp = client.delete("/api/v1/me/inference-config")
+        resp = client.delete(f"/api/v1/me/inference-providers/{provider.id}")
         assert resp.status_code == 200
-        assert resp.json() == {"status": "ok", "message": "Inference config reset to defaults"}
+        assert resp.json() == {"status": "ok", "message": "Provider removed"}
 
         # Verify deletion
         result = await db_session.execute(
-            select(UserInferenceConfig).where(UserInferenceConfig.user_id == user.id)
+            select(UserInferenceProvider).where(UserInferenceProvider.id == provider.id)
         )
         assert result.scalar_one_or_none() is None
 
     @pytest.mark.asyncio
-    async def test_delete_inference_config_nonexistent(self, db_session):
-        user = await _make_real_user(db_session, username="nodelinfocfg")
+    async def test_delete_provider_nonexistent(self, db_session):
+        user = await _make_real_user(db_session, username="nodelprov")
         app = _make_app(db_session, user_override=user)
         client = TestClient(app)
-        resp = client.delete("/api/v1/me/inference-config")
-        assert resp.status_code == 200
+        resp = client.delete(f"/api/v1/me/inference-providers/{uuid4()}")
+        assert resp.status_code == 404
 
 
 # ===================================================================
@@ -2200,7 +2096,6 @@ class TestDirectCoverage:
         req = _mock_request()
         result = await _auth.get_profile(request=req, user=user, session=db_session)
         assert result.username == "dprofile"
-        assert result.has_openrouter_key is False
         assert result.has_brave_key is False
 
     @pytest.mark.asyncio
@@ -2209,7 +2104,6 @@ class TestDirectCoverage:
         user = await _make_real_user(db_session, username="dprofilek", email="dpk@t.com")
         from workbench.core.encryption import init_encryption, encrypt
         init_encryption(ConfigStub())
-        db_session.add(UserOpenRouterKey(user_id=user.id, encrypted_key=encrypt("sk-or-v1-test1234567890")))
         db_session.add(UserBraveKey(user_id=user.id, encrypted_key=encrypt("bsk-test12345678")))
         await db_session.commit()
 
@@ -2219,7 +2113,6 @@ class TestDirectCoverage:
 
         req = _mock_request()
         result = await _auth.get_profile(request=req, user=user, session=db_session)
-        assert result.has_openrouter_key is True
         assert result.has_brave_key is True
 
     @pytest.mark.asyncio
@@ -2253,49 +2146,6 @@ class TestDirectCoverage:
             result = await _auth.change_password(body=body, request=req, user=user, session=db_session)
             assert result["status"] == "ok"
             mock_send.assert_not_called()
-
-    @pytest.mark.asyncio
-    async def test_set_openrouter_key_success(self, db_session):
-        """Line 443: return."""
-        user = await _make_real_user(db_session, username="dorset")
-        import importlib
-        import workbench.api.routes.auth as _auth
-        _auth = importlib.reload(_auth)
-
-        from workbench.api.routes.auth import OpenRouterKeyRequest
-        req = _mock_request()
-        body = OpenRouterKeyRequest(api_key="sk-or-v1-testkey1234567890")
-        result = await _auth.set_openrouter_key(body=body, request=req, user=user, session=db_session)
-        assert result["status"] == "ok"
-
-    @pytest.mark.asyncio
-    async def test_delete_openrouter_key_exists(self, db_session):
-        """Lines 454–458: key exists, delete it."""
-        user = await _make_real_user(db_session, username="ddorke")
-        from workbench.core.encryption import init_encryption, encrypt
-        init_encryption(ConfigStub())
-        db_session.add(UserOpenRouterKey(user_id=user.id, encrypted_key=encrypt("sk-or-v1-test1234567890")))
-        await db_session.commit()
-
-        import importlib
-        import workbench.api.routes.auth as _auth
-        _auth = importlib.reload(_auth)
-
-        result = await _auth.delete_openrouter_key(user=user, session=db_session)
-        assert result["status"] == "ok"
-        row = await db_session.execute(select(UserOpenRouterKey).where(UserOpenRouterKey.user_id == user.id))
-        assert row.scalar_one_or_none() is None
-
-    @pytest.mark.asyncio
-    async def test_delete_openrouter_key_nonexistent(self, db_session):
-        """Lines 454, 458: no key exists."""
-        user = await _make_real_user(db_session, username="ddorkeno")
-        import importlib
-        import workbench.api.routes.auth as _auth
-        _auth = importlib.reload(_auth)
-
-        result = await _auth.delete_openrouter_key(user=user, session=db_session)
-        assert result["status"] == "ok"
 
     @pytest.mark.asyncio
     async def test_set_brave_key_success(self, db_session):
@@ -2436,55 +2286,60 @@ class TestDirectCoverage:
         assert exc.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_inference_config(self, db_session):
-        """Line 579: return inference config."""
-        user = await _make_real_user(db_session, username="dinfcfg")
+    async def test_list_inference_providers(self, db_session):
+        """Call list_inference_providers directly."""
+        user = await _make_real_user(db_session, username="dinfprov")
         import importlib
         import workbench.api.routes.auth as _auth
         _auth = importlib.reload(_auth)
 
         req = _mock_request()
-        result = await _auth.get_inference_config(request=req, user=user, session=db_session)
-        assert result.provider_url is not None
-        assert result.has_api_key is False
+        result = await _auth.list_inference_providers(request=req, user=user, session=db_session)
+        assert isinstance(result, list)
+        assert len(result) == 1
+        assert result[0].provider_url is not None
+        assert result[0].has_api_key is False
 
     @pytest.mark.asyncio
-    async def test_update_inference_config(self, db_session):
-        """Lines 599–600: update and return."""
-        user = await _make_real_user(db_session, username="duinfcfg")
+    async def test_add_inference_provider(self, db_session):
+        """Call add_inference_provider directly."""
+        user = await _make_real_user(db_session, username="duinfprov")
         import importlib
         import workbench.api.routes.auth as _auth
         _auth = importlib.reload(_auth)
 
-        from workbench.api.routes.auth import InferenceConfigRequest
+        from workbench.api.routes.auth import InferenceProviderRequest
         req = _mock_request()
-        body = InferenceConfigRequest(provider_url="https://custom.api/v1", strong_model="sm")
-        result = await _auth.update_inference_config(body=body, request=req, user=user, session=db_session)
+        body = InferenceProviderRequest(name="Test", provider_url="https://custom.api/v1", strong_model="sm")
+        result = await _auth.add_inference_provider(body=body, request=req, user=user, session=db_session)
         assert result.provider_url == "https://custom.api/v1"
 
     @pytest.mark.asyncio
-    async def test_delete_inference_config_exists(self, db_session):
-        """Lines 611–615: delete existing config."""
-        user = await _make_real_user(db_session, username="ddinfcfg")
-        db_session.add(UserInferenceConfig(user_id=user.id, provider_url="https://x.api/v1"))
+    async def test_remove_inference_provider_exists(self, db_session):
+        """Call remove_inference_provider on an existing provider."""
+        user = await _make_real_user(db_session, username="ddinfprov")
+        provider = UserInferenceProvider(user_id=user.id, name="Test", provider_url="https://x.api/v1")
+        db_session.add(provider)
         await db_session.commit()
         import importlib
         import workbench.api.routes.auth as _auth
         _auth = importlib.reload(_auth)
 
-        result = await _auth.delete_inference_config(user=user, session=db_session)
+        result = await _auth.remove_inference_provider(provider_id=str(provider.id), user=user, session=db_session)
         assert result["status"] == "ok"
 
     @pytest.mark.asyncio
-    async def test_delete_inference_config_nonexistent(self, db_session):
-        """Lines 611, 615: no config to delete."""
-        user = await _make_real_user(db_session, username="ddinfcfgn")
+    async def test_remove_inference_provider_nonexistent(self, db_session):
+        """Call remove_inference_provider with bad UUID -> 404."""
+        user = await _make_real_user(db_session, username="ddinfprovnf")
         import importlib
         import workbench.api.routes.auth as _auth
         _auth = importlib.reload(_auth)
 
-        result = await _auth.delete_inference_config(user=user, session=db_session)
-        assert result["status"] == "ok"
+        from fastapi import HTTPException
+        with pytest.raises(HTTPException) as exc:
+            await _auth.remove_inference_provider(provider_id=str(uuid4()), user=user, session=db_session)
+        assert exc.value.status_code == 404
 
     # ── Remaining uncovered lines ────────────────────────────────────
 
@@ -2617,31 +2472,6 @@ class TestDirectCoverage:
             await _auth.change_password(body=body, request=req, user=user, session=db_session)
         assert exc.value.status_code == 400
         assert "incorrect" in exc.value.detail.lower()
-
-    @pytest.mark.asyncio
-    async def test_set_openrouter_key_validation(self, db_session):
-        """Lines 436, 441: validation errors."""
-        user = await _make_real_user(db_session, username="dorkeyinv")
-        import importlib
-        import workbench.api.routes.auth as _auth
-        _auth = importlib.reload(_auth)
-
-        from workbench.api.routes.auth import OpenRouterKeyRequest
-        from fastapi import HTTPException
-
-        body = OpenRouterKeyRequest(api_key="invalid-prefix-key")
-        req = _mock_request()
-        with pytest.raises(HTTPException) as exc:
-            await _auth.set_openrouter_key(body=body, request=req, user=user, session=db_session)
-        assert exc.value.status_code == 400
-        assert "sk-or-v1-" in exc.value.detail
-
-        body = OpenRouterKeyRequest(api_key="sk-or-v1-short")
-        req = _mock_request()
-        with pytest.raises(HTTPException) as exc:
-            await _auth.set_openrouter_key(body=body, request=req, user=user, session=db_session)
-        assert exc.value.status_code == 400
-        assert "too short" in exc.value.detail.lower()
 
     @pytest.mark.asyncio
     async def test_set_brave_key_too_short(self, db_session):

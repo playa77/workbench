@@ -38,9 +38,8 @@ class User(Base):
 
     api_keys: Mapped[list["UserApiKey"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     sessions: Mapped[list["UserSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    openrouter_key: Mapped["UserOpenRouterKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
     brave_key: Mapped["UserBraveKey | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
-    inference_config: Mapped["UserInferenceConfig | None"] = relationship(back_populates="user", cascade="all, delete-orphan", uselist=False)
+    inference_providers: Mapped[list["UserInferenceProvider"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     agent_settings: Mapped[list["UserAgentSettings"]] = relationship(back_populates="user", cascade="all, delete-orphan")
     agent_sessions: Mapped[list["AgentSession"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
@@ -72,17 +71,6 @@ class UserSession(Base):
     user: Mapped["User"] = relationship(back_populates="sessions")
 
 
-class UserOpenRouterKey(Base):
-    __tablename__ = "workbench_openrouter_keys"
-
-    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), unique=True, nullable=False)
-    encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
-
-    user: Mapped["User"] = relationship(back_populates="openrouter_key")
-
-
 class UserBraveKey(Base):
     __tablename__ = "workbench_brave_keys"
 
@@ -94,23 +82,29 @@ class UserBraveKey(Base):
     user: Mapped["User"] = relationship(back_populates="brave_key")
 
 
-class UserInferenceConfig(Base):
-    """Per-user inference provider configuration — endpoint URL, API key, models, rate limit."""
+class UserInferenceProvider(Base):
+    """Per-user inference provider configuration — multiple providers per user.
+    
+    Each provider has its own endpoint URL, API key, model list, and rate limit.
+    One provider per user is marked as default (is_default=True).
+    API key is encrypted at rest via AES-256-GCM.
+    """
 
-    __tablename__ = "workbench_inference_config"
+    __tablename__ = "workbench_inference_providers"
 
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
-    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), unique=True, nullable=False)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False, index=True)
+    name: Mapped[str] = mapped_column(String(100), nullable=False, default="Default")
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
     provider_url: Mapped[str] = mapped_column(String(500), nullable=False, default="https://openrouter.ai/api/v1")
     strong_model: Mapped[str] = mapped_column(String(200), nullable=False, default="deepseek/deepseek-v4-pro")
-    quick_model: Mapped[str] = mapped_column(String(200), nullable=False, default="google/gemini-2.0-flash-001")
-    medium_model: Mapped[str] = mapped_column(String(200), nullable=False, default="anthropic/claude-sonnet-4-20250514")
+    quick_model: Mapped[str] = mapped_column(String(200), nullable=False, default="deepseek/deepseek-v4-flash")
     requests_per_minute: Mapped[int] = mapped_column(default=0, nullable=False)
+    is_default: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
-    user: Mapped["User"] = relationship(back_populates="inference_config")
+    user: Mapped["User"] = relationship(back_populates="inference_providers")
 
 
 class UserAgentSettings(Base):
@@ -161,6 +155,17 @@ class StoredReport(Base):
         Index("idx_reports_user", "user_id"),
         Index("idx_reports_agent", "agent_name"),
     )
+
+
+class ServerConfig(Base):
+    """Server-wide runtime configuration — SMTP settings, Google API token, etc."""
+
+    __tablename__ = "workbench_server_config"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    key: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    value: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 
 
 class AgentSession(Base):

@@ -11,7 +11,6 @@ from workbench.core.models import (
     User,
     UserAgentSettings,
     UserApiKey,
-    UserOpenRouterKey,
 )
 
 
@@ -72,23 +71,6 @@ async def test_api_key_cascade_delete(db_session: AsyncSession):
 
     result = await db_session.execute(select(UserApiKey))
     assert len(result.scalars().all()) == 0
-
-
-@pytest.mark.asyncio
-async def test_openrouter_key_one_per_user(db_session: AsyncSession):
-    user = User(id=uuid4(), username="eve")
-    db_session.add(user)
-    await db_session.flush()
-
-    or_key = UserOpenRouterKey(user_id=user.id, encrypted_key="secret")
-    db_session.add(or_key)
-    await db_session.commit()
-
-    result = await db_session.execute(
-        select(UserOpenRouterKey).where(UserOpenRouterKey.user_id == user.id)
-    )
-    fetched = result.scalar_one()
-    assert fetched.encrypted_key == "secret"
 
 
 @pytest.mark.asyncio
@@ -164,16 +146,13 @@ async def test_user_relationships(db_session: AsyncSession):
     await db_session.flush()
 
     api_key = UserApiKey(user_id=user.id, key_hash="h1", label="key1")
-    or_key = UserOpenRouterKey(user_id=user.id, encrypted_key="ek1")
-    db_session.add_all([api_key, or_key])
+    db_session.add(api_key)
     await db_session.commit()
 
     result = await db_session.execute(
         select(User)
         .where(User.id == user.id)
-        .options(selectinload(User.api_keys), selectinload(User.openrouter_key))
+        .options(selectinload(User.api_keys))
     )
     fetched = result.scalar_one()
     assert len(fetched.api_keys) == 1
-    assert fetched.openrouter_key is not None
-    assert fetched.openrouter_key.encrypted_key == "ek1"

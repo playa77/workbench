@@ -15,7 +15,7 @@ from workbench.core.models import AgentSession, User
 class ChatAgent(AgentBase):
     name = "chat"
     display_name = "Chat"
-    description = "LLM chat with your OpenRouter API key"
+    description = "LLM chat with your inference provider"
     version = "0.1.0"
     icon = "message-circle"
 
@@ -31,14 +31,30 @@ class ChatAgent(AgentBase):
         user: User = Depends(get_current_user),
         session: AsyncSession = Depends(get_session),
     ):
-        client = await get_user_llm_client(user, session, request.app.state.config, model=body.model or None)
         try:
-            response = await client.chat_completion(
-                messages=[{"role": "user", "content": body.message}],
-                model=body.model or "deepseek/deepseek-v4-pro",
-                temperature=body.temperature,
-                max_tokens=body.max_tokens or 4096,
+            client = await get_user_llm_client(user, session, request.app.state.config, model=body.model or None)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Failed to create LLM client: {exc}",
             )
+        try:
+            try:
+                response = await client.chat_completion(
+                    messages=[{"role": "user", "content": body.message}],
+                    model=body.model or None,
+                    temperature=body.temperature,
+                    max_tokens=body.max_tokens or 4096,
+                )
+            except HTTPException:
+                raise
+            except Exception as exc:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"LLM request failed: {exc}",
+                )
             # Save AgentSession
             try:
                 session_id = str(uuid4())
@@ -57,7 +73,7 @@ class ChatAgent(AgentBase):
                     content=response,
                     content_format="text",
                     metadata_json={
-                        "model": body.model or "deepseek/deepseek-v4-pro",
+                        "model": body.model or "provider default",
                         "temperature": body.temperature,
                     },
                 )

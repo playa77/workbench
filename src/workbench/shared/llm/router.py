@@ -83,9 +83,9 @@ class OpenRouterClient:
     embed_dim:
         Expected embedding vector dimension.
     referer:
-        HTTP-Referer header value.
+        Optional HTTP-Referer header value (omitted for providers that reject it).
     title:
-        X-Title header value.
+        Optional X-Title header value (omitted for providers that reject it).
     """
 
     _CHAT_PATH = "/chat/completions"
@@ -102,8 +102,8 @@ class OpenRouterClient:
         fallback_models: list[str] | None = None,
         embed_model: str = "openai/text-embedding-3-small",
         embed_dim: int = 1536,
-        referer: str = "https://workbench.local",
-        title: str = "Workbench",
+        referer: str | None = None,
+        title: str | None = None,
         rate_limit_user_id: str | None = None,
         rate_limit_rpm: int = 0,
     ) -> None:
@@ -123,11 +123,13 @@ class OpenRouterClient:
             timeout=httpx.Timeout(timeout),
             headers={
                 "Authorization": f"Bearer {api_key}",
-                "HTTP-Referer": referer,
-                "X-Title": title,
                 "Content-Type": "application/json",
             },
         )
+        if self._referer is not None:
+            self._client.headers["HTTP-Referer"] = self._referer
+        if self._title is not None:
+            self._client.headers["X-Title"] = self._title
         self._owned = True
 
         chain = [default_model]
@@ -146,8 +148,8 @@ class OpenRouterClient:
         fallback_models: list[str] | None = None,
         embed_model: str = "openai/text-embedding-3-small",
         embed_dim: int = 1536,
-        referer: str = "https://workbench.local",
-        title: str = "Workbench",
+        referer: str | None = None,
+        title: str | None = None,
         rate_limit_user_id: str | None = None,
         rate_limit_rpm: int = 0,
     ) -> OpenRouterClient:
@@ -194,6 +196,7 @@ class OpenRouterClient:
         model: str | None = None,
         timeout: float | None = None,
         max_retries: int | None = None,
+        max_tokens: int | None = None,
         models: list[str] | None = None,
     ) -> str:
         """Return the assistant's final text response or raise on exhaustion.
@@ -204,6 +207,7 @@ class OpenRouterClient:
             model: Override the fallback chain with a single specific model.
             timeout: Per-call HTTP timeout in seconds.
             max_retries: Maximum attempts per model.
+            max_tokens: Maximum tokens in the response.
             models: Explicit fallback chain (deduplicated, order-preserving).
 
         Returns:
@@ -233,6 +237,8 @@ class OpenRouterClient:
                         "messages": messages,
                         "temperature": temperature,
                     }
+                    if max_tokens is not None:
+                        payload["max_tokens"] = max_tokens
                     msg_chars = sum(len(m.get("content", "")) for m in messages)
                     logger.info(
                         "chat_completion -> sending (model=%s, attempt=%d/%d, msg_chars=%d)",
@@ -283,6 +289,7 @@ class OpenRouterClient:
         model: str | None = None,
         timeout: float | None = None,
         max_retries: int | None = None,
+        max_tokens: int | None = None,
         models: list[str] | None = None,
         tools: list[dict[str, Any]] | None = None,
         tool_choice: str | dict[str, Any] | None = None,
@@ -321,6 +328,8 @@ class OpenRouterClient:
                         "messages": messages,
                         "temperature": temperature,
                     }
+                    if max_tokens is not None:
+                        payload["max_tokens"] = max_tokens
                     if tools:
                         payload["tools"] = tools
                     if tool_choice is not None:

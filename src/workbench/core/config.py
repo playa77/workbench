@@ -54,8 +54,7 @@ class WorkbenchConfig(BaseModel):
     rate_limit_general: str = "120/minute"
     inference_provider_url: str = "https://openrouter.ai/api/v1"
     inference_strong_model: str = "deepseek/deepseek-v4-pro"
-    inference_quick_model: str = "google/gemini-2.0-flash-001"
-    inference_medium_model: str = "anthropic/claude-sonnet-4-20250514"
+    inference_quick_model: str = "deepseek/deepseek-v4-flash"
     inference_requests_per_minute: int = 0
     api_csp_header: str = (
         "default-src 'self'; "
@@ -127,7 +126,6 @@ def _flatten_env_overrides(env_overrides: dict[str, Any]) -> dict[str, Any]:
         "inference.provider_url": "inference_provider_url",
         "inference.strong_model": "inference_strong_model",
         "inference.quick_model": "inference_quick_model",
-        "inference.medium_model": "inference_medium_model",
         "inference.requests_per_minute": "inference_requests_per_minute",
     }
     flat: dict[str, Any] = {}
@@ -205,7 +203,6 @@ def load_config(default_path: Path | None = None) -> WorkbenchConfig:
                     "provider_url": "inference_provider_url",
                     "strong_model": "inference_strong_model",
                     "quick_model": "inference_quick_model",
-                    "medium_model": "inference_medium_model",
                     "requests_per_minute": "inference_requests_per_minute",
                 },
             }

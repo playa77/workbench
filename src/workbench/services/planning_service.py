@@ -598,7 +598,7 @@ class PlanningState(BaseModel):
     plan_type: str = "project_plan"
     status: str = "PENDING"
     result: str = ""
-    model: str = "deepseek/deepseek-v4-pro"
+    model: str | None = None
     temperature: float = 0.5
     started_at: str = ""
     completed_at: str = ""
@@ -635,7 +635,7 @@ class PlanningService:
         plan_type: str = "project_plan",
         *,
         language: str = "en",
-        model: str = "deepseek/deepseek-v4-pro",
+        model: str | None = None,
         temperature: float = 0.5,
     ) -> DeliberationResult:
         t0 = time.monotonic()

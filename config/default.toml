@@ -24,8 +24,7 @@ max_retries = 2
 # User-configurable inference provider defaults (overridable per-user in Settings)
 provider_url = "https://openrouter.ai/api/v1"
 strong_model = "deepseek/deepseek-v4-pro"
-quick_model = "google/gemini-2.0-flash-001"
-medium_model = "anthropic/claude-sonnet-4-20250514"
+quick_model = "deepseek/deepseek-v4-flash"
 requests_per_minute = 0
 
 [encryption]

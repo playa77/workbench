@@ -244,7 +244,7 @@ class FrameConfig(BaseModel):
     """Configuration for a single deliberation frame/perspective."""
     frame_id: str
     label: str
-    model: str = "deepseek/deepseek-v4-pro"
+    model: str | None = None
     temperature: float = 0.7
     initial_context: str = ""
 
@@ -516,7 +516,6 @@ class DeliberationService:
                 {"role": "system", "content": "You are a rigorous analyst. Critique with precision and fairness."},
                 {"role": "user", "content": prompt},
             ],
-            model="deepseek/deepseek-v4-pro",
             temperature=0.5,
         )
         return response
@@ -550,7 +549,6 @@ class DeliberationService:
                     {"role": "system", "content": "You are a rhetoric analyst. Return only valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                model="deepseek/deepseek-v4-pro",
                 temperature=0.2,
             )
             parsed = self._safe_json_parse(response)
@@ -630,7 +628,6 @@ class DeliberationService:
                     {"role": "system", "content": "You are an analysis engine. Return only valid JSON."},
                     {"role": "user", "content": prompt},
                 ],
-                model="deepseek/deepseek-v4-pro",
                 temperature=0.2,
             )
             parsed = self._safe_json_parse(response)
@@ -746,10 +743,10 @@ class DeliberationService:
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt},
             ],
-            model="deepseek/deepseek-v4-pro",
-            temperature=0.4,
+            temperature=0.2,
         )
-        return response
+        parsed = self._safe_json_parse(response)
+
 
     # ---- Helpers ----
 

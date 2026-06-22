@@ -9,13 +9,38 @@
         <h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Chat</h2>
         <div id="chat-messages" style="min-height:400px;max-height:60vh;overflow-y:auto;margin-bottom:16px;padding:16px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius)"></div>
         <div style="display:flex;gap:8px">
+          <select class="form-input" id="chat-model" style="font-size:12px;padding:6px 10px;width:auto;flex-shrink:0;max-width:260px" disabled>
+            <option>Loading models...</option>
+          </select>
           <input class="form-input" id="chat-input" placeholder="Type your message..." style="flex:1" onkeydown="if(event.key==='Enter')window.chatSend()" />
           <button class="btn btn-primary" onclick="window.chatSend()">Send</button>
         </div>
-        <div style="margin-top:8px;font-size:11px;color:var(--text-muted);text-align:center">Powered by your OpenRouter API key</div>
+        <div style="margin-top:8px;font-size:11px;color:var(--text-muted);text-align:center">Powered by your inference provider</div>
       </div>`;
 
     document.getElementById('chat-messages').innerHTML = '<div style="text-align:center;color:var(--text-muted);padding:40px">Start a conversation</div>';
+
+    // Fetch available models dynamically from the backend
+    var modelSelect = document.getElementById('chat-model');
+    fetch('/api/v1/me/inference/models')
+      .then(function (resp) { return resp.json(); })
+      .then(function (data) {
+        var models = data.models || [];
+        var defaultModel = data.default_model || (models.length > 0 ? models[0] : '');
+        modelSelect.innerHTML = '';
+        models.forEach(function (m) {
+          var opt = document.createElement('option');
+          opt.value = m;
+          opt.textContent = m;
+          if (m === defaultModel) opt.selected = true;
+          modelSelect.appendChild(opt);
+        });
+        modelSelect.disabled = false;
+      })
+      .catch(function () {
+        modelSelect.innerHTML = '<option value="">No models available</option>';
+        modelSelect.disabled = false;
+      });
 
     renderChatPastSessions();
   }
@@ -144,7 +169,7 @@
       const resp = await fetch('/api/v1/agents/chat/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: msg }),
+        body: JSON.stringify({ message: msg, model: document.getElementById('chat-model').value }),
       });
       const data = await resp.json();
       if (!resp.ok) throw new Error(data.detail || 'Error');

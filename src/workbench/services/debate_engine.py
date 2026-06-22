@@ -60,11 +60,11 @@ class AgentConfig(BaseModel):
     name: str = Field(..., description="Display name")
     system_prompt: str = Field(..., description="Core personality instructions")
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
-    model_name: str = Field(default="deepseek/deepseek-v4-pro")
+    model_name: str | None = Field(default=None)
     avatar_color: str = Field(default="#FFFFFF")
 
     @classmethod
-    def from_role(cls, role_id: str, name: str, description: str, model: str = "deepseek/deepseek-v4-pro") -> AgentConfig:
+    def from_role(cls, role_id: str, name: str, description: str, model: str | None = None) -> AgentConfig:
         return cls(
             id=role_id,
             name=name,

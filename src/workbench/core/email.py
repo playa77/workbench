@@ -1,11 +1,14 @@
 """SMTP email sending for Workbench.
 
 Uses aiosmtplib for async delivery. Requires SMTP config.
+SMTP settings come from WorkbenchConfig, overridable via server_config DB table (editable in Settings by admin).
 """
 
 from __future__ import annotations
 
 import logging
+
+from workbench.core.models import ServerConfig
 
 LOGGER = logging.getLogger(__name__)
 
@@ -23,8 +26,22 @@ Workbench
 </body></html>"""
 
 
-async def _send_email(config, to_address: str, subject: str, html_body: str, plain_body: str) -> bool:
-    if not config.smtp_host:
+async def _send_email(config, to_address: str, subject: str, html_body: str, plain_body: str,
+                      smtp_overrides: dict | None = None) -> bool:
+    """Send an email via SMTP. config is WorkbenchConfig. smtp_overrides are key-value pairs
+    from the server_config DB table that override SMTP fields (host, port, user, password,
+    from_address, use_tls)."""
+    overrides = smtp_overrides or {}
+
+    host = overrides.get("smtp_host") or config.smtp_host
+    port = int(overrides.get("smtp_port", 0)) or config.smtp_port
+    user = overrides.get("smtp_user") or config.smtp_user
+    password = overrides.get("smtp_password") or config.smtp_password
+    from_addr = overrides.get("smtp_from_address") or config.smtp_from_address
+    tls_str = overrides.get("smtp_use_tls", "")
+    use_tls = tls_str.lower() != "false" if tls_str else config.smtp_use_tls
+
+    if not host:
         LOGGER.error("SMTP host not configured — cannot send email to %s", to_address)
         return False
 
@@ -33,7 +50,7 @@ async def _send_email(config, to_address: str, subject: str, html_body: str, pla
     from email.mime.text import MIMEText
 
     msg = MIMEMultipart("alternative")
-    msg["From"] = config.smtp_from_address
+    msg["From"] = from_addr or "playa77@gmail.com"
     msg["To"] = to_address
     msg["Subject"] = subject
     msg.attach(MIMEText(plain_body + _PLAIN_SIGNATURE, "plain", "utf-8"))
@@ -42,11 +59,11 @@ async def _send_email(config, to_address: str, subject: str, html_body: str, pla
     try:
         await aiosmtplib.send(
             msg,
-            hostname=config.smtp_host,
-            port=config.smtp_port,
-            username=config.smtp_user or None,
-            password=config.smtp_password or None,
-            use_tls=config.smtp_use_tls,
+            hostname=host,
+            port=port,
+            username=user or None,
+            password=password or None,
+            use_tls=use_tls,
         )
         LOGGER.info("Email sent to %s: %s", to_address, subject)
         return True
@@ -55,7 +72,21 @@ async def _send_email(config, to_address: str, subject: str, html_body: str, pla
         return False
 
 
-def send_invite_email(config, to_address: str, username: str, setup_url: str):
+async def get_smtp_overrides_from_db(session, verbose: bool = False) -> dict:
+    """Read SMTP/server config overrides from the server_config DB table."""
+    try:
+        from sqlalchemy import select
+        result = await session.execute(select(ServerConfig))
+        rows = result.scalars().all()
+        return {row.key: row.value for row in rows if row.key.startswith("smtp_")}
+    except Exception:
+        if verbose:
+            LOGGER.exception("Failed to read server_config from DB, using config defaults")
+        return {}
+
+
+
+def send_invite_email(config, to_address: str, username: str, setup_url: str, smtp_overrides: dict | None = None):
     subject = "You've been invited to Workbench"
     html = (
         f'<h2 style="font-weight:600;font-size:18px;margin-bottom:16px">You&rsquo;ve been invited</h2>'
@@ -69,10 +100,10 @@ def send_invite_email(config, to_address: str, username: str, setup_url: str):
         f"Set up your account: {setup_url}\n\n"
         f"This link expires in 7 days."
     )
-    return _send_email(config, to_address, subject, html, plain)
+    return _send_email(config, to_address, subject, html, plain, smtp_overrides)
 
 
-def send_reset_email(config, to_address: str, reset_url: str):
+def send_reset_email(config, to_address: str, reset_url: str, smtp_overrides: dict | None = None):
     subject = "Reset your Workbench password"
     html = (
         f'<h2 style="font-weight:600;font-size:18px;margin-bottom:16px">Password reset</h2>'
@@ -85,10 +116,10 @@ def send_reset_email(config, to_address: str, reset_url: str):
         f"{reset_url}\n\n"
         f"This link expires in 1 hour."
     )
-    return _send_email(config, to_address, subject, html, plain)
+    return _send_email(config, to_address, subject, html, plain, smtp_overrides)
 
 
-def send_welcome_email(config, to_address: str, username: str, login_url: str):
+def send_welcome_email(config, to_address: str, username: str, login_url: str, smtp_overrides: dict | None = None):
     subject = f"Welcome to Workbench, {username}"
     html = (
         f'<h2 style="font-weight:600;font-size:18px;margin-bottom:16px">Welcome, {username}</h2>'
@@ -99,10 +130,10 @@ def send_welcome_email(config, to_address: str, username: str, login_url: str):
         f"Welcome to Workbench, {username}.\n\n"
         f"Your account is ready. Sign in at: {login_url}"
     )
-    return _send_email(config, to_address, subject, html, plain)
+    return _send_email(config, to_address, subject, html, plain, smtp_overrides)
 
 
-def send_password_changed_email(config, to_address: str, username: str):
+def send_password_changed_email(config, to_address: str, username: str, smtp_overrides: dict | None = None):
     subject = "Your Workbench password was changed"
     html = (
         f'<h2 style="font-weight:600;font-size:18px;margin-bottom:16px">Password changed</h2>'
@@ -113,10 +144,10 @@ def send_password_changed_email(config, to_address: str, username: str):
         f"Hi {username}, your Workbench password was just changed.\n"
         f"If this wasn't you, contact your administrator immediately."
     )
-    return _send_email(config, to_address, subject, html, plain)
+    return _send_email(config, to_address, subject, html, plain, smtp_overrides)
 
 
-def send_email_change_verification(config, to_address: str, username: str, verify_url: str):
+def send_email_change_verification(config, to_address: str, username: str, verify_url: str, smtp_overrides: dict | None = None):
     subject = "Verify your new email address"
     html = (
         f'<h2 style="font-weight:600;font-size:18px;margin-bottom:16px">Verify your email</h2>'
@@ -129,10 +160,10 @@ def send_email_change_verification(config, to_address: str, username: str, verif
         f"{verify_url}\n\n"
         f"This link expires in 1 hour."
     )
-    return _send_email(config, to_address, subject, html, plain)
+    return _send_email(config, to_address, subject, html, plain, smtp_overrides)
 
 
-def send_invite_accepted_email(config, to_address: str, admin_username: str, invited_username: str, invited_email: str):
+def send_invite_accepted_email(config, to_address: str, admin_username: str, invited_username: str, invited_email: str, smtp_overrides: dict | None = None):
     subject = f"{invited_username} accepted your Workbench invitation"
     html = (
         f'<h2 style="font-weight:600;font-size:18px;margin-bottom:16px">Invitation accepted</h2>'
@@ -143,4 +174,4 @@ def send_invite_accepted_email(config, to_address: str, admin_username: str, inv
         f"Hi {admin_username},\n\n"
         f"{invited_username} ({invited_email}) has accepted your invitation and joined Workbench."
     )
-    return _send_email(config, to_address, subject, html, plain)
+    return _send_email(config, to_address, subject, html, plain, smtp_overrides)

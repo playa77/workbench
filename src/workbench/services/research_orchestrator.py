@@ -875,7 +875,6 @@ class ResearchOrchestrator:
             result = await self._client.chat_completion_full(
                 messages=messages,
                 temperature=0.4,
-                model="deepseek/deepseek-v4-pro",
                 tools=tools,
             )
         except Exception as e:

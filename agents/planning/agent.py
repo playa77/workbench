@@ -344,5 +344,5 @@ class PlanningAgent(AgentBase):
 class PlanRunRequest(BaseModel):
     goal: str = Field(..., max_length=10000)
     plan_type: str | None = "project_plan"
-    model: str = "deepseek/deepseek-v4-pro"
+    model: str | None = None
     temperature: float = Field(default=0.5, ge=0.0, le=2.0)

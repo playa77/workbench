@@ -580,7 +580,6 @@ class KnowledgeBaseAgent(AgentBase):
             try:
                 async for chunk in client.chat_completion_stream(
                     messages=messages,
-                    model="deepseek/deepseek-v4-pro",
                     temperature=0.3,
                 ):
                     await queue.put(

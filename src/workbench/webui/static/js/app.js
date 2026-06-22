@@ -401,269 +401,249 @@
 
     var content = document.getElementById('settings-content');
 
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<h3>Profile</h3>' +
-      (currentUser
-        ? '<p>Logged in as <strong>' + Utils.escapeHtml(currentUser.username) + '</strong></p>' +
-          (currentUser.email ? '<p>Email: ' + Utils.escapeHtml(currentUser.email) + '</p>' : '')
-        : '') +
-      '</div>';
-
-    if (currentUser && currentUser.has_password) {
-      content.innerHTML +=
-        '<div class="settings-section">' +
-        '<h3>Change Password</h3>' +
-        '<div class="form-group">' +
-        '<label>Current Password</label>' +
-        '<input class="form-input" id="change-password-current" type="password" placeholder="Current password" />' +
-        '</div>' +
-        '<div class="form-group">' +
-        '<label>New Password</label>' +
-        '<input class="form-input" id="change-password-new" type="password" placeholder="New password (min 8 chars)" />' +
-        '</div>' +
-        '<button class="btn btn-primary" id="btn-change-password">Save Password</button>' +
-        '<div id="change-password-message" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
-        '</div>';
+    function buildProviderListHTML(providers) {
+      // Builds the list of provider cards + "Add Provider" button
+      if (!providers || !providers.length) {
+        providers = [{name: 'Default (server fallback)', provider_url: 'https://openrouter.ai/api/v1', strong_model: 'deepseek/deepseek-v4-pro', quick_model: 'deepseek/deepseek-v4-flash', requests_per_minute: 0, is_default: true, has_api_key: false, id: null}];
+      }
+      var html = '<h3>Inference Providers</h3>' +
+        '<p>Configure OpenAI-compatible endpoints. API keys are encrypted at rest. Set one as default for all agents.</p>' +
+        '<div class="provider-list">';
+      for (var i = 0; i < providers.length; i++) {
+        var p = providers[i];
+        var badge = p.is_default ? ' <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">Default</span>' : '';
+        var serverFallback = p.id === null ? ' <span style="color:var(--text-muted);font-size:11px">(server fallback — add a key to override)</span>' : '';
+        html += '<div class="card provider-card" style="margin-bottom:12px;padding:16px" id="provider-card-' + (p.id || 'fallback') + '">' +
+          '<div style="display:flex;justify-content:space-between;align-items:start">' +
+          '<div>' +
+          '<strong>' + Utils.escapeHtml(p.name) + '</strong>' + badge + serverFallback +
+          '</div>' +
+          '<div style="display:flex;gap:6px">';
+        if (p.id) {
+          if (!p.is_default) {
+            html += '<button class="btn btn-sm btn-secondary set-default-btn" data-id="' + p.id + '">Set Default</button>';
+          }
+          html += '<button class="btn btn-sm btn-secondary edit-provider-btn" data-id="' + p.id + '">Edit</button>' +
+            '<button class="btn btn-sm btn-danger delete-provider-btn" data-id="' + p.id + '">Delete</button>';
+        }
+        html += '</div></div>' +
+          '<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">' +
+          '<div><span style="color:var(--text-secondary)">URL:</span> ' + Utils.escapeHtml(p.provider_url) + '</div>' +
+          '<div><span style="color:var(--text-secondary)">Strong Model:</span> ' + Utils.escapeHtml(p.strong_model) + '</div>' +
+          '<div><span style="color:var(--text-secondary)">Quick Model:</span> ' + Utils.escapeHtml(p.quick_model) + '</div>' +
+          '<div><span style="color:var(--text-secondary)">Rate Limit:</span> ' + (p.requests_per_minute || 0) + ' RPM</div>' +
+          '</div>' +
+          '<div id="provider-edit-form-' + (p.id || 'new') + '" style="display:none;margin-top:12px"></div>' +
+          '</div>';
+      }
+      html += '</div>' +
+        '<button class="btn btn-primary" id="btn-add-provider" style="margin-top:8px">+ Add Provider</button>' +
+        '<div id="provider-add-form" style="display:none;margin-top:12px;padding:16px;border:1px solid var(--border);border-radius:8px"></div>' +
+        '<div id="provider-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>';
+      return html;
     }
 
-    if (currentUser && currentUser.is_admin) {
-      content.innerHTML +=
-        '<div class="settings-section">' +
-        '<h3>Invite Users</h3>' +
+    function buildProviderFormHTML(provider, isNew, formSuffix) {
+      // Builds an inline add/edit form for a provider
+      // provider: the existing provider data (or empty for new)
+      // isNew: true for "Add Provider" form, false for edit
+      // formSuffix: unique suffix for element IDs to avoid collisions
+      provider = provider || {};
+      formSuffix = formSuffix || (provider && provider.id) || 'new';
+      var title = isNew ? 'Add Provider' : 'Edit Provider';
+      var apiKeyPlaceholder = isNew ? 'sk-...' : '(unchanged — enter new to replace)';
+      var modelSuggestions = [];
+      // Model suggestions are no longer hardcoded — enter the model IDs
+      // your provider supports (e.g., "deepseek-ai/deepseek-v4-pro" for
+      // NVIDIA NIM, or "deepseek/deepseek-v4-pro" for OpenRouter).
+      var modelOptions = modelSuggestions.map(function(m) { return '<option value="' + m + '">'; }).join('');
+      return '<h4 style="margin-bottom:12px">' + title + '</h4>' +
         '<div class="form-group">' +
-        '<label>Email</label>' +
-        '<input class="form-input" id="invite-email" type="email" placeholder="user@example.com" />' +
+        '<label>Provider Name</label>' +
+        '<input class="form-input" id="prov-form-name-' + formSuffix + '" type="text" value="' + Utils.escapeHtml(provider.name || '') + '" placeholder="e.g., OpenRouter, NVIDIA NIM" />' +
         '</div>' +
         '<div class="form-group">' +
-        '<label>Username</label>' +
-        '<input class="form-input" id="invite-username" placeholder="username" />' +
+        '<label>API Key</label>' +
+        '<input class="form-input" id="prov-form-key-' + formSuffix + '" type="password" placeholder="' + apiKeyPlaceholder + '" />' +
         '</div>' +
-        '<button class="btn btn-primary" id="btn-send-invite">Send Invite</button>' +
-        '<div id="invite-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
-        '<div id="invite-list" style="margin-top:16px"></div>' +
-        '</div>';
+        '<div class="form-group">' +
+        '<label>Provider URL</label>' +
+        '<input class="form-input" id="prov-form-url-' + formSuffix + '" type="text" value="' + Utils.escapeHtml(provider.provider_url || '') + '" placeholder="https://api.example.com/v1" />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>Strong Model <span style="font-size:11px;color:var(--text-muted)">(primary, used by most agents)</span></label>' +
+        '<input class="form-input" id="prov-form-strong-' + formSuffix + '" type="text" value="' + Utils.escapeHtml(provider.strong_model || '') + '" list="model-suggestions" placeholder="deepseek/deepseek-v4-pro" />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>Quick Model <span style="font-size:11px;color:var(--text-muted)">(faster/cheaper, for light tasks)</span></label>' +
+        '<input class="form-input" id="prov-form-quick-' + formSuffix + '" type="text" value="' + Utils.escapeHtml(provider.quick_model || '') + '" list="model-suggestions" placeholder="google/gemini-2.0-flash-001" />' +
+        '</div>' +
+        '<div class="form-group">' +
+        '<label>Rate Limit <span style="font-size:11px;color:var(--text-muted)">(LLM calls per minute, 0 = unlimited)</span></label>' +
+        '<input class="form-input" id="prov-form-rpm-' + formSuffix + '" type="number" min="0" value="' + (provider.requests_per_minute || 0) + '" />' +
+        '</div>' +
+        '<datalist id="model-suggestions">' + modelOptions + '</datalist>' +
+        '<div style="display:flex;gap:8px;margin-top:12px">' +
+        '<button class="btn btn-primary" id="prov-form-save-' + formSuffix + '">Save</button>' +
+        '<button class="btn btn-secondary" id="prov-form-cancel-' + formSuffix + '">Cancel</button>' +
+        '</div>' +
+        '<div id="prov-form-error-' + formSuffix + '" style="margin-top:8px;font-size:12px;color:var(--danger)"></div>';
     }
 
-    var hasKey = currentUser && currentUser.has_openrouter_key;
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<h3>OpenRouter API Key</h3>' +
-      '<p>Your personal BYOK key. Encrypted at rest. Never shared.</p>' +
-      '<div class="form-group">' +
-      '<input class="form-input" id="or-key-input" type="password" placeholder="' +
-      (hasKey ? '(stored — enter new to replace)' : 'sk-or-v1-...') + '" />' +
-      '</div>' +
-      '<button class="btn btn-primary" id="btn-save-or-key">Save Key</button>' +
-      (hasKey ? '<button class="btn btn-danger btn-sm" id="btn-delete-or-key" style="margin-left:8px">Remove Key</button>' : '') +
-      '<div id="or-key-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
-      '</div>';
+    async function renderInferenceProvidersSection() {
+      var section = document.getElementById('inf-cfg-section');
+      if (!section) return;
 
-    var hasBraveKey = currentUser && currentUser.has_brave_key;
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<h3>Brave Search API Key</h3>' +
-      '<p>Optional — used for web search in Deep Research. Falls back to the server-wide BRAVE_SEARCH_API_KEY if set.</p>' +
-      '<div class="form-group">' +
-      '<input class="form-input" id="brave-key-input" type="password" placeholder="' +
-      (hasBraveKey ? '(stored — enter new to replace)' : 'BSA-...') + '" />' +
-      '</div>' +
-      '<button class="btn btn-primary" id="btn-save-brave-key">Save Key</button>' +
-      (hasBraveKey ? '<button class="btn btn-danger btn-sm" id="btn-delete-brave-key" style="margin-left:8px">Remove Key</button>' : '') +
-      '<div id="brave-key-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
-      '</div>';
+      section.innerHTML = '<div class="spinner" style="margin:20px auto"></div>';
 
-    var infCfg = currentUser ? currentUser.inference_config || {} : {};
-    var isCustom = currentUser && !!(currentUser.inference_config && currentUser.inference_config.has_api_key !== undefined);
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<h3>Inference Provider</h3>' +
-      '<p>Configure any OpenAI-compatible endpoint. API key is encrypted at rest.</p>' +
-      '<div class="form-group">' +
-      '<label>API Key <span style="font-size:11px;color:var(--text-muted)">(leave blank to use existing OpenRouter key)</span></label>' +
-      '<input class="form-input" id="inf-key-input" type="password" placeholder="sk-..." />' +
-      '</div>' +
-      '<div class="form-group">' +
-      '<label>Provider URL</label>' +
-      '<input class="form-input" id="inf-url-input" type="text" value="' + Utils.escapeHtml(infCfg.provider_url || '') + '" placeholder="https://openrouter.ai/api/v1" />' +
-      '</div>' +
-      '<div class="form-group">' +
-      '<label>Strong Model <span style="font-size:11px;color:var(--text-muted)">(primary, used by most agents)</span></label>' +
-      '<input class="form-input" id="inf-strong-input" type="text" value="' + Utils.escapeHtml(infCfg.strong_model || '') + '" placeholder="deepseek/deepseek-v4-pro" />' +
-      '</div>' +
-      '<div class="form-group">' +
-      '<label>Quick Model <span style="font-size:11px;color:var(--text-muted)">(faster/cheaper, for light tasks)</span></label>' +
-      '<input class="form-input" id="inf-quick-input" type="text" value="' + Utils.escapeHtml(infCfg.quick_model || '') + '" placeholder="google/gemini-2.0-flash-001" />' +
-      '</div>' +
-      '<div class="form-group">' +
-      '<label>Medium Model <span style="font-size:11px;color:var(--text-muted)">(second opinion, debate judge)</span></label>' +
-      '<input class="form-input" id="inf-medium-input" type="text" value="' + Utils.escapeHtml(infCfg.medium_model || '') + '" placeholder="anthropic/claude-sonnet-4-20250514" />' +
-      '</div>' +
-      '<div class="form-group">' +
-      '<label>Rate Limit <span style="font-size:11px;color:var(--text-muted)">(LLM calls per minute, 0 = unlimited)</span></label>' +
-      '<input class="form-input" id="inf-rpm-input" type="number" min="0" value="' + (infCfg.requests_per_minute || 0) + '" />' +
-      '</div>' +
-      '<button class="btn btn-primary" id="btn-save-inf-cfg">Save Config</button>' +
-      (isCustom ? '<button class="btn btn-danger btn-sm" id="btn-reset-inf-cfg" style="margin-left:8px">Reset to Defaults</button>' : '') +
-      '<div id="inf-cfg-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
-      '</div>';
-
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<h3>Theme</h3>' +
-      '<button class="btn btn-secondary" id="btn-theme-switch">Switch to ' +
-      (Theme.get() === 'dark' ? 'Light' : 'Dark') + ' Theme</button>' +
-      '</div>';
-
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<h3>Agents</h3>' +
-      '<div class="agent-grid" id="agent-list"></div>' +
-      '</div>';
-
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<h3>API Keys' + (currentUser ? ' <span style="font-weight:400;font-size:12px;color:var(--text-muted)">for ' + Utils.escapeHtml(currentUser.username) + '</span>' : '') + '</h3>' +
-      '<div id="api-keys-section"></div>' +
-      '</div>';
-
-    content.innerHTML +=
-      '<div class="settings-section">' +
-      '<button class="btn btn-danger" id="btn-logout" style="width:100%">Sign Out</button>' +
-      '</div>';
-
-    document.getElementById('btn-save-or-key') && document.getElementById('btn-save-or-key').addEventListener('click', async function () {
-      var val = document.getElementById('or-key-input').value.trim();
-      if (!val) return;
-      Utils.setButtonLoading(this, 'Saving...');
+      var providers;
       try {
-        await API.setOpenRouterKey(val);
-        Utils.setButtonSuccess(this, 'Saved!');
-        document.getElementById('or-key-status').textContent = 'Key saved.';
+        // Try to get providers from currentUser first (set by /me)
+        if (currentUser && currentUser.inference_providers) {
+          providers = currentUser.inference_providers;
+        } else {
+          providers = await API.getInferenceProviders();
+        }
       } catch (e) {
-        Utils.resetButton(this);
-        document.getElementById('or-key-status').textContent = 'Error: ' + e.message;
+        providers = [];
       }
-    });
 
-    document.getElementById('btn-delete-or-key') && document.getElementById('btn-delete-or-key').addEventListener('click', async function () {
-      await API.deleteOpenRouterKey();
-      renderSettings(container);
-    });
+      section.innerHTML = buildProviderListHTML(providers);
 
-    document.getElementById('btn-save-brave-key') && document.getElementById('btn-save-brave-key').addEventListener('click', async function () {
-      var val = document.getElementById('brave-key-input').value.trim();
-      if (!val) return;
-      Utils.setButtonLoading(this, 'Saving...');
-      try {
-        await API.setBraveKey(val);
-        Utils.setButtonSuccess(this, 'Saved!');
-        document.getElementById('brave-key-status').textContent = 'Key saved.';
-      } catch (e) {
-        Utils.resetButton(this);
-        document.getElementById('brave-key-status').textContent = 'Error: ' + e.message;
+      // Attach "Add Provider" handler
+      var addBtn = document.getElementById('btn-add-provider');
+      if (addBtn) {
+        addBtn.addEventListener('click', function() {
+          var form = document.getElementById('provider-add-form');
+          form.style.display = 'block';
+          form.innerHTML = buildProviderFormHTML({}, true, 'new');
+          attachProviderFormHandlers(null, form, 'new');
+        });
       }
-    });
 
-    document.getElementById('btn-delete-brave-key') && document.getElementById('btn-delete-brave-key').addEventListener('click', async function () {
-      await API.deleteBraveKey();
-      renderSettings(container);
-    });
+      // Attach edit/delete/set-default handlers for each card
+      section.querySelectorAll('.edit-provider-btn').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+          var id = btn.dataset.id;
+          var provider = providers.find(function(p) { return p.id === id; });
+          if (!provider) return;
+          var formDiv = document.getElementById('provider-edit-form-' + id);
+          formDiv.style.display = 'block';
+          formDiv.innerHTML = buildProviderFormHTML(provider, false, id);
+          attachProviderFormHandlers(id, formDiv, id);
+        });
+      });
 
-    document.getElementById('btn-save-inf-cfg') && document.getElementById('btn-save-inf-cfg').addEventListener('click', async function () {
-      var data = {};
-      var key = document.getElementById('inf-key-input').value.trim();
-      if (key) data.api_key = key;
-      data.provider_url = document.getElementById('inf-url-input').value.trim();
-      data.strong_model = document.getElementById('inf-strong-input').value.trim();
-      data.quick_model = document.getElementById('inf-quick-input').value.trim();
-      data.medium_model = document.getElementById('inf-medium-input').value.trim();
-      data.requests_per_minute = parseInt(document.getElementById('inf-rpm-input').value, 10) || 0;
+      section.querySelectorAll('.delete-provider-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          var id = btn.dataset.id;
+          if (!confirm('Delete this provider?')) return;
+          Utils.setButtonLoading(btn, 'Deleting...');
+          try {
+            await API.deleteInferenceProvider(id);
+            await refreshUserAndRerender();
+          } catch (e) {
+            Utils.resetButton(btn);
+            document.getElementById('provider-status').textContent = 'Error: ' + e.message;
+          }
+        });
+      });
 
-      // Only send non-empty fields
-      Object.keys(data).forEach(function (k) { if (data[k] === '' || data[k] === undefined) delete data[k]; });
-
-      Utils.setButtonLoading(this, 'Saving...');
-      try {
-        await API.updateInferenceConfig(data);
-        Utils.setButtonSuccess(this, 'Saved!');
-        document.getElementById('inf-cfg-status').textContent = 'Provider config saved.';
-      } catch (e) {
-        Utils.resetButton(this);
-        document.getElementById('inf-cfg-status').textContent = 'Error: ' + e.message;
-      }
-    });
-
-    document.getElementById('btn-reset-inf-cfg') && document.getElementById('btn-reset-inf-cfg').addEventListener('click', async function () {
-      await API.deleteInferenceConfig();
-      renderSettings(container);
-    });
-
-    document.getElementById('btn-theme-switch') && document.getElementById('btn-theme-switch').addEventListener('click', function () {
-      Theme.toggle();
-      renderSettings(container);
-    });
-
-    document.getElementById('btn-logout') && document.getElementById('btn-logout').addEventListener('click', async function () {
-      await API.logout();
-      currentUser = null;
-      location.reload();
-    });
-
-    document.getElementById('btn-change-password') && document.getElementById('btn-change-password').addEventListener('click', async function () {
-      var current = document.getElementById('change-password-current').value;
-      var newPass = document.getElementById('change-password-new').value;
-      await doChangePassword(this, current, newPass);
-    });
-
-    function doChangePassword(btn, current, newPass) {
-      if (!current || !newPass) return;
-      if (newPass.length < 8) {
-        document.getElementById('change-password-message').textContent = 'New password must be at least 8 characters.';
-        return;
-      }
-      Utils.setButtonLoading(btn, 'Saving...');
-      return API.changePassword(current, newPass).then(function () {
-        Utils.setButtonSuccess(btn, 'Saved!');
-        document.getElementById('change-password-message').textContent = 'Password changed.';
-        document.getElementById('change-password-current').value = '';
-        document.getElementById('change-password-new').value = '';
-      }).catch(function (e) {
-        Utils.resetButton(btn);
-        document.getElementById('change-password-message').textContent = 'Error: ' + e.message;
+      section.querySelectorAll('.set-default-btn').forEach(function(btn) {
+        btn.addEventListener('click', async function() {
+          var id = btn.dataset.id;
+          Utils.setButtonLoading(btn, 'Setting...');
+          try {
+            await API.setDefaultProvider(id);
+            await refreshUserAndRerender();
+          } catch (e) {
+            Utils.resetButton(btn);
+            document.getElementById('provider-status').textContent = 'Error: ' + e.message;
+          }
+        });
       });
     }
 
-    if (document.getElementById('btn-change-password')) {
-      document.getElementById('change-password-new').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') {
-          doChangePassword(document.getElementById('btn-change-password'),
-            document.getElementById('change-password-current').value,
-            document.getElementById('change-password-new').value);
+    function attachProviderFormHandlers(providerId, formContainer, formSuffix) {
+      // Attach save/cancel handlers to a provider add/edit form
+      formSuffix = formSuffix || 'new';
+      var saveBtn = document.getElementById('prov-form-save-' + formSuffix);
+      var cancelBtn = document.getElementById('prov-form-cancel-' + formSuffix);
+      var errDiv = document.getElementById('prov-form-error-' + formSuffix);
+
+      cancelBtn.addEventListener('click', function() {
+        formContainer.style.display = 'none';
+      });
+
+      saveBtn.addEventListener('click', async function() {
+        var data = {};
+        data.name = document.getElementById('prov-form-name-' + formSuffix).value.trim();
+        var key = document.getElementById('prov-form-key-' + formSuffix).value.trim();
+        if (key) data.api_key = key;
+        data.provider_url = document.getElementById('prov-form-url-' + formSuffix).value.trim();
+        data.strong_model = document.getElementById('prov-form-strong-' + formSuffix).value.trim();
+        data.quick_model = document.getElementById('prov-form-quick-' + formSuffix).value.trim();
+        data.requests_per_minute = parseInt(document.getElementById('prov-form-rpm-' + formSuffix).value, 10) || 0;
+
+        // Remove empty fields
+        Object.keys(data).forEach(function(k) { if (data[k] === '' || data[k] === undefined) delete data[k]; });
+
+        if (!data.provider_url) {
+          errDiv.textContent = 'Provider URL is required.';
+          return;
+        }
+
+        Utils.setButtonLoading(saveBtn, 'Saving...');
+        try {
+          if (providerId) {
+            await API.updateInferenceProvider(providerId, data);
+          } else {
+            await API.createInferenceProvider(data);
+          }
+          await refreshUserAndRerender();
+        } catch (e) {
+          Utils.resetButton(saveBtn);
+          errDiv.textContent = 'Error: ' + e.message;
         }
       });
     }
 
-    document.getElementById('btn-send-invite') && document.getElementById('btn-send-invite').addEventListener('click', async function () {
-      var email = document.getElementById('invite-email').value.trim();
-      var username = document.getElementById('invite-username').value.trim();
-      if (!email || !username) return;
-      Utils.setButtonLoading(this, 'Sending...');
+    async function refreshUserAndRerender() {
       try {
-        await API.createInvite(email, username);
-        Utils.setButtonSuccess(this, 'Sent!');
-        document.getElementById('invite-email').value = '';
-        document.getElementById('invite-username').value = '';
-        document.getElementById('invite-status').textContent = 'Invite sent.';
-        loadInviteList();
-      } catch (e) {
-        Utils.resetButton(this);
-        document.getElementById('invite-status').textContent = 'Error: ' + e.message;
-      }
-    });
+        currentUser = await API.me();
+      } catch (_) {}
+      await renderInferenceProvidersSection();
+    }
+
+    // ── Section rendering ──
+    renderProfileSection(content, currentUser);
+
+    if (currentUser && currentUser.has_password) {
+      renderChangePasswordSection(content, currentUser);
+    }
+
+    if (currentUser && currentUser.is_admin) {
+      renderInviteUsersSection(content, currentUser);
+    }
+
+    renderBraveKeySection(content, currentUser);
+
+    if (currentUser && currentUser.is_admin) {
+      renderEmailConfigSection(content, currentUser);
+    }
+
+    content.innerHTML += '<div class="settings-section" id="inf-cfg-section"></div>';
+
+    renderThemeSection(content);
+    renderAgentsSection(content);
+    renderApiKeysSection(content, currentUser);
+    renderLogoutSection(content);
+
+    renderInferenceProvidersSection();
 
     if (currentUser && currentUser.is_admin) {
       loadInviteList();
+      loadServerConfig();
     }
 
     loadAgentList();
@@ -896,6 +876,257 @@
         });
       });
     } catch (e) { /* silently fail */ }
+  }
+
+  async function loadServerConfig() {
+    try {
+      var cfg = await API.getServerConfig();
+      if (!cfg) return;
+      var hostEl = document.getElementById('smtp-host');
+      if (!hostEl) return;
+      hostEl.value = cfg.smtp_host || '';
+      document.getElementById('smtp-port').value = cfg.smtp_port || '';
+      document.getElementById('smtp-user').value = cfg.smtp_user || '';
+      document.getElementById('smtp-password').value = cfg.smtp_password || '';
+      document.getElementById('smtp-from').value = cfg.smtp_from || '';
+      document.getElementById('google-token').value = cfg.google_token || '';
+    } catch (e) { /* silently fail */ }
+  }
+
+  /* ---- Settings section renderers ---- */
+
+  function renderProfileSection(container, currentUser) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Profile</h3>' +
+      (currentUser
+        ? '<p>Logged in as <strong>' + Utils.escapeHtml(currentUser.username) + '</strong></p>' +
+          (currentUser.email ? '<p>Email: ' + Utils.escapeHtml(currentUser.email) + '</p>' : '')
+        : '') +
+      '</div>';
+  }
+
+  function renderChangePasswordSection(container, currentUser) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Change Password</h3>' +
+      '<div class="form-group">' +
+      '<label>Current Password</label>' +
+      '<input class="form-input" id="change-password-current" type="password" placeholder="Current password" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>New Password</label>' +
+      '<input class="form-input" id="change-password-new" type="password" placeholder="New password (min 8 chars)" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-change-password">Save Password</button>' +
+      '<div id="change-password-message" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+      '</div>';
+
+    // Attach change password event listeners
+    document.getElementById('btn-change-password') && document.getElementById('btn-change-password').addEventListener('click', async function () {
+      var current = document.getElementById('change-password-current').value;
+      var newPass = document.getElementById('change-password-new').value;
+      await doChangePassword(this, current, newPass);
+    });
+
+    if (document.getElementById('btn-change-password')) {
+      document.getElementById('change-password-new').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          doChangePassword(document.getElementById('btn-change-password'),
+            document.getElementById('change-password-current').value,
+            document.getElementById('change-password-new').value);
+        }
+      });
+    }
+  }
+
+  function renderInviteUsersSection(container, currentUser) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Invite Users</h3>' +
+      '<div class="form-group">' +
+      '<label>Email</label>' +
+      '<input class="form-input" id="invite-email" type="email" placeholder="user@example.com" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Username</label>' +
+      '<input class="form-input" id="invite-username" placeholder="username" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-send-invite">Send Invite</button>' +
+      '<div id="invite-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+      '<div id="invite-list" style="margin-top:16px"></div>' +
+      '</div>';
+
+    // Attach invite send handler
+    document.getElementById('btn-send-invite') && document.getElementById('btn-send-invite').addEventListener('click', async function () {
+      var email = document.getElementById('invite-email').value.trim();
+      var username = document.getElementById('invite-username').value.trim();
+      if (!email || !username) return;
+      Utils.setButtonLoading(this, 'Sending...');
+      try {
+        await API.createInvite(email, username);
+        Utils.setButtonSuccess(this, 'Sent!');
+        document.getElementById('invite-email').value = '';
+        document.getElementById('invite-username').value = '';
+        document.getElementById('invite-status').textContent = 'Invite sent.';
+        loadInviteList();
+      } catch (e) {
+        Utils.resetButton(this);
+        document.getElementById('invite-status').textContent = 'Error: ' + e.message;
+      }
+    });
+  }
+
+  function renderBraveKeySection(container, currentUser) {
+    var hasBraveKey = currentUser && currentUser.has_brave_key;
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Brave Search API Key</h3>' +
+      '<p>Optional — used for web search in Deep Research. Falls back to the server-wide BRAVE_SEARCH_API_KEY if set.</p>' +
+      '<div class="form-group">' +
+      '<input class="form-input" id="brave-key-input" type="password" placeholder="' +
+      (hasBraveKey ? '(stored — enter new to replace)' : 'BSA-...') + '" />' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-save-brave-key">Save Key</button>' +
+      (hasBraveKey ? '<button class="btn btn-danger btn-sm" id="btn-delete-brave-key" style="margin-left:8px">Remove Key</button>' : '') +
+      '<div id="brave-key-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+      '</div>';
+
+    // Attach save/delete brave key handlers
+    document.getElementById('btn-save-brave-key') && document.getElementById('btn-save-brave-key').addEventListener('click', async function () {
+      var val = document.getElementById('brave-key-input').value.trim();
+      if (!val) return;
+      Utils.setButtonLoading(this, 'Saving...');
+      try {
+        await API.setBraveKey(val);
+        Utils.setButtonSuccess(this, 'Saved!');
+        document.getElementById('brave-key-status').textContent = 'Key saved.';
+      } catch (e) {
+        Utils.resetButton(this);
+        document.getElementById('brave-key-status').textContent = 'Error: ' + e.message;
+      }
+    });
+
+    document.getElementById('btn-delete-brave-key') && document.getElementById('btn-delete-brave-key').addEventListener('click', async function () {
+      await API.deleteBraveKey();
+      renderSettings(document.querySelector('#active-tab-content'));
+    });
+  }
+
+  function renderEmailConfigSection(container, currentUser) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Email Configuration (Server)</h3>' +
+      '<p>SMTP settings for outgoing emails. Sent from playa77@gmail.com via Gmail API or SMTP.</p>' +
+      '<div class="form-group">' +
+      '<label>SMTP Host</label>' +
+      '<input class="form-input" id="smtp-host" type="text" placeholder="smtp.gmail.com" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>SMTP Port</label>' +
+      '<input class="form-input" id="smtp-port" type="number" placeholder="587" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>SMTP User (email address)</label>' +
+      '<input class="form-input" id="smtp-user" type="text" placeholder="playa77@gmail.com" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>SMTP Password / App Password</label>' +
+      '<input class="form-input" id="smtp-password" type="password" placeholder="App password" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>From Address</label>' +
+      '<input class="form-input" id="smtp-from" type="text" placeholder="playa77@gmail.com" />' +
+      '</div>' +
+      '<div class="form-group">' +
+      '<label>Google API Token <span style="font-size:11px;color:var(--text-muted)">(for Gmail API access)</span></label>' +
+      '<textarea class="form-input" id="google-token" rows="3" placeholder="Google OAuth2 refresh token for playa77@gmail.com" style="resize:vertical;font-family:monospace;font-size:12px"></textarea>' +
+      '</div>' +
+      '<button class="btn btn-primary" id="btn-save-server-config">Save Config</button>' +
+      '<div id="server-config-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
+      '</div>';
+
+    // Attach server config save handler
+    document.getElementById('btn-save-server-config') && document.getElementById('btn-save-server-config').addEventListener('click', async function () {
+      var data = {};
+      data.smtp_host = document.getElementById('smtp-host').value.trim();
+      data.smtp_port = document.getElementById('smtp-port').value.trim();
+      data.smtp_user = document.getElementById('smtp-user').value.trim();
+      data.smtp_password = document.getElementById('smtp-password').value.trim();
+      data.smtp_from = document.getElementById('smtp-from').value.trim();
+      data.google_token = document.getElementById('google-token').value.trim();
+
+      Utils.setButtonLoading(this, 'Saving...');
+      try {
+        await API.updateServerConfig(data);
+        Utils.setButtonSuccess(this, 'Saved!');
+        document.getElementById('server-config-status').textContent = 'Server config saved.';
+      } catch (e) {
+        Utils.resetButton(this);
+        document.getElementById('server-config-status').textContent = 'Error: ' + e.message;
+      }
+    });
+  }
+
+  function renderThemeSection(container) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Theme</h3>' +
+      '<button class="btn btn-secondary" id="btn-theme-switch">Switch to ' +
+      (Theme.get() === 'dark' ? 'Light' : 'Dark') + ' Theme</button>' +
+      '</div>';
+
+    document.getElementById('btn-theme-switch') && document.getElementById('btn-theme-switch').addEventListener('click', function () {
+      Theme.toggle();
+      renderSettings(document.querySelector('#active-tab-content'));
+    });
+  }
+
+  function renderAgentsSection(container) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>Agents</h3>' +
+      '<div class="agent-grid" id="agent-list"></div>' +
+      '</div>';
+  }
+
+  function renderApiKeysSection(container, currentUser) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<h3>API Keys' + (currentUser ? ' <span style="font-weight:400;font-size:12px;color:var(--text-muted)">for ' + Utils.escapeHtml(currentUser.username) + '</span>' : '') + '</h3>' +
+      '<div id="api-keys-section"></div>' +
+      '</div>';
+  }
+
+  function renderLogoutSection(container) {
+    container.innerHTML +=
+      '<div class="settings-section">' +
+      '<button class="btn btn-danger" id="btn-logout" style="width:100%">Sign Out</button>' +
+      '</div>';
+
+    document.getElementById('btn-logout') && document.getElementById('btn-logout').addEventListener('click', async function () {
+      await API.logout();
+      currentUser = null;
+      location.reload();
+    });
+  }
+
+  function doChangePassword(btn, current, newPass) {
+    if (!current || !newPass) return;
+    if (newPass.length < 8) {
+      document.getElementById('change-password-message').textContent = 'New password must be at least 8 characters.';
+      return;
+    }
+    Utils.setButtonLoading(btn, 'Saving...');
+    return API.changePassword(current, newPass).then(function () {
+      Utils.setButtonSuccess(btn, 'Saved!');
+      document.getElementById('change-password-message').textContent = 'Password changed.';
+      document.getElementById('change-password-current').value = '';
+      document.getElementById('change-password-new').value = '';
+    }).catch(function (e) {
+      Utils.resetButton(btn);
+      document.getElementById('change-password-message').textContent = 'Error: ' + e.message;
+    });
   }
 
   /* ---- Global helpers ---- */
