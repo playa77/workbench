@@ -771,7 +771,6 @@ Complete these items before exposing Workbench to the internet.
 - [ ] Enable HSTS via `WORKBENCH_API__STRICT_TRANSPORT_SECURITY` once TLS is confirmed working.
 - [ ] Set CORS origins explicitly: `WORKBENCH_API__CORS_ORIGINS=["https://your-domain.com"]`
 - [ ] CSP header defaults to `frame-src 'self'` — Open WebUI is iframed from the same origin. Only add external origins if using an externally hosted Open WebUI instance.
-- [ ] Consider setting `WORKBENCH_AUTH__ALLOW_REGISTRATION=false` after creating your initial users.
 - [ ] Run the application as a non-root user (the Docker image runs as root by default in slim images; add a `USER` directive if needed).
 - [ ] Restrict file permissions on `.env` and backup files: `chmod 600 .env`.
 - [ ] Set up firewall rules to allow only 80 and 443 on the public interface. Internal ports 8420 and 3000 are unreachable anyway since they bind to `127.0.0.1`.
@@ -1047,8 +1046,18 @@ All variables that can appear in `.env` or the environment.
 |---|---|---|
 | `WORKBENCH_AUTH__API_KEY_PREFIX` | `wb` | Prefix for generated API keys |
 | `WORKBENCH_AUTH__MAX_KEYS_PER_USER` | `5` | Maximum API keys per user account |
-| `WORKBENCH_AUTH__ALLOW_REGISTRATION` | `true` | Allow new user registration via the API |
 | `WORKBENCH_AUTH__SESSION_EXPIRY_HOURS` | `24` | Session cookie lifetime |
+
+### Optional — Inference
+
+Per-user inference provider configuration (overridable in Settings):
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `WORKBENCH_INFERENCE__PROVIDER_URL` | `https://openrouter.ai/api/v1` | Inference API endpoint |
+| `WORKBENCH_INFERENCE__STRONG_MODEL` | `deepseek/deepseek-v4-pro` | Default strong model for complex tasks |
+| `WORKBENCH_INFERENCE__QUICK_MODEL` | `deepseek/deepseek-v4-flash` | Default fast model for simple tasks |
+| `WORKBENCH_INFERENCE__REQUESTS_PER_MINUTE` | `0` | Per-user rate limit (0 = no limit) |
 
 ### Optional — Rate Limiting
 

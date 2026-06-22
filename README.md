@@ -127,6 +127,7 @@ Workbench loads config in this priority order (lowest to highest):
 | `DATABASE_URL` | Database connection string (defaults to SQLite at `data/workbench.db`) | For Postgres |
 | `ENCRYPTION_KEY` | 64 hex chars for AES-256-GCM at-rest encryption | Yes |
 | `OPENROUTER_API_KEY` | Server-wide fallback OpenRouter key | No |
+| `BRAVE_SEARCH_API_KEY` | Server-wide fallback Brave Search API key (used by Deep Research agent) | No |
 | `WORKBENCH_API__HOST` | Bind address (default `127.0.0.1`) | No |
 | `WORKBENCH_API__PORT` | Listen port (default `8420`) | No |
 | `WORKBENCH_API__CORS_ORIGINS` | JSON array of allowed origins (e.g. `["https://your-domain.com"]`) | For remote access |
@@ -210,7 +211,7 @@ pip install -e ".[dev]"
 ### Commands
 
 ```bash
-pytest tests/ -v              # 1,053 tests, SQLite in-memory -- no external DB needed
+pytest tests/ -v              # 1,069 tests, SQLite in-memory -- no external DB needed
 ruff check src/workbench/ agents/    # Lint
 mypy src/ agents/                   # Type check
 ```
@@ -229,7 +230,9 @@ workbench/
 ├── agents/                          # Agent implementations (one per directory)
 │   ├── base.py                      # AgentBase -- shared ABC
 │   ├── chat/    debate/    deliberation/    knowledge/
+│   │   └── static/                  # Agent JS/CSS plugin, served at /static/plugins/
 │   ├── math_tutor/    news/    planning/    research/
+│       └── static/                  # Agent JS/CSS plugin, served at /static/plugins/
 │
 ├── src/workbench/                   # Core infrastructure
 │   ├── main.py                      # CLI entry point
@@ -252,16 +255,14 @@ workbench/
 │           ├── debate-tab.js        # Debate arena
 │           ├── deliberation-tab.js  # Deliberation UI
 │           ├── history-tab.js      # Unified agent session history
-│           ├── knowledge-tab.js     # Knowledge base management
-│           ├── math-tutor-tab.js    # Math tutor with LaTeX rendering
 │           ├── news-tab.js          # News pipeline
 │           ├── owui-tab.js          # Open WebUI iframe
 │           ├── planning-tab.js      # Planning UI
 │           └── research-tab.js      # Research UI
 │
 ├── config/default.toml              # Default configuration
-├── alembic/                         # Database migrations (11 versions)
-├── tests/                           # pytest suite (1,053 tests)
+├── alembic/                         # Database migrations (13 versions)
+├── tests/                           # pytest suite (1,069 tests)
 ├── docker-compose.yml               # Docker deployment (PG + Workbench + Open WebUI)
 ├── Dockerfile                       # python:3.12-slim, news+research extras
 ├── pyproject.toml                   # Build, dependencies, tool configs
