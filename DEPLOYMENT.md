@@ -112,10 +112,10 @@ BRAVE_SEARCH_API_KEY=BSA-...
 
 ```bash
 docker compose build workbench
-docker compose --profile openwebui up -d
+docker compose up -d
 ```
 
-Wait ~10 seconds for PostgreSQL to become healthy, then Workbench starts. The `--profile openwebui` flag includes the optional Open WebUI container; omit it if you don't want Open WebUI.
+Wait ~10 seconds for PostgreSQL to become healthy, then Workbench starts. The optional Open WebUI container is included by default; omit it if you don't want Open WebUI.
 
 ### Step 5: Install nginx Reverse Proxy
 
@@ -227,14 +227,14 @@ docker compose ps
 docker compose exec workbench workbench create-user --username admin --email admin@workbench.local --password admin123 --admin
 ```
 
-The default deployment credentials are **admin** / **admin123**. The command creates the user and prints an API key. **Save the API key output — it is shown only once.**
+The default deployment credentials are **admin** / **admin123**. Log in with your email/username and password.
 
 ### Step 8: Access
 
 Open `http://<your-server>` (or `https://your-domain.com` after TLS setup) in a browser. Log in with either:
 
 - Your **email/username and password** (default: `admin` / `admin123`), or
-- Your **API key** (the `wb-...` key printed during `create-user`)
+- Your **API key** if you generated one via the web UI
 
 > **Security note:** Change the default password after first login via the Settings panel.
 
@@ -251,7 +251,7 @@ Open WebUI (a SvelteKit app) does not support sub-path hosting natively — its 
 ### Start with Open WebUI
 
 ```bash
-docker compose --profile openwebui up -d
+docker compose up -d
 ```
 
 The container binds to `127.0.0.1:3000`. nginx proxies it at `/open-webui/`.
@@ -287,24 +287,24 @@ If pointing to an external instance served at a subdomain (the recommended appro
 docker compose ps
 
 # With Open WebUI
-docker compose --profile openwebui ps
+docker compose ps
 
 # Follow logs
 docker compose logs -f workbench
-docker compose logs -f open-webui   # if running with --profile openwebui
+docker compose logs -f open-webui
 
 # Restart after config changes
-docker compose --profile openwebui restart workbench
+docker compose restart workbench
 
 # Stop and remove containers (preserves volumes)
-docker compose --profile openwebui down
+docker compose down
 
 # Stop and destroy all data (⚠️ irreversible)
-docker compose --profile openwebui down -v
+docker compose down -v
 
 # Rebuild image after source changes
 docker compose build workbench
-docker compose --profile openwebui up -d
+docker compose up -d
 
 # nginx management
 sudo systemctl restart nginx
@@ -379,7 +379,7 @@ WORKBENCH_API__STRICT_TRANSPORT_SECURITY="max-age=31536000; includeSubDomains"
 Then recreate the workbench container to apply:
 
 ```bash
-docker compose --profile openwebui up -d --force-recreate workbench
+docker compose up -d --force-recreate workbench
 ```
 
 Verify the headers:
@@ -686,7 +686,7 @@ git pull origin main
 
 # Rebuild and restart
 docker compose build workbench
-docker compose --profile openwebui up -d
+docker compose up -d
 
 # Check logs for errors
 docker compose logs -f workbench
@@ -700,10 +700,10 @@ Database migrations run automatically on startup. No manual migration step neede
 ### Upgrade Notes
 
 * The `docker-compose.yml` workbench service uses `restart: unless-stopped`, so after a rebuild the new container starts automatically with the updated image.
-* Always review `CHANGELOG.md` or git log for breaking changes before upgrading.
+* Always review the git log for breaking changes before upgrading.
 * Migrations are additive and idempotent. Running `init-db` on an already-migrated database is safe.
 * The encryption key must remain the same across upgrades. **Changing `ENCRYPTION_KEY` after storing encrypted data will make existing keys unrecoverable.**
-* When upgrading Open WebUI (`docker compose --profile openwebui pull open-webui`), re-test the `/open-webui/` sub-path proxying — the `sub_filter` rules may need adjusting for new asset paths.
+* When upgrading Open WebUI (`docker compose pull open-webui`), re-test the `/open-webui/` sub-path proxying — the `sub_filter` rules may need adjusting for new asset paths.
 * Test upgrades on a staging instance before production.
 
 ---
@@ -808,8 +808,8 @@ If it returns "no response", the database container may still be initializing. W
 If you previously deployed with different credentials, old volume data might conflict. Destroy and recreate:
 
 ```bash
-docker compose --profile openwebui down -v
-docker compose --profile openwebui up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ### Workbench container restarts with "Temporary failure in name resolution"

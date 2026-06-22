@@ -59,6 +59,8 @@ pip install -e ".[news,research,planning]"
 
 > On modern Linux (Ubuntu 23.04+, Debian 12+) pip enforces PEP 668. Use a virtual environment. Never `--break-system-packages`.
 
+> **Note:** The Docker image installs only `[news,research]` extras to keep the image smaller. For `[planning]` extras (pandas, numpy, networkx), use bare-metal deployment.
+
 ### Run
 
 ```bash
@@ -70,9 +72,9 @@ Open **http://localhost:8420**.
 
 ### First Login
 
-1. The registration form appears if no user exists yet. Pick a username.
-2. The API key is shown **once** -- copy it. It is your Bearer token for all API access and the web UI login.
-3. Enter it on the login screen. You are in.
+1. Registration is available at `/register` if no users exist, or create one via CLI: `workbench create-user --username <name> --email <email> --password <pw>`.
+2. Log in with your email/username and password, or with an existing API key (`wb-...`).
+3. You are in.
 4. Open **Settings** (gear icon), paste your OpenRouter key (`sk-or-v1-...`), and click **Save**.
 5. Toggle agents on/off. Click any tab to start.
 
@@ -83,7 +85,7 @@ workbench serve                         Start the server (default 127.0.0.1:8420
 workbench serve --port 9000             Use a different port
 workbench serve --host 0.0.0.0          Listen on all interfaces
 workbench init-db                       Run Alembic migrations
-workbench create-user <username>        Create a new user and generate an API key
+workbench create-user --username <name> --email <email> --password <pw> [--admin]    Create a new user with email/password login
 workbench version                       Print version
 ```
 
@@ -94,7 +96,7 @@ workbench version                       Print version
 ```bash
 cp .env.example .env
 # Fill in POSTGRES_PASSWORD and ENCRYPTION_KEY
-docker compose --profile openwebui up -d
+docker compose up -d
 
 # Create the default admin user
 docker compose exec workbench workbench create-user --username admin --email admin@workbench.local --password admin123 --admin
@@ -192,8 +194,8 @@ The web UI is a vanilla JavaScript SPA at `src/workbench/webui/static/`. No fram
 | `components/research-tab.js` | SSE streaming research with live progress |
 | `components/deliberation-tab.js` | Frame selection, SSE phase tracking |
 | `components/planning-tab.js` | 9 plan types, SSE generation |
-| `components/math-tutor-tab.js` | Math tutor with LaTeX equation builder |
-| `components/knowledge-tab.js` | Knowledge base management: collections, uploads, queries |
+| `agents/math_tutor/static/js/tab.js` | Math tutor with LaTeX equation builder |
+| `agents/knowledge/static/js/tab.js` | Knowledge base management: collections, uploads, queries |
 | `components/history-tab.js` | Unified agent session history with filter, view, PDF export |
 | `components/owui-tab.js` | Open WebUI health check + iframe |
 
@@ -208,7 +210,7 @@ pip install -e ".[dev]"
 ### Commands
 
 ```bash
-pytest tests/ -v              # 46 tests, SQLite in-memory -- no external DB needed
+pytest tests/ -v              # 1,053 tests, SQLite in-memory -- no external DB needed
 ruff check src/workbench/ agents/    # Lint
 mypy src/ agents/                   # Type check
 ```
@@ -258,8 +260,8 @@ workbench/
 │           └── research-tab.js      # Research UI
 │
 ├── config/default.toml              # Default configuration
-├── alembic/                         # Database migrations (9 versions)
-├── tests/                           # pytest suite (46 tests)
+├── alembic/                         # Database migrations (11 versions)
+├── tests/                           # pytest suite (1,053 tests)
 ├── docker-compose.yml               # Docker deployment (PG + Workbench + Open WebUI)
 ├── Dockerfile                       # python:3.12-slim, news+research extras
 ├── pyproject.toml                   # Build, dependencies, tool configs
