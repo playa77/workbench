@@ -191,3 +191,29 @@ class AgentSession(Base):
         Index("idx_agent_sessions_agent", "agent_name"),
         Index("idx_agent_sessions_session", "session_id"),
     )
+
+
+class BlogPost(Base):
+    """A published document in the user's minimal blog/publishing hub.
+    
+    Files live on disk under data/blog/{user_id}/ in a per-user git repo.
+    Metadata lives in the database. Git versions files transparently.
+    """
+    __tablename__ = "workbench_blog_posts"
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
+    title: Mapped[str] = mapped_column(String(300), nullable=False)
+    slug: Mapped[str] = mapped_column(String(300), nullable=False)
+    filename: Mapped[str] = mapped_column(String(300), nullable=False)
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    format: Mapped[str] = mapped_column(String(20), nullable=False, default="markdown")
+    is_published: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "slug", name="uq_blog_user_slug"),
+        Index("idx_blog_posts_user", "user_id"),
+        Index("idx_blog_posts_published", "is_published"),
+    )

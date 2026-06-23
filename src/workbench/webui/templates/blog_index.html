@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blog — {{ username }}</title>
+    <link rel="stylesheet" href="/static/css/blog-public.css">
+</head>
+<body>
+    <div class="blog-container">
+        <header class="blog-header">
+            <h1>{{ username }}'s Blog</h1>
+            <p class="blog-subtitle">Personal publishing hub</p>
+        </header>
+        <main class="blog-posts">
+            {% if posts %}
+                {% for post in posts %}
+                <article class="blog-card">
+                    <h2 class="blog-card-title">
+                        <a href="/blog/{{ username }}/{{ post.slug }}">{{ post.title }}</a>
+                    </h2>
+                    <div class="blog-card-meta">
+                        <span class="blog-badge blog-badge-{{ post.format }}">{{ post.format | upper }}</span>
+                        <time datetime="{{ post.updated_at }}">{{ post.updated_at[:10] if post.updated_at else '' }}</time>
+                    </div>
+                    {% if post.comment_rendered %}
+                    <div class="blog-card-excerpt">
+                        {{ post.comment_rendered | safe }}
+                    </div>
+                    {% endif %}
+                </article>
+                {% endfor %}
+            {% else %}
+                <p class="blog-empty">No posts yet.</p>
+            {% endif %}
+        </main>
+    </div>
+</body>
+</html>

@@ -64,5 +64,18 @@ const API = (() => {
     deleteSession: function(id) {
       return request('DELETE', '/api/v1/sessions/' + id);
     },
+    createBlogPost: function(formData) {
+      return fetch('/api/v1/blog/posts', { method: 'POST', body: formData })
+        .then(function(r) {
+          if (!r.ok) return r.json().then(function(d) { throw new Error(d.detail); });
+          return r.json();
+        });
+    },
+    listBlogPosts: function() { return request('GET', '/api/v1/blog/posts'); },
+    getBlogPost: function(id) { return request('GET', '/api/v1/blog/posts/' + id); },
+    updateBlogPost: function(id, data) { return request('PUT', '/api/v1/blog/posts/' + id, data); },
+    deleteBlogPost: function(id) { return request('DELETE', '/api/v1/blog/posts/' + id); },
+    getBlogPostHistory: function(id) { return request('GET', '/api/v1/blog/posts/' + id + '/history'); },
+    getBlogPostAtCommit: function(id, hash) { return request('GET', '/api/v1/blog/posts/' + id + '/history/' + hash); },
   };
 })();

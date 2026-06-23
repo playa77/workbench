@@ -1,0 +1,371 @@
+/*
+ * Blog Public CSS — Dark theme for public-facing blog/publishing hub pages.
+ *
+ * Version: 1.0.0 | 2026-06-23
+ *
+ * Intentionally minimal and focused on typography and readability.
+ * Works without any JS framework.
+ */
+
+/* ── Reset / Base ─────────────────────────────────────────────── */
+
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen,
+        Ubuntu, Cantarell, "Helvetica Neue", Arial, sans-serif;
+    background-color: #0f1117;
+    color: #e1e4e8;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+}
+
+a {
+    color: #58a6ff;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 6px;
+}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+
+.blog-container {
+    max-width: 740px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+}
+
+/* ── Header ───────────────────────────────────────────────────── */
+
+.blog-header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid #21262d;
+}
+
+.blog-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #f0f6fc;
+    letter-spacing: -0.02em;
+}
+
+.blog-subtitle {
+    margin-top: 0.35rem;
+    font-size: 1rem;
+    color: #8b949e;
+}
+
+.blog-back {
+    display: inline-block;
+    font-size: 0.95rem;
+    color: #8b949e;
+    padding: 0.25rem 0;
+    transition: color 0.15s;
+}
+
+.blog-back:hover {
+    color: #58a6ff;
+    text-decoration: none;
+}
+
+/* ── Post Listing (index) ─────────────────────────────────────── */
+
+.blog-posts {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.blog-card {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    transition: border-color 0.2s;
+}
+
+.blog-card:hover {
+    border-color: #30363d;
+}
+
+.blog-card-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    line-height: 1.4;
+}
+
+.blog-card-title a {
+    color: #f0f6fc;
+}
+
+.blog-card-title a:hover {
+    color: #58a6ff;
+    text-decoration: none;
+}
+
+.blog-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+    font-size: 0.85rem;
+    color: #8b949e;
+}
+
+.blog-card-excerpt {
+    font-size: 0.95rem;
+    color: #c9d1d9;
+    line-height: 1.6;
+}
+
+.blog-card-excerpt p {
+    margin-bottom: 0.5rem;
+}
+
+.blog-card-excerpt p:last-child {
+    margin-bottom: 0;
+}
+
+.blog-empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #8b949e;
+    font-size: 1.1rem;
+}
+
+/* ── Single Post View ─────────────────────────────────────────── */
+
+.blog-post-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #8b949e;
+}
+
+.blog-post-title {
+    font-size: 2.1rem;
+    font-weight: 700;
+    color: #f0f6fc;
+    letter-spacing: -0.02em;
+    line-height: 1.3;
+    margin-bottom: 1rem;
+}
+
+.blog-post-comment {
+    font-size: 1.05rem;
+    color: #c9d1d9;
+    padding: 1rem 1.25rem;
+    background: #161b22;
+    border-left: 3px solid #30363d;
+    border-radius: 0 6px 6px 0;
+    margin-bottom: 1.5rem;
+}
+
+.blog-post-comment p:last-child {
+    margin-bottom: 0;
+}
+
+.blog-post-content {
+    font-size: 1.05rem;
+    color: #c9d1d9;
+}
+
+/* Content typography */
+.blog-post-content h1,
+.blog-post-content h2,
+.blog-post-content h3,
+.blog-post-content h4 {
+    color: #f0f6fc;
+    margin-top: 2rem;
+    margin-bottom: 0.75rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.blog-post-content h1 { font-size: 1.65rem; }
+.blog-post-content h2 { font-size: 1.35rem; border-bottom: 1px solid #21262d; padding-bottom: 0.4rem; }
+.blog-post-content h3 { font-size: 1.15rem; }
+.blog-post-content h4 { font-size: 1rem; }
+
+.blog-post-content p {
+    margin-bottom: 1rem;
+}
+
+.blog-post-content ul,
+.blog-post-content ol {
+    margin-bottom: 1rem;
+    padding-left: 1.5rem;
+}
+
+.blog-post-content li {
+    margin-bottom: 0.3rem;
+}
+
+.blog-post-content blockquote {
+    border-left: 4px solid #30363d;
+    padding: 0.5rem 1rem;
+    margin: 1rem 0;
+    color: #8b949e;
+    background: #161b22;
+    border-radius: 0 6px 6px 0;
+}
+
+.blog-post-content code {
+    font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+    font-size: 0.9em;
+    background: #1c2128;
+    padding: 0.2em 0.4em;
+    border-radius: 4px;
+    color: #f0f6fc;
+}
+
+.blog-post-content pre {
+    background: #1c2128;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 1rem;
+    line-height: 1.45;
+}
+
+.blog-post-content pre code {
+    background: none;
+    padding: 0;
+    border-radius: 0;
+    font-size: 0.9em;
+}
+
+.blog-post-content table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 1rem;
+}
+
+.blog-post-content th,
+.blog-post-content td {
+    border: 1px solid #21262d;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+}
+
+.blog-post-content th {
+    background: #161b22;
+    font-weight: 600;
+    color: #f0f6fc;
+}
+
+.blog-post-content hr {
+    border: none;
+    border-top: 1px solid #21262d;
+    margin: 2rem 0;
+}
+
+/* ── Format Badges ────────────────────────────────────────────── */
+
+.blog-badge {
+    display: inline-block;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.2rem 0.55rem;
+    border-radius: 4px;
+    line-height: 1.4;
+}
+
+.blog-badge-markdown {
+    background: #1a3a2a;
+    color: #7ee787;
+    border: 1px solid #238636;
+}
+
+.blog-badge-html {
+    background: #1c2a4a;
+    color: #79c0ff;
+    border: 1px solid #1f6feb;
+}
+
+.blog-badge-pdf {
+    background: #3d1f1f;
+    color: #ff7b72;
+    border: 1px solid #da3633;
+}
+
+/* ── PDF Download Card ────────────────────────────────────────── */
+
+.blog-pdf-card {
+    background: #161b22;
+    border: 1px solid #21262d;
+    border-radius: 8px;
+    padding: 1.5rem;
+    text-align: center;
+    margin: 1.5rem 0;
+}
+
+.blog-pdf-card p {
+    color: #8b949e;
+    margin-bottom: 1rem;
+    font-size: 0.95rem;
+}
+
+.blog-download-btn {
+    display: inline-block;
+    background: #238636;
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 600;
+    padding: 0.6rem 1.5rem;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.blog-download-btn:hover {
+    background: #2ea043;
+    text-decoration: none;
+    color: #fff;
+}
+
+/* ── Responsive ────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+    .blog-container {
+        padding: 1.25rem 1rem 3rem;
+    }
+
+    .blog-header h1 {
+        font-size: 1.5rem;
+    }
+
+    .blog-post-title {
+        font-size: 1.5rem;
+    }
+
+    .blog-card {
+        padding: 1rem;
+    }
+
+    .blog-card-title {
+        font-size: 1.15rem;
+    }
+
+    .blog-post-content {
+        font-size: 1rem;
+    }
+}

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ post.title }} — {{ username }}</title>
+    <link rel="stylesheet" href="/static/css/blog-public.css">
+</head>
+<body>
+    <div class="blog-container">
+        <header class="blog-header">
+            <a href="/blog/{{ username }}" class="blog-back">← {{ username }}'s Blog</a>
+        </header>
+        <main class="blog-post">
+            <article>
+                <div class="blog-post-meta">
+                    <span class="blog-badge blog-badge-{{ post.format }}">{{ post.format | upper }}</span>
+                    <time datetime="{{ post.updated_at }}">{{ post.updated_at[:10] if post.updated_at else '' }}</time>
+                </div>
+                <h1 class="blog-post-title">{{ post.title }}</h1>
+                {% if comment_rendered %}
+                <div class="blog-post-comment">
+                    {{ comment_rendered | safe }}
+                </div>
+                {% endif %}
+                {% if is_pdf %}
+                <div class="blog-pdf-card">
+                    <p>This is a PDF document.</p>
+                    <a href="/blog/{{ username }}/{{ post.slug }}/raw" class="blog-download-btn">Download PDF</a>
+                </div>
+                {% else %}
+                <div class="blog-post-content">
+                    {{ content | safe }}
+                </div>
+                {% endif %}
+            </article>
+        </main>
+    </div>
+</body>
+</html>
