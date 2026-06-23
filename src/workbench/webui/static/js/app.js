@@ -55,32 +55,36 @@
 
     var loginSection = document.getElementById('login-section');
     loginSection.innerHTML =
+      '<form id="login-form-password" style="margin:0">' +
       '<div class="form-group">' +
       '<label>Email or Username</label>' +
-      '<input class="form-input" id="login-email-or-username" placeholder="Enter your email or username" />' +
+      '<input class="form-input" id="login-email-or-username" placeholder="Enter your email or username" autocomplete="username" />' +
       '</div>' +
       '<div class="form-group">' +
       '<label>Password</label>' +
-      '<input class="form-input" id="login-password" type="password" placeholder="Enter your password" />' +
+      '<input class="form-input" id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password" />' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-login-password" style="width:100%">Sign In</button>' +
+      '<button type="submit" class="btn btn-primary" id="btn-login-password" style="width:100%">Sign In</button>' +
+      '</form>' +
       '<div style="margin-top:8px;text-align:center">' +
       '<a href="#" id="link-forgot-password" style="font-size:12px;color:var(--text-muted)">Forgot password?</a>' +
       '</div>' +
       '<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border-color)">' +
+      '<form id="login-form-apikey" style="margin:0">' +
       '<div class="form-group">' +
       '<label>API Key</label>' +
-      '<input class="form-input" id="login-api-key" placeholder="Or paste your API key to sign in" />' +
+      '<input class="form-input" id="login-api-key" placeholder="Or paste your API key to sign in" autocomplete="off" />' +
       '</div>' +
-      '<button class="btn btn-secondary" id="btn-login-apikey" style="width:100%">Sign In with API Key</button>' +
+      '<button type="submit" class="btn btn-secondary" id="btn-login-apikey" style="width:100%">Sign In with API Key</button>' +
+      '</form>' +
       '</div>' +
       '<div id="login-message" style="margin-top:12px"></div>';
 
-    document.getElementById('btn-login-password').addEventListener('click', async function () {
-      var emailOrUsername = document.getElementById('login-email-or-username').value.trim();
-      var password = document.getElementById('login-password').value;
-      if (!emailOrUsername || !password) return;
-      await doPasswordLogin(this);
+    // Password login — uses form submit so Enter key works naturally on any field
+    document.getElementById('login-form-password').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = document.getElementById('btn-login-password');
+      doPasswordLogin(btn);
     });
 
     function doPasswordLogin(btn) {
@@ -96,17 +100,11 @@
       });
     }
 
-    var loginEmailEl = document.getElementById('login-email-or-username');
-    var loginPasswordEl = document.getElementById('login-password');
-    loginEmailEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') loginPasswordEl.focus(); });
-    loginPasswordEl.addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') doPasswordLogin(document.getElementById('btn-login-password'));
-    });
-
-    document.getElementById('btn-login-apikey').addEventListener('click', async function () {
-      var key = document.getElementById('login-api-key').value.trim();
-      if (!key) return;
-      await doApiKeyLogin(this);
+    // API Key login — uses form submit so Enter key works naturally
+    document.getElementById('login-form-apikey').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var btn = document.getElementById('btn-login-apikey');
+      doApiKeyLogin(btn);
     });
 
     function doApiKeyLogin(btn) {
@@ -120,10 +118,6 @@
         document.getElementById('login-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       });
     }
-
-    document.getElementById('login-api-key').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') doApiKeyLogin(document.getElementById('btn-login-apikey'));
-    });
 
     document.getElementById('link-forgot-password').addEventListener('click', function (e) {
       e.preventDefault();
