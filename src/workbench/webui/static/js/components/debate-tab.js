@@ -231,8 +231,16 @@
 
     var btnPause = document.getElementById('btn-pause-debate');
     var btnResume = document.getElementById('btn-resume-debate');
+    var btnEnd = document.getElementById('btn-end-debate');
     if (btnPause) btnPause.disabled = data.status !== 'RUNNING';
     if (btnResume) btnResume.disabled = data.status !== 'PAUSED';
+    if (btnEnd) {
+      if (data.status === 'COMPLETED') {
+        btnEnd.textContent = 'Back to Setup';
+        btnEnd.className = 'btn btn-secondary btn-sm';
+        btnEnd.onclick = function () { window.debateEnd(); };
+      }
+    }
 
     var transcript = document.getElementById('debate-transcript');
     if (!transcript || !data.history) return;

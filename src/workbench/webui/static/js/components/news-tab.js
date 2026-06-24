@@ -129,10 +129,12 @@
       }
 
       var html = interests.map(function (i) { return `
-        <div class="card">
+        <div class="card" id="news-interest-card-${i.id}">
           <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
             <span>${Utils.escapeHtml(i.name)}</span>
-            <div style="display:flex;gap:8px">
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="btn btn-secondary btn-sm" onclick="window.newsEditInterest(${i.id}, this)">Edit</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.newsToggleFeeds(${i.id}, this)">Feeds</button>
               <button class="btn btn-primary btn-sm" onclick="window.newsTriggerRun(${i.id}, this)">Run Now</button>
               <button class="btn btn-danger btn-sm" onclick="window.newsDeleteInterest(${i.id}, this)">Delete</button>
             </div>
@@ -145,6 +147,8 @@
             <span>${i.enable_script ? 'Script' : ''}</span>
             <span>${i.enable_brief ? 'Brief' : ''}</span>
           </div>
+          <div id="news-edit-${i.id}" style="display:none;margin-top:12px;padding:12px;border:1px solid var(--border-color);border-radius:var(--radius-sm)"></div>
+          <div id="news-feeds-${i.id}" style="display:none;margin-top:12px;padding:12px;border:1px solid var(--border-color);border-radius:var(--radius-sm)"></div>
           <div id="news-runs-${i.id}" style="margin-top:12px">
             <button class="btn btn-secondary btn-sm" onclick="window.newsLoadRuns(${i.id}, this)">Load Runs</button>
           </div>
@@ -271,6 +275,143 @@
       const container = document.getElementById('active-tab-content');
       container.innerHTML += html;
     } catch (e) { console.error(e); }
+  };
+
+  // ---- Interest editing ----
+  window.newsEditInterest = function (interestId, btn) {
+    var editDiv = document.getElementById('news-edit-' + interestId);
+    if (!editDiv) return;
+    if (editDiv.style.display === 'block') { editDiv.style.display = 'none'; return; }
+    if (btn) Utils.setButtonLoading(btn, 'Loading...');
+    fetch('/api/v1/agents/news/interests', { headers: authHeaders() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var interests = data.interests || [];
+        var interest = interests.find(function (i) { return i.id === interestId; });
+        if (!interest) { if (btn) Utils.resetButton(btn); return; }
+        editDiv.innerHTML = 
+          '<div style="font-size:12px;font-weight:600;margin-bottom:8px">Edit Interest</div>' +
+          '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">' +
+          '<div class="form-group"><label>Name</label><input class="form-input" id="ei-name-' + interestId + '" value="' + Utils.escapeHtml(interest.name || '') + '" /></div>' +
+          '<div class="form-group"><label>Start Time (HH:MM)</label><input class="form-input" id="ei-start-' + interestId + '" value="' + Utils.escapeHtml(interest.start_time || '') + '" /></div>' +
+          '<div class="form-group"><label>Interval (hours)</label><input class="form-input" id="ei-interval-' + interestId + '" type="number" value="' + (interest.interval_hours || 24) + '" /></div>' +
+          '<div class="form-group"><label>Summary Words</label><input class="form-input" id="ei-summary-' + interestId + '" type="number" value="' + (interest.target_summary_words || 750) + '" /></div>' +
+          '<div class="form-group"><label>Script Words</label><input class="form-input" id="ei-script-' + interestId + '" type="number" value="' + (interest.target_script_words || 1250) + '" /></div>' +
+          '</div>' +
+          '<div style="display:flex;gap:12px;margin:8px 0">' +
+          '<label class="toggle"><input type="checkbox" id="ei-sum-' + interestId + '"' + (interest.enable_summary ? ' checked' : '') + '><span class="toggle-switch"></span><span class="toggle-label">Summary</span></label>' +
+          '<label class="toggle"><input type="checkbox" id="ei-scr-' + interestId + '"' + (interest.enable_script ? ' checked' : '') + '><span class="toggle-switch"></span><span class="toggle-label">Script</span></label>' +
+          '<label class="toggle"><input type="checkbox" id="ei-brf-' + interestId + '"' + (interest.enable_brief ? ' checked' : '') + '><span class="toggle-switch"></span><span class="toggle-label">Brief</span></label>' +
+          '</div>' +
+          '<button class="btn btn-primary btn-sm" onclick="window.newsSaveInterest(' + interestId + ', this)">Save</button>' +
+          '<button class="btn btn-secondary btn-sm" style="margin-left:6px" onclick="document.getElementById(\'news-edit-' + interestId + '\').style.display=\'none\'">Cancel</button>';
+        editDiv.style.display = 'block';
+        if (btn) Utils.resetButton(btn);
+      }).catch(function (e) {
+        if (btn) Utils.resetButton(btn);
+        Utils.showToast('Failed: ' + e.message, 'error');
+      });
+  };
+
+  window.newsSaveInterest = function (interestId, btn) {
+    var data = {};
+    data.name = document.getElementById('ei-name-' + interestId).value.trim();
+    data.start_time = document.getElementById('ei-start-' + interestId).value.trim();
+    data.interval_hours = parseInt(document.getElementById('ei-interval-' + interestId).value) || 24;
+    data.target_summary_words = parseInt(document.getElementById('ei-summary-' + interestId).value) || 750;
+    data.target_script_words = parseInt(document.getElementById('ei-script-' + interestId).value) || 1250;
+    data.enable_summary = document.getElementById('ei-sum-' + interestId)?.checked ?? true;
+    data.enable_script = document.getElementById('ei-scr-' + interestId)?.checked ?? true;
+    data.enable_brief = document.getElementById('ei-brf-' + interestId)?.checked ?? true;
+    if (!data.name) { Utils.showToast('Name is required', 'error'); return; }
+    Utils.setButtonLoading(btn, 'Saving...');
+    fetch('/api/v1/agents/news/interests/' + interestId, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify(data),
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (e) { throw new Error(e.detail); });
+      Utils.setButtonSuccess(btn, 'Saved!');
+      Utils.showToast('Interest updated', 'success');
+      loadInterests();
+    }).catch(function (e) {
+      Utils.resetButton(btn);
+      Utils.showToast('Failed: ' + e.message, 'error');
+    });
+  };
+
+  // ---- Feed management ----
+  window.newsToggleFeeds = function (interestId, btn) {
+    var feedsDiv = document.getElementById('news-feeds-' + interestId);
+    if (!feedsDiv) return;
+    if (feedsDiv.style.display === 'block') { feedsDiv.style.display = 'none'; return; }
+    if (btn) Utils.setButtonLoading(btn, 'Loading...');
+    fetch('/api/v1/agents/news/interests/' + interestId + '/feeds', { headers: authHeaders() })
+      .then(function (r) { return r.json(); })
+      .then(function (data) {
+        var feeds = data.feeds || [];
+        var html = '<div style="font-size:12px;font-weight:600;margin-bottom:8px">Feeds (' + feeds.length + ')</div>';
+        if (feeds.length === 0) {
+          html += '<p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">No feeds yet.</p>';
+        } else {
+          html += feeds.map(function (f) {
+            return '<div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px solid var(--border-color);font-size:12px">' +
+              '<span>' + Utils.escapeHtml(f.name || f.url) + ' <span style="color:var(--text-muted);font-size:10px">' + Utils.escapeHtml(f.url || '') + '</span></span>' +
+              '<button class="btn btn-danger btn-sm" style="padding:2px 6px;font-size:10px" onclick="window.newsDeleteFeed(' + interestId + ',' + f.id + ',this)">Remove</button>' +
+              '</div>';
+          }).join('');
+        }
+        html += '<div style="display:flex;gap:6px;margin-top:8px;align-items:flex-end">' +
+          '<div style="flex:1"><input class="form-input" id="nf-name-' + interestId + '" placeholder="Feed name" style="font-size:11px;padding:4px 8px" /></div>' +
+          '<div style="flex:2"><input class="form-input" id="nf-url-' + interestId + '" placeholder="RSS/Atom URL" style="font-size:11px;padding:4px 8px" /></div>' +
+          '<button class="btn btn-primary btn-sm" onclick="window.newsAddFeed(' + interestId + ',this)" style="flex-shrink:0">Add</button>' +
+          '</div>';
+        feedsDiv.innerHTML = html;
+        feedsDiv.style.display = 'block';
+        if (btn) Utils.resetButton(btn);
+      }).catch(function (e) {
+        if (btn) Utils.resetButton(btn);
+        Utils.showToast('Failed: ' + e.message, 'error');
+      });
+  };
+
+  window.newsAddFeed = function (interestId, btn) {
+    var nameEl = document.getElementById('nf-name-' + interestId);
+    var urlEl = document.getElementById('nf-url-' + interestId);
+    var name = nameEl ? nameEl.value.trim() : '';
+    var url = urlEl ? urlEl.value.trim() : '';
+    if (!url) { Utils.showToast('URL is required', 'error'); return; }
+    Utils.setButtonLoading(btn, 'Adding...');
+    fetch('/api/v1/agents/news/interests/' + interestId + '/feeds', {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ name: name || url, url: url, category: 'news' }),
+    }).then(function (r) {
+      if (!r.ok) return r.json().then(function (e) { throw new Error(e.detail); });
+      if (nameEl) nameEl.value = '';
+      if (urlEl) urlEl.value = '';
+      Utils.resetButton(btn);
+      Utils.showToast('Feed added', 'success');
+      newsToggleFeeds(interestId, null);
+    }).catch(function (e) {
+      Utils.resetButton(btn);
+      Utils.showToast('Failed: ' + e.message, 'error');
+    });
+  };
+
+  window.newsDeleteFeed = function (interestId, feedId, btn) {
+    if (!confirm('Remove this feed?')) return;
+    Utils.setButtonLoading(btn, 'Removing...');
+    fetch('/api/v1/agents/news/interests/' + interestId + '/feeds/' + feedId, {
+      method: 'DELETE',
+      headers: authHeaders(),
+    }).then(function () {
+      Utils.showToast('Feed removed', 'info');
+      newsToggleFeeds(interestId, null);
+    }).catch(function (e) {
+      Utils.resetButton(btn);
+      Utils.showToast('Failed: ' + e.message, 'error');
+    });
   };
 
   function authHeaders() {

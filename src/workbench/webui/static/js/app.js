@@ -1208,6 +1208,15 @@
   /* ---- Settings toggle ---- */
   settingsToggle.addEventListener('click', function () { Router.setActive('settings'); });
 
+  /* ---- Sign out ---- */
+  var signoutBtn = document.getElementById('btn-signout');
+  if (signoutBtn) {
+    signoutBtn.addEventListener('click', async function () {
+      await API.logout();
+      location.reload();
+    });
+  }
+
   /* ---- Boot ---- */
   boot();
 })();

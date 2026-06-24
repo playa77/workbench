@@ -687,6 +687,7 @@ class PlanningService:
             self.state.elapsed_seconds = elapsed
 
             self._emit(run_id, "completed", {
+                "content": content,
                 "content_length": len(content),
                 "elapsed_seconds": elapsed,
             })

@@ -226,87 +226,177 @@ body {
   margin-bottom: 16px;
 }
 
-/* Buttons */
+/* ==========================================
+   Buttons — complete interactive system
+   Every state has a distinct, perceivable transition
+   ========================================== */
+
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   padding: 8px 16px;
-  border: none;
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: background var(--transition), opacity var(--transition), transform 0.1s;
   user-select: none;
+  position: relative;
+  transition: background 0.15s ease, border-color 0.15s ease,
+              color 0.15s ease, transform 0.12s ease,
+              box-shadow 0.15s ease, filter 0.15s ease,
+              opacity 0.15s ease;
 }
 
-.btn:active:not(:disabled) {
-  transform: scale(0.97);
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
+/* Pressed / active — distinct depression */
+.btn:not(:disabled):active {
+  transform: scale(0.96);
+  filter: brightness(0.82);
+}
+
+/* Disabled — unmistakably inert */
 .btn:disabled {
-  opacity: 0.6;
+  opacity: 0.45;
   cursor: not-allowed;
+  filter: grayscale(0.5);
   pointer-events: none;
 }
 
+/* Loading — spinner overlay */
 .btn-loading {
   position: relative;
   padding-left: 36px;
   pointer-events: none;
   cursor: wait;
+  filter: brightness(0.95);
 }
 
 .btn-loading::before {
   content: '';
   position: absolute;
-  left: 12px;
+  left: 10px;
   width: 16px;
   height: 16px;
   border: 2px solid rgba(255,255,255,0.3);
-  border-top-color: #fff;
+  border-top-color: currentColor;
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
 
 .btn-secondary.btn-loading::before {
-  border-color: rgba(0,0,0,0.15);
-  border-top-color: var(--text-primary);
+  border-color: var(--border-color);
+  border-top-color: var(--accent);
 }
 
+/* Success flash — brief green pulse after action completes */
 .btn-success-flash {
-  transition: background 0.15s;
+  transition: background 0.15s, color 0.15s;
   background: var(--success) !important;
   color: #fff !important;
+  filter: none !important;
 }
 
+/* ---- Variant: Primary ---- */
 .btn-primary {
   background: var(--accent);
   color: #fff;
+  border-color: var(--accent);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-.btn-primary:hover { opacity: 0.9; }
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--accent) 35%, transparent);
+}
 
+.btn-primary:active:not(:disabled) {
+  filter: brightness(0.82);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- Variant: Secondary ---- */
 .btn-secondary {
   background: var(--bg-hover);
   color: var(--text-primary);
   border: 1px solid var(--border-color);
 }
 
-.btn-secondary:hover { background: var(--border-color); }
+.btn-secondary:hover:not(:disabled) {
+  background: var(--border-color);
+  border-color: var(--text-muted);
+}
 
+.btn-secondary:active:not(:disabled) {
+  background: var(--border-color);
+  filter: brightness(0.85);
+}
+
+/* ---- Variant: Danger ---- */
 .btn-danger {
   background: var(--danger);
   color: #fff;
+  border-color: var(--danger);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 }
 
-.btn-danger:hover { opacity: 0.9; }
+.btn-danger:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--danger) 35%, transparent);
+}
 
+.btn-danger:active:not(:disabled) {
+  filter: brightness(0.82);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- Variant: Success ---- */
+.btn-success {
+  background: var(--success);
+  color: #fff;
+  border-color: var(--success);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.btn-success:hover:not(:disabled) {
+  filter: brightness(1.12);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--success) 35%, transparent);
+}
+
+.btn-success:active:not(:disabled) {
+  filter: brightness(0.82);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+/* ---- Variant: Warning ---- */
+.btn-warning {
+  background: var(--warning);
+  color: #1a1d23;
+  border-color: var(--warning);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+
+.btn-warning:hover:not(:disabled) {
+  filter: brightness(1.08);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--warning) 35%, transparent);
+}
+
+.btn-warning:active:not(:disabled) {
+  filter: brightness(0.88);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+/* ---- Size: Small ---- */
 .btn-sm {
   padding: 4px 10px;
   font-size: 12px;
+  border-radius: 3px;
 }
 
 /* Forms */

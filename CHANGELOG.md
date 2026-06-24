@@ -2,7 +2,19 @@
 
 All notable changes to the Workbench project.
 
-## [0.1.3] — 2026-06-24
+## [0.1.4] — 2026-06-24
+
+### Changed
+- **Complete Button CSS Rewrite**: Every button now has distinct, perceivable states across all 7 transition properties (background, border-color, color, transform, box-shadow, filter, opacity). Hover shows `brightness(1.12)` + colored box-shadow glow. Active/pressed shows `brightness(0.82)` + `scale(0.96)` + inset shadow. Disabled has `grayscale(0.5)`. Keyboard focus gets `outline: 2px solid var(--accent)`. Added `.btn-success` and `.btn-warning` variant classes (previously used in JS but undefined in CSS).
+
+### Added
+- **Logout Button in Header**: "Sign Out" icon button now lives in the header bar (right side, next to theme/settings icons). No longer buried exclusively at the bottom of the Settings page.
+
+### Fixed
+- **Consigliere Synthesis Crash**: The `_generate_synthesis` method was calling `_safe_json_parse()` on prose Markdown output (the synthesis is structured prose, not JSON). This threw `json.JSONDecodeError` on every run with enabled synthesis, causing the entire deliberation pipeline to fail at the final step. Removed the erroneous JSON parse — synthesis returns prose directly now.
+- **Strategic Planning completed event missing content**: The SSE `completed` event only sent `content_length` and `elapsed_seconds` — never the actual plan text. Frontend received `renderPlanResult('')` with empty content, making Copy/Export/PDF buttons do nothing. Now includes `"content": content` in the completed event.
+- **Debate End Debate button active after completion**: The "End Debate" button was always enabled regardless of debate status. Now it transforms to "Back to Setup" (secondary style) when the debate completes.
+- **News Pipeline feed & interest management**: Interest cards now have "Edit" and "Feeds" buttons. Edit opens a pre-filled form for all interest settings. Feeds opens an inline panel to list/add/delete RSS/Atom feeds per interest. Previously there was zero UI to manage feeds or edit interests after creation.
 
 ### Fixed
 - **Settings Theme Toggle**: The "Switch to Light/Dark Theme" button in Settings > Themes now actually works. It switches the theme immediately AND updates the button label to reflect the new state. Previously the button called `renderSettings` with the wrong container element (`#active-tab-content` instead of `#settings-panel`), causing the re-render to go to a hidden element — no visual feedback and no button label update. Also simplified: instead of re-rendering the entire settings panel (which destroyed/recreated every element and event listener), the click handler now directly updates `this.textContent` after toggling, providing instant feedback with no side effects.

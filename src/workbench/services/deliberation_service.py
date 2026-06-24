@@ -745,7 +745,7 @@ class DeliberationService:
             ],
             temperature=0.2,
         )
-        parsed = self._safe_json_parse(response)
+        return response  # synthesis is prose/markdown, not JSON — return directly
 
 
     # ---- Helpers ----
