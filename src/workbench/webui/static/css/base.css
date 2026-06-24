@@ -135,19 +135,67 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 60vh;
+  min-height: 100vh;
+  padding: 24px;
 }
 
 .welcome-card {
   text-align: center;
-  padding: 48px;
+  width: 100%;
+  max-width: 420px;
 }
 
+/* Login card — centered, polished card for auth flows */
+.login-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+  text-align: left;
+}
+
+.login-card .card-header {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 24px;
+}
+
+.login-card .form-group {
+  margin-bottom: 20px;
+}
+
+.login-card .form-group:last-of-type {
+  margin-bottom: 24px;
+}
+
+.login-card .btn {
+  width: 100%;
+}
+
+.login-card #login-message {
+  margin-top: 16px;
+}
+
+/* Optional: subtle icon/emoji warmth for the title area */
 .welcome-card h2 {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   font-size: 28px;
   font-weight: 700;
   color: var(--accent);
   margin-bottom: 8px;
+}
+
+.welcome-card h2::before {
+  content: "▣";
+  font-size: 20px;
+  line-height: 1;
+  color: var(--accent);
+  opacity: 0.9;
 }
 
 .welcome-card p {

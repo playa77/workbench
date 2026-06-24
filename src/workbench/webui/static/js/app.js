@@ -49,21 +49,20 @@
     container.innerHTML = '<div class="welcome-screen"><div class="welcome-card">' +
       '<h2>Workbench</h2>' +
       '<p>Unified BYOK AI Workbench</p>' +
-      '<div class="card" style="margin-top:24px;text-align:left;max-width:400px;margin-left:auto;margin-right:auto">' +
-      '<div class="card-header">Sign In</div>' +
-      '<div id="login-section"></div></div></div></div>';
+      '<div class="login-card" id="login-section"></div></div></div>';
 
     var loginSection = document.getElementById('login-section');
     loginSection.innerHTML =
+      '<div class="card-header">Sign In</div>' +
       '<form id="login-form-password" style="margin:0">' +
       '<div class="form-group">' +
       '<label>Email or Username</label>' +
-      '<input class="form-input" id="login-email-or-username" placeholder="Enter your email or username" autocomplete="username" />' +
-      '</div>' +
+      '<input class="form-input" id="login-email-or-username" placeholder="Enter your email or username" autocomplete="username" />'
+      + '</div>' +
       '<div class="form-group">' +
       '<label>Password</label>' +
-      '<input class="form-input" id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password" />' +
-      '</div>' +
+      '<input class="form-input" id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password" />'
+      + '</div>' +
       '<button type="submit" class="btn btn-primary" id="btn-login-password" style="width:100%">Sign In</button>' +
       '</form>' +
       '<div style="margin-top:8px;text-align:center">' +
@@ -73,12 +72,12 @@
       '<form id="login-form-apikey" style="margin:0">' +
       '<div class="form-group">' +
       '<label>API Key</label>' +
-      '<input class="form-input" id="login-api-key" placeholder="Or paste your API key to sign in" autocomplete="off" />' +
-      '</div>' +
+      '<input class="form-input" id="login-api-key" placeholder="Or paste your API key to sign in" autocomplete="off" />'
+      + '</div>' +
       '<button type="submit" class="btn btn-secondary" id="btn-login-apikey" style="width:100%">Sign In with API Key</button>' +
       '</form>' +
       '</div>' +
-      '<div id="login-message" style="margin-top:12px"></div>';
+      '<div id="login-message" style="margin-top:16px"></div>';
 
     // Password login — uses form submit so Enter key works naturally on any field
     document.getElementById('login-form-password').addEventListener('submit', function (e) {
