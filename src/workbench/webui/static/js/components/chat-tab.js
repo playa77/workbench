@@ -9,11 +9,11 @@
         <h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Chat</h2>
         <div id="chat-messages" style="min-height:400px;max-height:60vh;overflow-y:auto;margin-bottom:16px;padding:16px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius)"></div>
         <div style="display:flex;gap:8px">
-          <select class="form-input" id="chat-model" style="font-size:12px;padding:6px 10px;width:auto;flex-shrink:0;max-width:260px" disabled>
+          <select class="form-input" id="chat-model" style="font-size:12px;padding:6px 10px;width:auto;flex-shrink:0;max-width:260px" disabled data-tooltip="Select which LLM model to use for chat. Configure models in Settings → Inference Providers." data-help-page="/static/help/chat.html#model-selector">
             <option>Loading models...</option>
           </select>
-          <input class="form-input" id="chat-input" placeholder="Type your message..." style="flex:1" onkeydown="if(event.key==='Enter')window.chatSend()" />
-          <button class="btn btn-primary" onclick="window.chatSend()">Send</button>
+          <input class="form-input" id="chat-input" placeholder="Type your message..." style="flex:1" onkeydown="if(event.key==='Enter')window.chatSend()" data-tooltip="Type your message and press Enter to send. The AI will respond using the selected model." data-help-page="/static/help/chat.html#message-input" />
+          <button class="btn btn-primary" onclick="window.chatSend()" data-tooltip="Send your message to the AI. The button shows a loading state while the response is being generated." data-help-page="/static/help/chat.html#send-button">Send</button>
         </div>
         <div style="margin-top:8px;font-size:11px;color:var(--text-muted);text-align:center">Powered by your inference provider</div>
       </div>`;
@@ -53,7 +53,7 @@
     if (!container) return;
     container.insertAdjacentHTML('afterend', ''
       + '<div class="card" style="margin-top:24px">'
-      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="chat-past-toggle">'
+      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="chat-past-toggle" data-tooltip="Click to expand or collapse the list of previous chat sessions. Click a session to reload it." data-help-page="/static/help/chat.html#past-sessions">'
       +     '<span>Past Chat Sessions</span>'
       +     '<span id="chat-past-arrow" style="font-size:12px">&#x25BC;</span>'
       +   '</div>'

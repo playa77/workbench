@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Agent — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Chat Agent</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Chat agent provides a direct conversational interface with your configured LLM. It's the simplest way to interact with an AI model — type a message, get a response.</p>
+
+<h2 id="model-selector">Model Selector</h2>
+<p>Choose which model to use for the conversation. The dropdown lists models from your configured inference providers. The default model from your default provider is pre-selected.</p>
+
+<h2 id="message-input">Message Input</h2>
+<p>Type your message in the text field at the bottom of the chat area. Press <strong>Enter</strong> to send. The chat scrolls automatically to show the latest messages.</p>
+
+<h2 id="send-button">Send Button</h2>
+<p>Click to submit your message. The button shows a loading state while the LLM generates a response. Messages appear chronologically with user messages on the right and AI responses on the left.</p>
+
+<h2 id="past-sessions">Past Chat Sessions</h2>
+<p>Click the toggle to expand the list of previous chat sessions. Each entry shows a preview of the conversation. Click a session to load its full message history. Sessions are preserved across tab switches and browser restarts.</p>
+
+<div class="tip"><strong>Tip:</strong> The chat agent uses the <strong>quick model</strong> from your default inference provider. Configure this in Settings → Inference Providers.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

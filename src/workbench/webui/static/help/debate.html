@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debate Arena — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Debate Arena</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Debate Arena orchestrates multi-agent debates on any topic. Each agent assumes a role (optimist, pessimist, pragmatist, etc.) and argues from that perspective. The arena runs multiple rounds with cross-examination.</p>
+
+<h2 id="topic">Topic</h2>
+<p>Enter the debate topic or question. Be specific — the quality of the debate depends on a well-formed prompt. Example: "Should artificial general intelligence be developed with open-source models?"</p>
+
+<h2 id="max-rounds">Max Rounds</h2>
+<p>Set the number of debate rounds (1–10). Each round consists of opening statements, rebuttals, and cross-examination. More rounds produce deeper analysis but take longer. Default: 3 rounds.</p>
+
+<h2 id="panel">Panel Roles</h2>
+<p>Select 2–8 roles for the debate panel. Each role has a distinct perspective and argumentation style:</p>
+<ul>
+  <li><strong>Optimist</strong> — argues for positive outcomes and opportunities</li>
+  <li><strong>Pessimist</strong> — identifies risks, downsides, and failure modes</li>
+  <li><strong>Pragmatist</strong> — focuses on practical implementation and trade-offs</li>
+  <li>Additional roles may be available depending on configuration</li>
+</ul>
+
+<h2 id="start-debate">Start Debate</h2>
+<p>Click to begin the debate. The button shows a loading state while agents are initialized. The debate runs asynchronously — the UI polls for updates every few seconds.</p>
+
+<h2 id="debate-controls">Debate Controls</h2>
+<ul>
+  <li><strong>Pause</strong> — temporarily halt the debate mid-round</li>
+  <li><strong>Resume</strong> — continue a paused debate</li>
+  <li><strong>End Debate</strong> — terminate the debate early (combines to "Back to Setup" on completion)</li>
+</ul>
+
+<h2 id="director-mode">Director Mode</h2>
+<p>Inject your own content into an active debate. Enter text in the "Content" field and set a weight (1–10) to control how strongly the injected content influences the debate. Click "Inject" to insert it into the next round.</p>
+
+<h2 id="past-debates">Past Debates</h2>
+<p>Expand the past sessions section to view previous debates. Each entry shows the topic, date, and status. Click to load the full debate transcript.</p>
+
+<div class="tip"><strong>Tip:</strong> Use Director Mode to steer debates toward specific angles or to introduce facts the agents might overlook.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

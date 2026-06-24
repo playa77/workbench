@@ -23,7 +23,7 @@
     if (!content) return;
     content.insertAdjacentHTML('afterend', ''
       + '<div class="card" style="margin-top:24px">'
-      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="news-past-toggle">'
+      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="news-past-toggle" data-tooltip="Click to show or hide past news pipeline sessions." data-help-page="/static/help/news.html#interest-run">'
       +     '<span>Past News Sessions</span>'
       +     '<span id="news-past-arrow" style="font-size:12px">&#x25BC;</span>'
       +   '</div>'
@@ -99,7 +99,7 @@
         + '<div style="padding:8px 0">'
         + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">'
         + '<h3 style="margin:0;font-size:16px;font-weight:600">' + Utils.escapeHtml(session.title || 'News Session') + '</h3>'
-        + '<button class="btn btn-secondary btn-sm" onclick="javascript:Router.setActive(\'news\')">Back to News</button>'
+        + '<button class="btn btn-secondary btn-sm" onclick="javascript:Router.setActive(\'news\')" data-tooltip="Return to the news pipeline overview." data-help-page="/static/help/news.html#overview">Back to News</button>'
         + '</div>'
         + '<div style="line-height:1.7;font-size:13px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:20px">'
         + '<p style="margin-bottom:8px;line-height:1.7">' + md + '</p>'
@@ -133,10 +133,10 @@
           <div class="card-header" style="display:flex;justify-content:space-between;align-items:center">
             <span>${Utils.escapeHtml(i.name)}</span>
             <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="btn btn-secondary btn-sm" onclick="window.newsEditInterest(${i.id}, this)">Edit</button>
-              <button class="btn btn-secondary btn-sm" onclick="window.newsToggleFeeds(${i.id}, this)">Feeds</button>
-              <button class="btn btn-primary btn-sm" onclick="window.newsTriggerRun(${i.id}, this)">Run Now</button>
-              <button class="btn btn-danger btn-sm" onclick="window.newsDeleteInterest(${i.id}, this)">Delete</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.newsEditInterest(${i.id}, this)" data-tooltip="Edit this interest's settings — name, schedule interval, summary/script prompts, and toggle options." data-help-page="/static/help/news.html#interest-edit">Edit</button>
+              <button class="btn btn-secondary btn-sm" onclick="window.newsToggleFeeds(${i.id}, this)" data-tooltip="Manage RSS/Atom feeds for this interest. Add new feed URLs or remove existing ones." data-help-page="/static/help/news.html#interest-feeds">Feeds</button>
+              <button class="btn btn-primary btn-sm" onclick="window.newsTriggerRun(${i.id}, this)" data-tooltip="Execute the news pipeline immediately for this interest — fetch feeds, process articles, generate summaries." data-help-page="/static/help/news.html#interest-run">Run Now</button>
+              <button class="btn btn-danger btn-sm" onclick="window.newsDeleteInterest(${i.id}, this)" data-tooltip="Permanently delete this interest and all associated data. This cannot be undone." data-help-page="/static/help/news.html#interest-delete">Delete</button>
             </div>
           </div>
           <div style="font-size:12px;color:var(--text-muted);margin-bottom:8px">
@@ -150,7 +150,7 @@
           <div id="news-edit-${i.id}" style="display:none;margin-top:12px;padding:12px;border:1px solid var(--border-color);border-radius:var(--radius-sm)"></div>
           <div id="news-feeds-${i.id}" style="display:none;margin-top:12px;padding:12px;border:1px solid var(--border-color);border-radius:var(--radius-sm)"></div>
           <div id="news-runs-${i.id}" style="margin-top:12px">
-            <button class="btn btn-secondary btn-sm" onclick="window.newsLoadRuns(${i.id}, this)">Load Runs</button>
+            <button class="btn btn-secondary btn-sm" onclick="window.newsLoadRuns(${i.id}, this)" data-tooltip="View past pipeline execution results for this interest, including summaries and scripts." data-help-page="/static/help/news.html#interest-run">Load Runs</button>
           </div>
         </div>`; }).join('');
 
@@ -168,31 +168,31 @@
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
           <label>Name</label>
-          <input class="form-input" id="ni-name" placeholder="e.g. AI News" />
+          <input class="form-input" id="ni-name" placeholder="e.g. AI News" data-tooltip="Name for this news interest — e.g. 'AI Research', 'Climate Science'. Used to identify the interest in the list." data-help-page="/static/help/news.html#interest-create" />
         </div>
         <div class="form-group">
           <label>Start Time (HH:MM)</label>
-          <input class="form-input" id="ni-start" value="04:00" />
+          <input class="form-input" id="ni-start" value="04:00" data-tooltip="Start time for scheduled runs in HH:MM format (24-hour). The pipeline only processes articles published after this time." data-help-page="/static/help/news.html#interest-create" />
         </div>
         <div class="form-group">
           <label>Interval (hours)</label>
-          <input class="form-input" id="ni-interval" type="number" value="24" min="1" max="168" />
+          <input class="form-input" id="ni-interval" type="number" value="24" min="1" max="168" data-tooltip="How often the pipeline runs automatically, in hours. Minimum 1, maximum 168 (one week)." data-help-page="/static/help/news.html#interest-create" />
         </div>
         <div class="form-group">
           <label>Summary Words</label>
-          <input class="form-input" id="ni-summary" type="number" value="750" />
+          <input class="form-input" id="ni-summary" type="number" value="750" data-tooltip="Target word count for the LLM-generated article summary." data-help-page="/static/help/news.html#interest-create" />
         </div>
         <div class="form-group">
           <label>Script Words</label>
-          <input class="form-input" id="ni-script" type="number" value="1250" />
+          <input class="form-input" id="ni-script" type="number" value="1250" data-tooltip="Target word count for the LLM-generated script/analysis output." data-help-page="/static/help/news.html#interest-create" />
         </div>
       </div>
       <div style="display:flex;gap:16px;margin:12px 0">
-        <label class="toggle"><input type="checkbox" id="ni-enable-summary" checked><span class="toggle-switch"></span><span class="toggle-label">Summary</span></label>
-        <label class="toggle"><input type="checkbox" id="ni-enable-script" checked><span class="toggle-switch"></span><span class="toggle-label">Script</span></label>
-        <label class="toggle"><input type="checkbox" id="ni-enable-brief" checked><span class="toggle-switch"></span><span class="toggle-label">Brief</span></label>
+        <label class="toggle"><input type="checkbox" id="ni-enable-summary" checked data-tooltip="Enable or disable article summarization for this interest." data-help-page="/static/help/news.html#interest-create"><span class="toggle-switch"></span><span class="toggle-label">Summary</span></label>
+        <label class="toggle"><input type="checkbox" id="ni-enable-script" checked data-tooltip="Enable or disable script/analysis generation for this interest." data-help-page="/static/help/news.html#interest-create"><span class="toggle-switch"></span><span class="toggle-label">Script</span></label>
+        <label class="toggle"><input type="checkbox" id="ni-enable-brief" checked data-tooltip="Enable or disable brief/concise mode for this interest." data-help-page="/static/help/news.html#interest-create"><span class="toggle-switch"></span><span class="toggle-label">Brief</span></label>
       </div>
-      <button class="btn btn-primary" id="btn-create-interest">Create Interest</button>
+      <button class="btn btn-primary" id="btn-create-interest" data-tooltip="Save and create this news interest with the configured settings." data-help-page="/static/help/news.html#interest-create">Create Interest</button>
       <div id="news-feed-section" style="margin-top:16px"></div>`;
   }
 

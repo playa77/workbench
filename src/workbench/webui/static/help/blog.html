@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Blog / Publishing Hub — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Blog / Publishing Hub</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Blog/Publishing Hub lets you create and manage documents in Markdown, HTML, or PDF format. Every document is automatically versioned via git (transparent to the user) with full history inspection. Published documents appear on your public blog page at <code>/blog/{username}</code>.</p>
+
+<h2 id="new-document">New Document</h2>
+<p>Click "New Document" to create a blank post. Fill in:</p>
+<ul>
+  <li><strong>Title</strong> — the document title (auto-generates a URL slug)</li>
+  <li><strong>Format</strong> — Markdown, HTML, or PDF. Markdown is rendered to HTML on the public page</li>
+  <li><strong>Content</strong> — the main document body (textarea for text formats)</li>
+  <li><strong>Comment</strong> — an optional git commit message describing the change (max 2048 chars)</li>
+  <li><strong>Published</strong> — toggle to make the document visible on your public blog</li>
+</ul>
+
+<h2 id="file-upload">File Upload</h2>
+<p>Drag and drop a file onto the upload area, or click to browse. Supported formats: <code>.md</code>, <code>.html</code>, <code>.pdf</code>. Uploaded files populate the content automatically.</p>
+
+<h2 id="save-delete">Save &amp; Delete</h2>
+<ul>
+  <li><strong>Save</strong> — commits the current state to git and updates the database. Shows loading state during save.</li>
+  <li><strong>Delete</strong> — permanently removes the document and its git history. Confirmation required.</li>
+  <li><strong>Cancel</strong> — discards unsaved changes and returns to the post list</li>
+</ul>
+
+<h2 id="post-list">Post List</h2>
+<p>Shows all your documents with title, format, and published status. Click a post entry to edit it.</p>
+
+<h2 id="history">Version History</h2>
+<p>Click "History" while editing a document to open the inspection overlay. Shows the git commit log with timestamps, comments, and commit hashes. Click a commit hash to view that version of the document. The overlay is read-only — your current edit is preserved underneath.</p>
+
+<h2 id="public-blog">Public Blog</h2>
+<p>Published documents appear on your public page at <code>/blog/{your-username}</code>. PDFs show as download cards. HTML content is sanitized (scripts and event handlers removed). Markdown is rendered to styled HTML.</p>
+
+<div class="tip"><strong>Tip:</strong> Use the comment field to document why you made a change — it makes the git history more useful for later inspection.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

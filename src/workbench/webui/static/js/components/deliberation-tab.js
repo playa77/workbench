@@ -21,7 +21,7 @@
       +     '<div class="card-header">Consigliere Setup</div>'
       +     '<div class="form-group">'
       +       '<label>Question or Topic</label>'
-      +       '<textarea class="form-input" id="dl-question" placeholder="Enter an idea to stress-test..." style="min-height:80px"></textarea>'
+      +       '<textarea class="form-input" id="dl-question" placeholder="Enter an idea to stress-test..." style="min-height:80px" data-tooltip="Enter the idea, proposal, or decision you want to stress-test. Include context and constraints for better analysis." data-help-page="/static/help/deliberation.html#question"></textarea>'
       +     '</div>'
       +     '<div class="form-group">'
       +       '<label>Reasoning Frames (select 2-6)</label>'
@@ -30,18 +30,18 @@
       +     '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">'
       +       '<div class="form-group">'
       +         '<label>Critique Rounds</label>'
-      +         '<input class="form-input" id="dl-rounds" type="number" value="2" min="0" max="5" />'
+      +         '<input class="form-input" id="dl-rounds" type="number" value="2" min="0" max="5" data-tooltip="Number of critique iterations (1–5). Each round deepens the analysis by challenging previous findings." data-help-page="/static/help/deliberation.html#critique-rounds" />'
       +       '</div>'
       +       '<div class="form-group">'
       +         '<label>Temperature</label>'
-      +         '<input class="form-input" id="dl-temperature" type="number" value="0.7" min="0" max="2" step="0.1" />'
+      +         '<input class="form-input" id="dl-temperature" type="number" value="0.7" min="0" max="2" step="0.1" data-tooltip="Creativity level (0.0–2.0). Lower values = deterministic, higher values = more creative perspectives." data-help-page="/static/help/deliberation.html#temperature" />'
       +       '</div>'
       +     '</div>'
       +     '<div style="display:flex;gap:16px;margin-bottom:12px">'
-      +       '<label class="toggle"><input type="checkbox" id="dl-rhetoric" checked><span class="toggle-switch"></span><span class="toggle-label">Rhetoric Analysis</span></label>'
-      +       '<label class="toggle"><input type="checkbox" id="dl-synthesis" checked><span class="toggle-switch"></span><span class="toggle-label">Synthesis</span></label>'
+      +       '<label class="toggle" data-tooltip="Enable rhetoric analysis to identify persuasive techniques and argumentation patterns in your proposal." data-help-page="/static/help/deliberation.html#rhetoric"><input type="checkbox" id="dl-rhetoric" checked><span class="toggle-switch"></span><span class="toggle-label">Rhetoric Analysis</span></label>'
+      +       '<label class="toggle" data-tooltip="Enable synthesis to combine insights from all analytical frames into one unified recommendation." data-help-page="/static/help/deliberation.html#synthesis"><input type="checkbox" id="dl-synthesis" checked><span class="toggle-switch"></span><span class="toggle-label">Synthesis</span></label>'
       +     '</div>'
-      +     '<button class="btn btn-primary" id="btn-start-deliberation">Stress-Test Idea</button>'
+      +     '<button class="btn btn-primary" id="btn-start-deliberation" data-tooltip="Begin the deliberation process. Progress streams via SSE with live phase tracking for each analytical frame." data-help-page="/static/help/deliberation.html#start">Stress-Test Idea</button>'
       +   '</div>'
       +   '<div id="deliberation-output" style="margin-top:24px"></div>'
       + '</div>';
@@ -68,7 +68,7 @@
         var el = document.getElementById('dl-frames');
         if (!el) return;
         el.innerHTML = frames.map(function (f) {
-          return '<label style="display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer" title="' + Utils.escapeHtml(f.description || '') + '">'
+          return '<label style="display:flex;align-items:center;gap:8px;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-sm);padding:8px 12px;cursor:pointer" title="' + Utils.escapeHtml(f.description || '') + '" data-tooltip="Select this analytical frame to apply it to your proposal. Multiple frames can be selected.">'
             + '<input type="checkbox" class="dl-frame-cb" value="' + Utils.escapeHtml(f.frame_id) + '" ' + (defaults.indexOf(f.frame_id) !== -1 ? 'checked' : '') + ' style="flex-shrink:0;accent-color:var(--accent)">'
             + '<span style="font-size:13px;color:var(--text-primary)">' + Utils.escapeHtml(f.label) + '</span>'
             + '</label>';
@@ -285,8 +285,8 @@
       + rhetoricHtml
       + surfaceHtml
       + (data.synthesis_available ? '<div class="card"><div class="card-header">Synthesis</div><p style="font-size:12px;color:var(--text-muted)">Synthesis available — use Export for full details.</p>'
-        +   '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-export" data-deliberation-id="' + Utils.escapeHtml(activeDeliberationId || '') + '">Export JSON</button></div>' : '')
-      + '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-new">New Session</button>';
+        +   '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-export" data-deliberation-id="' + Utils.escapeHtml(activeDeliberationId || '') + '" data-tooltip="Download the full deliberation results as structured JSON including all frame analyses." data-help-page="/static/help/deliberation.html#export">Export JSON</button></div>' : '')
+      + '<button class="btn btn-secondary btn-sm" style="margin-top:8px" data-action="deliberation-new" data-tooltip="Clear results and return to the input form to start a new deliberation." data-help-page="/static/help/deliberation.html#export">New Session</button>';
 
     var exportBtn = output.querySelector('[data-action="deliberation-export"]');
     if (exportBtn) {
@@ -341,7 +341,7 @@
     if (!output) return;
     output.insertAdjacentHTML('afterend', ''
       + '<div class="card" style="margin-top:24px">'
-      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="deliberation-past-toggle">'
+      +   '<div class="card-header" style="cursor:pointer;display:flex;justify-content:space-between;align-items:center" id="deliberation-past-toggle" data-tooltip="Click to expand or collapse previous deliberation sessions. Click any entry to reload results." data-help-page="/static/help/deliberation.html#past-sessions">'
       +     '<span>Past Sessions</span>'
       +     '<span id="deliberation-past-arrow" style="font-size:12px">&#x25BC;</span>'
       +   '</div>'

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Strategic Planning — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Strategic Planning</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Strategic Planning agent generates structured plans across 9 distinct plan types. Each plan type uses a specialized prompt and generation strategy tailored to the planning domain.</p>
+
+<h2 id="goal">Goal / Objective</h2>
+<p>Describe what you want to achieve. Be specific about scope, timeline, resources, and constraints. Example: "Launch a SaaS product for remote team collaboration by Q4 with a team of 3 engineers"</p>
+
+<h2 id="plan-type">Plan Type</h2>
+<p>Choose from 9 specialized plan formats:</p>
+<ul>
+  <li><strong>Project Plan</strong> — phases, milestones, deliverables, dependencies</li>
+  <li><strong>Business Strategy</strong> — market analysis, competitive positioning, growth levers</li>
+  <li><strong>Technical Architecture</strong> — system design, stack choices, scalability</li>
+  <li><strong>Marketing Campaign</strong> — channels, messaging, timeline, metrics</li>
+  <li><strong>Product Roadmap</strong> — features, priorities, release schedule</li>
+  <li><strong>Risk Mitigation</strong> — threat identification, likelihood, countermeasures</li>
+  <li><strong>Learning Path</strong> — curriculum, resources, milestones, assessments</li>
+  <li><strong>Operational Workflow</strong> — processes, roles, automation points</li>
+  <li><strong>Financial Model</strong> — revenue, costs, projections, break-even</li>
+</ul>
+
+<h2 id="model">Model Selector</h2>
+<p>Choose which LLM to use for plan generation. The strong model from your default provider is pre-selected — planning benefits from more capable models.</p>
+
+<h2 id="temperature">Temperature</h2>
+<p>Controls creativity (0.0–2.0). Lower values produce more structured, conventional plans. Higher values generate more innovative and unconventional approaches. Default: 0.7.</p>
+
+<h2 id="generate">Generate Plan</h2>
+<p>Click to start plan generation. Progress streams via SSE. The "Stop" button aborts a running generation.</p>
+
+<h2 id="export">Export &amp; Copy</h2>
+<ul>
+  <li><strong>Copy</strong> — copies the plan text to clipboard</li>
+  <li><strong>Export HTML</strong> — downloads as a formatted HTML file</li>
+  <li><strong>Export PDF</strong> — generates a PDF using the selected template</li>
+  <li><strong>New Plan</strong> — clears results and returns to the input form</li>
+</ul>
+
+<h2 id="template-selector">Template Selector</h2>
+<p>Choose a PDF template for export.</p>
+
+<h2 id="past-plans">Past Plans</h2>
+<p>Expand to view previous planning sessions. Click to reload a plan.</p>
+
+<div class="tip"><strong>Tip:</strong> For complex goals, run the same objective through multiple plan types — a technical architecture plan and a project plan together give both the "what" and the "how".</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

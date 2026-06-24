@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Workbench</title>
   <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/tooltips.css">
   <link rel="stylesheet" href="/static/css/theme-light.css" id="theme-light" disabled>
   <link rel="stylesheet" href="/static/css/theme-dark.css" id="theme-dark">
   <style>
@@ -20,14 +21,14 @@
       </div>
       <nav class="header-tabs" id="header-tabs"></nav>
       <div class="header-right">
-        <button class="btn-icon" id="btn-signout" title="Sign out">
+        <button class="btn-icon" id="btn-signout" title="Sign out" data-tooltip="Sign out of your Workbench account. The button is located in the header for quick access." data-help-page="/static/help/login.html#password-login">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
             <polyline points="16 17 21 12 16 7"/>
             <line x1="21" y1="12" x2="9" y2="12"/>
           </svg>
         </button>
-        <button class="btn-icon" id="theme-toggle" title="Toggle theme">
+        <button class="btn-icon" id="theme-toggle" title="Toggle theme" data-tooltip="Switch between dark and light mode. Your preference is saved locally and persists across sessions." data-help-page="/static/help/settings.html#theme">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"/>
             <line x1="12" y1="1" x2="12" y2="3"/>
@@ -40,7 +41,7 @@
             <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
           </svg>
         </button>
-        <button class="btn-icon" id="settings-toggle" title="Settings">
+        <button class="btn-icon" id="settings-toggle" title="Settings" data-tooltip="Open the Settings panel to manage your profile, API keys, inference providers, agents, and theme." data-help-page="/static/help/settings.html">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"/>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -66,6 +67,7 @@
   <script src="/static/js/api.js"></script>
   <script src="/static/js/utils.js"></script>
   <script src="/static/js/theme.js"></script>
+  <script src="/static/js/tooltips.js"></script>
   <script src="/static/js/router.js"></script>
   <script src="/static/js/app.js"></script>
 </body>

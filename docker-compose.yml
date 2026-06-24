@@ -37,6 +37,9 @@ services:
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
+      - ./src/workbench/webui/static:/usr/local/lib/python3.12/site-packages/workbench/webui/static
+      - ./agents/math_tutor/static:/usr/local/lib/python3.12/site-packages/agents/math_tutor/static
+      - ./agents/knowledge/static:/usr/local/lib/python3.12/site-packages/agents/knowledge/static
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8420/health')\""]
       interval: 10s

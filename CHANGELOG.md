@@ -2,7 +2,27 @@
 
 All notable changes to the Workbench project.
 
-## [0.1.4] — 2026-06-24
+## [0.1.5] — 2026-06-24
+
+### Added
+- **Enhanced Tooltip System**: Every actionable UI element (~155 across 12 component files) now has `data-tooltip` attributes providing verbose, context-aware descriptions. A `?` help icon in each tooltip opens a dedicated help page in a new browser tab. Tooltips support both dark and light themes with smooth fade-in animation.
+- **14 Help Pages**: Comprehensive documentation at `/static/help/` covering every feature area: Login & Account, Settings, Chat, News Pipeline, Debate Arena, Deep Research, Consigliere/Deliberation, Strategic Planning, Session History, Blog/Publishing Hub, Math Tutor, Knowledge Base, Open WebUI, and a master Help Index.
+- **Tooltip CSS Module** (`css/tooltips.css`): Styled bubble with placement-aware arrow, help-link badge, shortcut hint, and responsive viewport clamping. Light/dark theme variables.
+- **Tooltip JS Engine** (`js/tooltips.js`): Hover-based tooltip rendering with `?` key/F1 keyboard shortcut for fast help access. Tooltip stays visible while hovering over it. Viewport-aware positioning (flips to below element when near top edge).
+- **Help index page**: Central hub linking to all 13 feature help pages with description cards.
+- **Docker static file mounts**: Volume mounts for `src/workbench/webui/static` and agent plugin static dirs in `docker-compose.yml` enable hot-reload of frontend files without rebuilding the Docker image.
+
+### Changed
+- **index.html**: Now loads `css/tooltips.css` and `js/tooltips.js`. Header icon buttons (Sign out, Theme toggle, Settings) have `data-tooltip` and `data-help-page` attributes alongside their existing `title` fallbacks.
+- **docker-compose.yml**: Added volume mounts for static files and agent plugin directories for zero-downtime frontend updates.
+- All component JS files annotated with tooltip/help attributes on every button, input, select, textarea, toggle, and link element.
+
+### Infrastructure
+- **TLS/HTTPS**: nginx reverse proxy configured for `workbench.gronowski.cc` with Let's Encrypt certificate. HTTP→HTTPS redirect, HSTS header, and security headers enabled.
+- **nginx site config**: Proxies `/` to `workbench:8420` and `/open-webui/` to Open WebUI with sub_filter path rewriting.
+- **Server**: Deployed to VPS at 37.60.240.152 via Docker Compose with PostgreSQL 16 and Open WebUI containers.
+
+
 
 ### Changed
 - **Complete Button CSS Rewrite**: Every button now has distinct, perceivable states across all 7 transition properties (background, border-color, color, transform, box-shadow, filter, opacity). Hover shows `brightness(1.12)` + colored box-shadow glow. Active/pressed shows `brightness(0.82)` + `scale(0.96)` + inset shadow. Disabled has `grayscale(0.5)`. Keyboard focus gets `outline: 2px solid var(--accent)`. Added `.btn-success` and `.btn-warning` variant classes (previously used in JS but undefined in CSS).
@@ -15,10 +35,10 @@ All notable changes to the Workbench project.
 - **Strategic Planning completed event missing content**: The SSE `completed` event only sent `content_length` and `elapsed_seconds` — never the actual plan text. Frontend received `renderPlanResult('')` with empty content, making Copy/Export/PDF buttons do nothing. Now includes `"content": content` in the completed event.
 - **Debate End Debate button active after completion**: The "End Debate" button was always enabled regardless of debate status. Now it transforms to "Back to Setup" (secondary style) when the debate completes.
 - **News Pipeline feed & interest management**: Interest cards now have "Edit" and "Feeds" buttons. Edit opens a pre-filled form for all interest settings. Feeds opens an inline panel to list/add/delete RSS/Atom feeds per interest. Previously there was zero UI to manage feeds or edit interests after creation.
-
-### Fixed
 - **Settings Theme Toggle**: The "Switch to Light/Dark Theme" button in Settings > Themes now actually works. It switches the theme immediately AND updates the button label to reflect the new state. Previously the button called `renderSettings` with the wrong container element (`#active-tab-content` instead of `#settings-panel`), causing the re-render to go to a hidden element — no visual feedback and no button label update. Also simplified: instead of re-rendering the entire settings panel (which destroyed/recreated every element and event listener), the click handler now directly updates `this.textContent` after toggling, providing instant feedback with no side effects.
 - **Same bug in Brave Key handlers**: Both save and delete Brave key handlers also called `renderSettings` on the wrong container. Fixed from `#active-tab-content` to `#settings-panel`.
+- **Tooltip MutationObserver scope bug**: The MutationObserver that watches for dynamically-added `[data-tooltip]` elements (tab panels rendered after initial DOMContentLoaded) was defined outside the `Tooltips` IIFE, so its callback could not access the private `attach()` function. Tooltips on dynamically-rendered tab content (Chat, Debate, Research, News, Planning, Deliberation, Blog, OpenWebUI, History) never worked. Fixed by moving the MutationObserver setup inside the IIFE where it has lexical access to `attach()`. The observer now successfully attaches tooltip event listeners (`mouseenter`, `mouseleave`, `focus`, `blur`, `keydown`) to all elements with `data-tooltip` attributes that are inserted into the DOM after page load. Verified on live Chat tab — all 4 tooltip-equipped elements (model selector, text input, send button, past sessions toggle) graduate from zero tooltips to fully functional tooltips with text, `?` help link, keyboard shortcut, and correct help page routing.
+- **Tooltips.js version bump**: 1.0.0 → 1.1.0.
 
 ## [0.1.2] — 2026-06-24
 

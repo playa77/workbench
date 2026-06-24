@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Math Tutor — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Math Tutor</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Math Tutor agent provides step-by-step math tutoring with LaTeX equation rendering. It supports free-form problem entry, a visual equation builder, live chat Q&A during sessions, and comprehensive multiple-choice interviews for assessment.</p>
+
+<h2 id="problem">Problem Text</h2>
+<p>Enter a math problem in natural language or LaTeX notation. Examples: "Solve the quadratic equation x^2 - 5x + 6 = 0", "Find the derivative of sin(x^2)", "Prove that sqrt(2) is irrational"</p>
+
+<h2 id="equation-builder">Equation Builder</h2>
+<p>Click "Equation Builder" to reveal a visual tool for constructing equations. Select equation type (polynomial, trigonometric, exponential, etc.), order, and coefficients. Click "Build Equation" to insert the generated LaTeX into the problem field.</p>
+
+<h2 id="start-session">Start Tutor Session</h2>
+<p>Click to begin a tutoring session. The agent initializes with your problem and begins step-by-step guidance. Progress streams via SSE.</p>
+
+<h2 id="chat">Chat During Session</h2>
+<p>Use the chat input and Send button to ask follow-up questions during an active session. The tutor responds with LaTeX-rendered explanations.</p>
+
+<h2 id="build-equation-chat">Build Equation (in Chat)</h2>
+<p>During a session, click "Build Equation" to construct an equation to send in your message — useful for asking about specific mathematical expressions.</p>
+
+<h2 id="mc-interview">Comprehensive MC Interview</h2>
+<p>Click to launch a structured multiple-choice assessment. The agent generates conceptual questions about the current topic. Answer by clicking the radio options and click Submit Answer. Navigation buttons let you move Next/Back/Skip/Finish through questions.</p>
+
+<h2 id="end-session">End Session</h2>
+<p>Click to terminate the tutoring session. The full transcript is saved to your session history.</p>
+
+<div class="tip"><strong>Tip:</strong> Use the Equation Builder when you need precise mathematical notation — the LaTeX output renders beautifully in the chat.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

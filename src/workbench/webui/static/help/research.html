@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deep Research — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Deep Research</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Deep Research performs tree-structured investigation of any question. It recursively explores sub-questions, synthesizes findings, and produces a comprehensive markdown report. Progress streams in real-time via SSE.</p>
+
+<h2 id="research-question">Research Question</h2>
+<p>Enter a clear, well-scoped research question. Examples: "What are the environmental impacts of lithium mining?", "Compare Rust and Go for systems programming", "How do transformer neural networks work?"</p>
+
+<h2 id="report-title">Report Title</h2>
+<p>Optional. A custom title for the generated report. If left blank, the research question is used as the title.</p>
+
+<h2 id="tree-depth">Tree Depth</h2>
+<p>Controls how deep the research tree goes (1–5). Higher values produce more thorough research but take exponentially longer. Each level generates sub-questions from the previous level's findings. Default: 3.</p>
+
+<h2 id="branching-factor">Branching Factor</h2>
+<p>How many sub-questions to generate per node (1–10). Each branch becomes a parallel research task. Higher values increase breadth and total compute. Default: 3.</p>
+<div class="tip"><strong>Warning:</strong> Max depth 5 + max branching 10 = up to 10^5 = 100,000 leaf nodes. Use conservative values for initial exploration.</div>
+
+<h2 id="language">Report Language</h2>
+<p>Select the output language for the final report. The research process and sub-question generation adapt to the chosen language.</p>
+
+<h2 id="start-research">Start Research</h2>
+<p>Click to begin. The button shows loading state. Research progress appears as a live tree visualization with per-node status indicators. The final report renders as formatted markdown.</p>
+
+<h2 id="stop">Stop</h2>
+<p>Abort a running research session. The results collected so far are preserved.</p>
+
+<h2 id="export">Export &amp; Copy</h2>
+<ul>
+  <li><strong>Copy Markdown</strong> — copies the full report to clipboard</li>
+  <li><strong>Export PDF</strong> — generates a PDF with your chosen template</li>
+  <li><strong>New Research</strong> — clears the results and returns to the input form</li>
+</ul>
+
+<h2 id="template-selector">Template Selector</h2>
+<p>Choose a PDF template for export. Templates control styling, fonts, and layout.</p>
+
+<h2 id="past-research">Past Research</h2>
+<p>Expand the past sessions section to view previous research runs. Click a session to load its report.</p>
+
+<div class="tip"><strong>Tip:</strong> For broad topics, start with depth 2 and branching 3. Increase only after reviewing initial results.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

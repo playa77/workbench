@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session History — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Session History</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Session History provides a chronological view of all your agent sessions — debates, research runs, planning sessions, chat conversations, and more. Browse, search, view details, and export results.</p>
+
+<h2 id="agent-filter">Agent Filter</h2>
+<p>Filter the session list by agent type. Select "All" to see all sessions or choose a specific agent (Chat, Debate, Research, Planning, Consigliere, News, Math Tutor, Knowledge Base) to narrow results.</p>
+
+<h2 id="session-table">Session Table</h2>
+<p>Each row shows: agent type, session timestamp, status indicator, and action buttons:</p>
+<ul>
+  <li><strong>View</strong> — loads the full session detail (transcript, report, plan, etc.)</li>
+  <li><strong>PDF</strong> — exports the session as a PDF document</li>
+  <li><strong>Delete</strong> — permanently removes the session. Irreversible.</li>
+</ul>
+
+<h2 id="session-detail">Session Detail View</h2>
+<p>Clicking "View" opens the session detail. Content depends on the agent type — debates show transcripts, research shows the report, plans show the structured plan. Use "Back to List" to return to the table.</p>
+
+<h2 id="pdf-export">PDF Export</h2>
+<p>Click the "PDF" button on any session row to export. The button shows "Generating PDF..." during export. Choose a template using the dropdown in the filter row.</p>
+
+<h2 id="template-selector">PDF Style Selector</h2>
+<p>Choose a PDF template from the dropdown labeled "PDF Style:" in the filter bar above the session table.</p>
+
+<div class="tip"><strong>Tip:</strong> Use the browser's back/forward buttons to navigate between the session list and detail views — history navigation is fully supported.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

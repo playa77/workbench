@@ -57,24 +57,24 @@
       '<form id="login-form-password" style="margin:0">' +
       '<div class="form-group">' +
       '<label>Email or Username</label>' +
-      '<input class="form-input" id="login-email-or-username" placeholder="Enter your email or username" autocomplete="username" />'
+      '<input class="form-input" id="login-email-or-username" placeholder="Enter your email or username" autocomplete="username" data-tooltip="Enter your registered email address or username to sign in. Both formats are accepted." data-help-page="/static/help/login.html#password-login" />'
       + '</div>' +
       '<div class="form-group">' +
       '<label>Password</label>' +
-      '<input class="form-input" id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password" />'
+      '<input class="form-input" id="login-password" type="password" placeholder="Enter your password" autocomplete="current-password" data-tooltip="Enter your account password. The field is masked for security." data-help-page="/static/help/login.html#password-login" />'
       + '</div>' +
-      '<button type="submit" class="btn btn-primary" id="btn-login-password" style="width:100%">Sign In</button>' +
+      '<button type="submit" class="btn btn-primary" id="btn-login-password" style="width:100%" data-tooltip="Authenticate with your email/username and password. The button shows a loading spinner while signing in." data-help-page="/static/help/login.html#password-login">Sign In</button>' +
       '</form>' +
       '<div style="margin-top:8px;text-align:center">' +
-      '<a href="#" id="link-forgot-password" style="font-size:12px;color:var(--text-muted)">Forgot password?</a>' +
+      '<a href="#" id="link-forgot-password" style="font-size:12px;color:var(--text-muted)" data-tooltip="If you have forgotten your password, click here to request a password reset link via email." data-help-page="/static/help/login.html#forgot-password">Forgot password?</a>' +
       '</div>' +
       '<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border-color)">' +
       '<form id="login-form-apikey" style="margin:0">' +
       '<div class="form-group">' +
       '<label>API Key</label>' +
-      '<input class="form-input" id="login-api-key" placeholder="Or paste your API key to sign in" autocomplete="off" />'
+      '<input class="form-input" id="login-api-key" placeholder="Or paste your API key to sign in" autocomplete="off" data-tooltip="Paste a Workbench API key (format: wb-...) to sign in without a password. Create API keys in Settings." data-help-page="/static/help/login.html#api-key-login" />'
       + '</div>' +
-      '<button type="submit" class="btn btn-secondary" id="btn-login-apikey" style="width:100%">Sign In with API Key</button>' +
+      '<button type="submit" class="btn btn-secondary" id="btn-login-apikey" style="width:100%" data-tooltip="Sign in using an API key instead of a password. Useful for programmatic access and automation." data-help-page="/static/help/login.html#api-key-login">Sign In with API Key</button>' +
       '</form>' +
       '</div>' +
       '<div id="login-message" style="margin-top:16px"></div>';
@@ -132,11 +132,11 @@
       '<div class="card-header">Forgot Password</div>' +
       '<div class="form-group">' +
       '<label>Email</label>' +
-      '<input class="form-input" id="forgot-email" type="email" placeholder="Enter your email address" />' +
+      '<input class="form-input" id="forgot-email" type="email" placeholder="Enter your email address" data-tooltip="Enter the email address associated with your Workbench account to receive a password reset link." data-help-page="/static/help/login.html#forgot-password" />' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-send-reset-link" style="width:100%">Send Reset Link</button>' +
+      '<button class="btn btn-primary" id="btn-send-reset-link" style="width:100%" data-tooltip="Send a password reset email to the address above. Requires SMTP to be configured in Settings." data-help-page="/static/help/login.html#forgot-password">Send Reset Link</button>' +
       '<div style="margin-top:12px;text-align:center">' +
-      '<a href="#" id="link-back-to-login" style="font-size:12px;color:var(--text-muted)">Back to Sign In</a>' +
+      '<a href="#" id="link-back-to-login" style="font-size:12px;color:var(--text-muted)" data-tooltip="Return to the main sign-in screen." data-help-page="/static/help/login.html#password-login">Back to Sign In</a>' +
       '</div>' +
       '<div id="forgot-message" style="margin-top:12px"></div>' +
       '</div></div></div>';
@@ -174,21 +174,21 @@
       '<div class="card-header">Create Admin Account</div>' +
       '<div class="form-group">' +
       '<label>Username</label>' +
-      '<input class="form-input" id="setup-username" placeholder="Choose a username" />' +
+      '<input class="form-input" id="setup-username" placeholder="Choose a username" data-tooltip="Choose a username for your admin account. This is your display name in the app." data-help-page="/static/help/login.html#first-time-setup" />' +
       '</div>' +
       '<div class="form-group">' +
       '<label>Email</label>' +
-      '<input class="form-input" id="setup-email" type="email" placeholder="admin@example.com" />' +
+      '<input class="form-input" id="setup-email" type="email" placeholder="admin@example.com" data-tooltip="Enter your email address. Used for password recovery and notifications." data-help-page="/static/help/login.html#first-time-setup" />' +
       '</div>' +
       '<div class="form-group">' +
       '<label>Password</label>' +
-      '<input class="form-input" id="setup-password" type="password" placeholder="Min 8 characters" />' +
+      '<input class="form-input" id="setup-password" type="password" placeholder="Min 8 characters" data-tooltip="Choose a strong password with at least 8 characters." data-help-page="/static/help/login.html#first-time-setup" />' +
       '</div>' +
       '<div class="form-group">' +
       '<label>Confirm Password</label>' +
-      '<input class="form-input" id="setup-confirm-password" type="password" placeholder="Re-enter password" />' +
+      '<input class="form-input" id="setup-confirm-password" type="password" placeholder="Re-enter password" data-tooltip="Re-enter your password to confirm it matches." data-help-page="/static/help/login.html#first-time-setup" />' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-setup" style="width:100%">Create Account</button>' +
+      '<button class="btn btn-primary" id="btn-setup" style="width:100%" data-tooltip="Create your admin account. The first user is automatically granted administrator privileges." data-help-page="/static/help/login.html#first-time-setup">Create Account</button>' +
       '<div id="setup-message" style="margin-top:12px"></div>' +
       '</div></div></div>';
 
@@ -240,13 +240,13 @@
       '<div class="card-header">Set Up Your Account</div>' +
       '<div class="form-group">' +
       '<label>Password</label>' +
-      '<input class="form-input" id="invite-password" type="password" placeholder="Min 8 characters" />' +
+      '<input class="form-input" id="invite-password" type="password" placeholder="Min 8 characters" data-tooltip="Choose a password for your invited account. Minimum 8 characters." data-help-page="/static/help/login.html#invite-accept" />' +
       '</div>' +
       '<div class="form-group">' +
       '<label>Confirm Password</label>' +
-      '<input class="form-input" id="invite-confirm-password" type="password" placeholder="Re-enter password" />' +
+      '<input class="form-input" id="invite-confirm-password" type="password" placeholder="Re-enter password" data-tooltip="Confirm your password to ensure it was typed correctly." data-help-page="/static/help/login.html#invite-accept" />' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-accept-invite" style="width:100%">Create Account</button>' +
+      '<button class="btn btn-primary" id="btn-accept-invite" style="width:100%" data-tooltip="Accept the invitation and create your account with the specified password." data-help-page="/static/help/login.html#invite-accept">Create Account</button>' +
       '<div id="invite-message" style="margin-top:12px"></div>' +
       '</div></div></div>';
 
@@ -292,13 +292,13 @@
       '<div class="card-header">Reset Your Password</div>' +
       '<div class="form-group">' +
       '<label>New Password</label>' +
-      '<input class="form-input" id="reset-password" type="password" placeholder="Min 8 characters" />' +
+      '<input class="form-input" id="reset-password" type="password" placeholder="Min 8 characters" data-tooltip="Enter your new password. Minimum 8 characters." data-help-page="/static/help/login.html#forgot-password" />' +
       '</div>' +
       '<div class="form-group">' +
       '<label>Confirm Password</label>' +
-      '<input class="form-input" id="reset-confirm-password" type="password" placeholder="Re-enter password" />' +
+      '<input class="form-input" id="reset-confirm-password" type="password" placeholder="Re-enter password" data-tooltip="Re-enter your new password to confirm." data-help-page="/static/help/login.html#forgot-password" />' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-reset-password" style="width:100%">Reset Password</button>' +
+      '<button class="btn btn-primary" id="btn-reset-password" style="width:100%" data-tooltip="Reset your password to the new value. You will be signed in automatically." data-help-page="/static/help/login.html#forgot-password">Reset Password</button>' +
       '<div id="reset-message" style="margin-top:12px"></div>' +
       '</div></div></div>';
 
@@ -426,10 +426,10 @@
           '<div style="display:flex;gap:6px">';
         if (p.id) {
           if (!p.is_default) {
-            html += '<button class="btn btn-sm btn-secondary set-default-btn" data-id="' + p.id + '">Set Default</button>';
+            html += '<button class="btn btn-sm btn-secondary set-default-btn" data-id="' + p.id + '" data-tooltip="Make this provider the default for all agents. The default provider is used unless an agent specifies otherwise." data-help-page="/static/help/settings.html#inference-providers">Set Default</button>';
           }
-          html += '<button class="btn btn-sm btn-secondary edit-provider-btn" data-id="' + p.id + '">Edit</button>' +
-            '<button class="btn btn-sm btn-danger delete-provider-btn" data-id="' + p.id + '">Delete</button>';
+          html += '<button class="btn btn-sm btn-secondary edit-provider-btn" data-id="' + p.id + '" data-tooltip="Edit this provider's configuration — change name, URL, API key, models, or rate limits." data-help-page="/static/help/settings.html#inference-providers">Edit</button>' +
+            '<button class="btn btn-sm btn-danger delete-provider-btn" data-id="' + p.id + '" data-tooltip="Remove this inference provider permanently. Any agent using this provider will fall back to the server default." data-help-page="/static/help/settings.html#inference-providers">Delete</button>';
         }
         html += '</div></div>' +
           '<div style="margin-top:8px;font-size:13px;color:var(--text-muted)">' +
@@ -443,7 +443,7 @@
           '</div>';
       }
       html += '</div>' +
-        '<button class="btn btn-primary" id="btn-add-provider" style="margin-top:8px">+ Add Provider</button>' +
+        '<button class="btn btn-primary" id="btn-add-provider" style="margin-top:8px" data-tooltip="Add a new LLM inference provider (OpenRouter, OpenAI, NVIDIA NIM, etc.). Configure API key, endpoint URL, and model preferences." data-help-page="/static/help/settings.html#inference-providers">+ Add Provider</button>' +
         '<div id="provider-add-form" style="display:none;margin-top:12px;padding:16px;border:1px solid var(--border);border-radius:8px"></div>' +
         '<div id="provider-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>';
       return html;
@@ -491,8 +491,8 @@
         '</div>' +
         '<datalist id="model-suggestions">' + modelOptions + '</datalist>' +
         '<div style="display:flex;gap:8px;margin-top:12px">' +
-        '<button class="btn btn-primary" id="prov-form-save-' + formSuffix + '">Save</button>' +
-        '<button class="btn btn-secondary" id="prov-form-cancel-' + formSuffix + '">Cancel</button>' +
+        '<button class="btn btn-primary" id="prov-form-save-' + formSuffix + '" data-tooltip="Save this inference provider configuration. API keys are encrypted at rest." data-help-page="/static/help/settings.html#inference-providers">Save</button>' +
+        '<button class="btn btn-secondary" id="prov-form-cancel-' + formSuffix + '" data-tooltip="Discard changes and close the provider edit form." data-help-page="/static/help/settings.html#inference-providers">Cancel</button>' +
         '</div>' +
         '<div id="prov-form-error-' + formSuffix + '" style="margin-top:8px;font-size:12px;color:var(--danger)"></div>';
     }
@@ -667,7 +667,7 @@
           '<div class="agent-card-header">' +
           '<span class="agent-card-name">' + getIcon(p.icon) + ' ' + Utils.escapeHtml(p.display_name) + '</span>' +
           '<label class="toggle">' +
-          '<input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' data-agent-name="' + Utils.escapeHtml(p.name) + '">' +
+          '<input type="checkbox" ' + (p.enabled ? 'checked' : '') + ' data-agent-name="' + Utils.escapeHtml(p.name) + '" data-tooltip="Enable or disable this agent. Disabled agents are hidden from the tab bar." data-help-page="/static/help/settings.html#agents">' +
           '<span class="toggle-switch"></span>' +
           '</label>' +
           '</div>' +
@@ -726,7 +726,7 @@
         html += '</div>';
       });
 
-      html += '<button class="btn btn-primary btn-sm" id="btn-save-' + Utils.escapeHtml(agentName) + '" style="margin-top:4px">Save Settings</button>' +
+      html += '<button class="btn btn-primary btn-sm" id="btn-save-' + Utils.escapeHtml(agentName) + '" style="margin-top:4px" data-tooltip="Save the configuration for this agent. Changes take effect immediately." data-help-page="/static/help/settings.html#agents">Save Settings</button>' +
         '<span id="save-status-' + Utils.escapeHtml(agentName) + '" style="margin-left:8px;font-size:11px;color:var(--success)"></span>';
 
       formEl.innerHTML = html;
@@ -783,7 +783,7 @@
             '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Created ' + created + '</span>' +
             (lastUsed ? '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + lastUsed + '</span>' : '') +
             '</div>' +
-            '<button class="btn btn-danger btn-sm" data-delete-key="' + Utils.escapeHtml(k.id) + '">Delete</button>' +
+            '<button class="btn btn-danger btn-sm" data-delete-key="' + Utils.escapeHtml(k.id) + '" data-tooltip="Revoke this API key. Any services using it will lose access immediately." data-help-page="/static/help/settings.html#api-keys">Delete</button>' +
             '</div>';
         }).join('');
 
@@ -795,7 +795,7 @@
         '<label style="font-size:11px;color:var(--text-muted);display:block;margin-bottom:4px">Key Name</label>' +
         '<input class="form-input" id="new-key-label" placeholder="e.g. production, staging, personal" style="margin:0" />' +
         '</div>' +
-        '<button class="btn btn-primary btn-sm" id="btn-create-key" style="flex-shrink:0">Create Key</button>' +
+        '<button class="btn btn-primary btn-sm" id="btn-create-key" style="flex-shrink:0" data-tooltip="Generate a new personal API key for programmatic access. The full key is shown only once." data-help-page="/static/help/settings.html#api-keys">Create Key</button>' +
         '</div>' +
         '<div id="new-key-display" style="margin-top:8px"></div>' +
         '</div>';
@@ -829,7 +829,7 @@
             '<div class="alert alert-success">' +
             '<div style="display:flex;align-items:center;justify-content:space-between">' +
             '<span>Key <strong>' + Utils.escapeHtml(label) + '</strong> created</span>' +
-            '<button class="btn btn-sm btn-secondary" id="btn-copy-key" style="font-size:11px;padding:2px 8px">Copy</button>' +
+            '<button class="btn btn-sm btn-secondary" id="btn-copy-key" style="font-size:11px;padding:2px 8px" data-tooltip="Copy the API key to your clipboard. Save it securely — it cannot be retrieved later." data-help-page="/static/help/settings.html#api-keys">Copy</button>' +
             '</div>' +
             '<code style="display:block;word-break:break-all;margin-top:4px;font-family:var(--font-mono);font-size:11px">' +
             Utils.escapeHtml(result.api_key) + '</code>' +
@@ -877,7 +877,7 @@
           '</div>' +
           '</div>' +
           (status !== 'Revoked' && status !== 'Accepted'
-            ? '<button class="btn btn-danger btn-sm" data-revoke-invite="' + Utils.escapeHtml(inv.id) + '">Revoke</button>'
+            ? '<button class="btn btn-danger btn-sm" data-revoke-invite="' + Utils.escapeHtml(inv.id) + '" data-tooltip="Cancel this pending invitation. The invite link will no longer work." data-help-page="/static/help/settings.html#invite-users">Revoke</button>'
             : '<span style="font-size:11px;color:var(--text-muted)">' + Utils.escapeHtml(status) + '</span>') +
           '</div>';
       });
@@ -939,7 +939,7 @@
       '<input class="form-input settings-field-limited" id="change-password-new" type="password" placeholder="New password (min 8 chars)" />' +
       '</div>' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-change-password">Save Password</button>' +
+      '<button class="btn btn-primary" id="btn-change-password" data-tooltip="Update your account password. You must provide your current password to confirm." data-help-page="/static/help/settings.html#change-password">Save Password</button>' +
       '<div id="change-password-message" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
       '</div>';
 
@@ -975,7 +975,7 @@
       '<input class="form-input" id="invite-username" placeholder="username" />' +
       '</div>' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-send-invite">Send Invite</button>' +
+      '<button class="btn btn-primary" id="btn-send-invite" data-tooltip="Send an invitation email to the specified address. The recipient will receive a link to create their account." data-help-page="/static/help/settings.html#invite-users">Send Invite</button>' +
       '<div id="invite-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
       '<div id="invite-list" style="margin-top:16px"></div>' +
       '</div>';
@@ -1015,8 +1015,8 @@
       '<input class="form-input" id="brave-key-input" type="password" placeholder="' +
       (hasBraveKey ? '(enter new to replace)' : 'BSA-...') + '" />' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-save-brave-key">Save Key</button>' +
-      (hasBraveKey ? '<button class="btn btn-danger btn-sm" id="btn-delete-brave-key" style="margin-left:8px">Remove Key</button>' : '') +
+      '<button class="btn btn-primary" id="btn-save-brave-key" data-tooltip="Save your Brave Search API key for web search in Deep Research." data-help-page="/static/help/settings.html#brave-search">Save Key</button>' +
+      (hasBraveKey ? '<button class="btn btn-danger btn-sm" id="btn-delete-brave-key" style="margin-left:8px" data-tooltip="Delete your saved Brave Search API key. Deep Research will no longer have web search capability." data-help-page="/static/help/settings.html#brave-search">Remove Key</button>' : '') +
       '<div id="brave-key-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
       '</div>';
 
@@ -1082,7 +1082,7 @@
       '<textarea class="form-input" id="google-token" rows="3" placeholder="Google OAuth2 refresh token for playa77@gmail.com" style="resize:vertical;font-family:monospace;font-size:12px"></textarea>' +
       '</div>' +
       '</div>' +
-      '<button class="btn btn-primary" id="btn-save-server-config">Save Config</button>' +
+      '<button class="btn btn-primary" id="btn-save-server-config" data-tooltip="Save SMTP email configuration for sending password resets and invitations." data-help-page="/static/help/settings.html#email-config">Save Config</button>' +
       '<div id="server-config-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
       '</div>';
 
@@ -1112,7 +1112,7 @@
     container.innerHTML +=
       '<div class="settings-section">' +
       '<h3>Theme</h3>' +
-      '<button class="btn btn-secondary" id="btn-theme-switch">Switch to ' +
+      '<button class="btn btn-secondary" id="btn-theme-switch" data-tooltip="Switch between dark and light mode. Your preference is saved locally." data-help-page="/static/help/settings.html#theme">Switch to ' +
       (Theme.get() === 'dark' ? 'Light' : 'Dark') + ' Theme</button>' +
       '</div>';
 
@@ -1141,7 +1141,7 @@
   function renderLogoutSection(container) {
     container.innerHTML +=
       '<div class="settings-section">' +
-      '<button class="btn btn-danger" id="btn-logout" style="width:100%">Sign Out</button>' +
+      '<button class="btn btn-danger" id="btn-logout" style="width:100%" data-tooltip="Sign out of your Workbench account." data-help-page="/static/help/login.html#password-login">Sign Out</button>' +
       '</div>';
 
     document.getElementById('btn-logout') && document.getElementById('btn-logout').addEventListener('click', async function () {

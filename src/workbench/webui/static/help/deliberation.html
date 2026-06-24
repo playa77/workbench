@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consigliere / Deliberation — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Consigliere / Deliberation</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Consigliere agent stress-tests ideas through structured deliberation. It examines your proposal through multiple analytical frames, performs critique rounds, and optionally runs rhetoric analysis and synthesis.</p>
+
+<h2 id="question">Question / Proposal</h2>
+<p>Enter the idea, proposal, or decision you want to analyze. Be thorough — include context, constraints, and any assumptions. Example: "We should migrate our monolith to microservices because..."</p>
+
+<h2 id="frames">Analytical Frames</h2>
+<p>Select one or more analytical perspectives. Each frame examines your proposal from a different angle:</p>
+<ul>
+  <li><strong>Risk Analysis</strong> — identifies potential failure modes and their severity</li>
+  <li><strong>Cost-Benefit</strong> — weighs investment against expected returns</li>
+  <li><strong>Ethical</strong> — examines moral implications and stakeholder impacts</li>
+  <li><strong>Feasibility</strong> — assesses technical and organizational practicality</li>
+  <li><strong>Strategic Fit</strong> — evaluates alignment with broader goals</li>
+  <li>Additional frames may be available</li>
+</ul>
+
+<h2 id="critique-rounds">Critique Rounds</h2>
+<p>Number of refinement iterations (1–5). Each round deepens the analysis by challenging previous findings. More rounds produce more nuanced results. Default: 2.</p>
+
+<h2 id="temperature">Temperature</h2>
+<p>Controls the creativity/randomness of the analysis (0.0–2.0). Lower values produce more deterministic, focused analysis. Higher values introduce more creative angles and unexpected perspectives.</p>
+
+<h2 id="rhetoric">Rhetoric Analysis</h2>
+<p>When enabled, the agent analyzes the rhetorical structure of your proposal — identifying persuasive techniques, logical fallacies, and argumentation patterns.</p>
+
+<h2 id="synthesis">Synthesis</h2>
+<p>When enabled, the agent produces a unified synthesis combining insights from all frames into a single coherent recommendation.</p>
+
+<h2 id="start">Stress-Test Idea</h2>
+<p>Click to begin deliberation. Progress streams via SSE with phase indicators showing which frame is currently active.</p>
+
+<h2 id="export">Export</h2>
+<ul>
+  <li><strong>Export JSON</strong> — downloads the full deliberation results as structured JSON</li>
+  <li><strong>New Session</strong> — clears results and returns to the input form</li>
+</ul>
+
+<h2 id="past-sessions">Past Sessions</h2>
+<p>Expand to view previous deliberation sessions. Click any entry to reload its results.</p>
+
+<div class="tip"><strong>Tip:</strong> Enable both Rhetoric Analysis and Synthesis for the most comprehensive output — the agent will critique how you argue AND what you propose.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

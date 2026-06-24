@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login &amp; Account — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Login &amp; Account</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Workbench supports multiple authentication methods to suit different workflows. You can sign in with a username/password pair or use a personal API key for programmatic access.</p>
+
+<h2 id="password-login">Password Login</h2>
+<h3>Email or Username</h3>
+<p>Enter the email address or username associated with your account. Both are accepted — the system looks up whichever you provide.</p>
+<h3>Password</h3>
+<p>Enter your account password. If you've forgotten your password, use the "Forgot password?" link below the sign-in button.</p>
+<h3>Sign In Button</h3>
+<p>Click to authenticate with your credentials. The button shows a loading spinner while the request is in progress. On success, you'll be taken to the main Workbench interface.</p>
+
+<h2 id="api-key-login">API Key Login</h2>
+<p>Paste a Workbench API key (format: <code>wb-...</code>) into the API Key field and click "Sign In with API Key". API keys bypass password authentication — they are intended for programmatic access, CI/CD pipelines, and external integrations. You can create and manage API keys in <strong>Settings → API Keys</strong>.</p>
+<ul>
+  <li>API keys have the same permissions as your user account.</li>
+  <li>You can create up to 5 keys per user.</li>
+  <li>Keys can be revoked individually at any time.</li>
+</ul>
+
+<h2 id="forgot-password">Forgot Password</h2>
+<p>Click the "Forgot password?" link on the login screen. Enter your registered email address and click "Send Reset Link". If an SMTP server is configured, you'll receive an email with a password reset link. The link expires after a set period.</p>
+<div class="tip"><strong>Note:</strong> Password reset requires an SMTP server to be configured in <strong>Settings → Email Configuration</strong>. If no SMTP is set up, admins must reset passwords manually.</div>
+
+<h2 id="first-time-setup">First-Time Setup</h2>
+<p>When Workbench is freshly installed with no users in the database, the setup screen appears automatically. Fill in:</p>
+<ul>
+  <li><strong>Username</strong> — your display name (alphanumeric, no spaces)</li>
+  <li><strong>Email</strong> — used for password recovery and notifications</li>
+  <li><strong>Password</strong> — minimum 8 characters</li>
+  <li><strong>Confirm Password</strong> — must match the password field</li>
+</ul>
+<p>The first created user is automatically granted <strong>admin</strong> privileges. Click "Create Account" to complete setup.</p>
+
+<h2 id="invite-accept">Accepting an Invite</h2>
+<p>If an admin sends you an invitation link, clicking it takes you to the invite acceptance page. Enter your desired password, confirm it, and submit. Your account is created with the username and email the admin specified.</p>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

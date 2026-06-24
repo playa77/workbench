@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Help Index — Workbench</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 900px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    .help-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 24px; }
+    .help-card { background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 8px; padding: 16px; text-decoration: none; color: var(--text-primary); transition: border-color 0.15s; }
+    .help-card:hover { border-color: var(--accent); }
+    .help-card h3 { font-size: 15px; margin-bottom: 4px; color: var(--accent); }
+    .help-card p { font-size: 12px; color: var(--text-muted); }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+  <h1>Workbench Help</h1>
+  <p style="color:var(--text-muted);margin-bottom:8px">Select a topic to learn about that feature.</p>
+  <div class="help-grid">
+    <a class="help-card" href="/static/help/login.html"><h3>Login & Account</h3><p>Sign in, API key auth, password recovery, first-time setup</p></a>
+    <a class="help-card" href="/static/help/settings.html"><h3>Settings</h3><p>Profile, password, API keys, inference providers, agents, theme</p></a>
+    <a class="help-card" href="/static/help/chat.html"><h3>Chat</h3><p>AI chat agent with model selection and past sessions</p></a>
+    <a class="help-card" href="/static/help/news.html"><h3>News Pipeline</h3><p>RSS/Atom feed aggregation, interests, scheduled runs</p></a>
+    <a class="help-card" href="/static/help/debate.html"><h3>Debate Arena</h3><p>Multi-agent debates, role selection, Director Mode</p></a>
+    <a class="help-card" href="/static/help/research.html"><h3>Deep Research</h3><p>Tree-structured research with configurable depth and branching</p></a>
+    <a class="help-card" href="/static/help/deliberation.html"><h3>Consigliere / Deliberation</h3><p>Critical analysis through framing, critique rounds, rhetoric analysis</p></a>
+    <a class="help-card" href="/static/help/planning.html"><h3>Strategic Planning</h3><p>Generate structured plans across 9 plan types</p></a>
+    <a class="help-card" href="/static/help/history.html"><h3>Session History</h3><p>Browse, view, and export past agent sessions</p></a>
+    <a class="help-card" href="/static/help/blog.html"><h3>Blog / Publishing Hub</h3><p>Publish markdown, HTML, PDF documents with git versioning</p></a>
+    <a class="help-card" href="/static/help/math-tutor.html"><h3>Math Tutor</h3><p>LaTeX equation builder, step-by-step tutoring, MC interviews</p></a>
+    <a class="help-card" href="/static/help/knowledge.html"><h3>Knowledge Base</h3><p>Collections, document uploads, chunking, semantic queries</p></a>
+    <a class="help-card" href="/static/help/open-webui.html"><h3>Open WebUI</h3><p>Integrated chat interface with health check monitoring</p></a>
+  </div>
+</body>
+</html>

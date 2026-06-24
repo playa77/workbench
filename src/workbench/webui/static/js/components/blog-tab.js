@@ -58,7 +58,7 @@
     if (!panel) return;
     panel.innerHTML =
       '<div class="blog-left-header">' +
-      '  <button class="btn btn-primary btn-sm" id="btn-blog-new">+ New Document</button>' +
+      '  <button class="btn btn-primary btn-sm" id="btn-blog-new" data-tooltip="Create a new blog post. Choose between Markdown, HTML, or PDF format." data-help-page="/static/help/blog.html#new-document">+ New Document</button>' +
       '</div>' +
       '<div class="blog-left-list" id="blog-post-list"></div>';
 
@@ -85,7 +85,7 @@
         ? '<span class="blog-date">' + p.updated_at.split('T')[0] + '</span>'
         : '';
       var activeClass = state.activePost && state.activePost.id === p.id ? ' blog-post-active' : '';
-      return '<div class="blog-post-entry' + activeClass + '" data-post-id="' + p.id + '">' +
+      return '<div class="blog-post-entry' + activeClass + '" data-post-id="' + p.id + '" data-tooltip="Click to edit this blog post." data-help-page="/static/help/blog.html#post-list">' +
         '<div class="blog-post-title-row">' +
         '  <span class="blog-post-title">' + Utils.escapeHtml(p.title || 'Untitled') + '</span>' +
         '  ' + formatBadge +
@@ -201,8 +201,8 @@
       '  <div class="blog-editor-header">' +
       '    <h3>' + (isNew ? 'New Document' : 'Edit Document') + '</h3>' +
       '    <div class="blog-editor-actions">' +
-      (isNew ? '' : '<button class="btn btn-secondary btn-sm" id="btn-blog-history">History</button>') +
-      '      <button class="btn btn-secondary btn-sm" id="btn-blog-cancel">Cancel</button>' +
+      (isNew ? '' : '<button class="btn btn-secondary btn-sm" id="btn-blog-history" data-tooltip="Open the version history overlay showing git commits with timestamps and messages." data-help-page="/static/help/blog.html#history">History</button>') +
+      '      <button class="btn btn-secondary btn-sm" id="btn-blog-cancel" data-tooltip="Discard unsaved changes and return to the post list." data-help-page="/static/help/blog.html#save-delete">Cancel</button>' +
       '    </div>' +
       '  </div>' +
 
@@ -210,13 +210,13 @@
       /* Title */
       '    <div class="form-group">' +
       '      <label>Title</label>' +
-      '      <input class="form-input" id="blog-field-title" type="text" value="' + Utils.escapeHtml(title) + '" placeholder="Post title" />' +
+      '      <input class="form-input" id="blog-field-title" type="text" value="' + Utils.escapeHtml(title) + '" placeholder="Post title" data-tooltip="The document title. Auto-generates a URL slug for your public blog page." data-help-page="/static/help/blog.html#new-document" />' +
       '    </div>' +
 
       /* Format */
       '    <div class="form-group">' +
       '      <label>Format</label>' +
-      '      <select class="form-input" id="blog-field-format">' +
+      '      <select class="form-input" id="blog-field-format" data-tooltip="Document format: Markdown (rendered to HTML), Raw HTML, or PDF (upload only)." data-help-page="/static/help/blog.html#new-document">' +
       '        <option value="md"' + (format === 'md' ? ' selected' : '') + '>Markdown</option>' +
       '        <option value="html"' + (format === 'html' ? ' selected' : '') + '>HTML</option>' +
       '        <option value="pdf"' + (format === 'pdf' ? ' selected' : '') + '>PDF</option>' +
@@ -226,7 +226,7 @@
       /* File upload + drag area */
       '    <div class="form-group">' +
       '      <label>File Upload <span style="font-size:11px;color:var(--text-muted)">(optional — drag a file or click to browse)</span></label>' +
-      '      <div class="blog-file-upload" id="blog-file-upload-area">' +
+      '      <div class="blog-file-upload" id="blog-file-upload-area" data-tooltip="Drag and drop a file or click to browse. Supported: .md, .html, .pdf. Uploaded content populates automatically." data-help-page="/static/help/blog.html#file-upload">' +
       '        <div class="blog-file-dropzone" id="blog-file-dropzone">' +
       '          <span id="blog-file-label">Drop a file here or click to browse</span>' +
       '          <input type="file" id="blog-file-input" style="display:none" />' +
@@ -238,14 +238,14 @@
       /* Content textarea */
       '    <div class="form-group">' +
       '      <label>Content <span style="font-size:11px;color:var(--text-muted)">(inline — used when no file is uploaded)</span></label>' +
-      '      <textarea class="form-input blog-content-textarea" id="blog-field-content" placeholder="Write your content here..."' +
+      '      <textarea class="form-input blog-content-textarea" id="blog-field-content" placeholder="Write your content here..." data-tooltip="The main document body. Write in your chosen format — Markdown is rendered on the public page." data-help-page="/static/help/blog.html#new-document"' +
       '        style="min-height:300px;font-family:var(--font-mono, monospace);font-size:13px;line-height:1.5;resize:vertical">' + Utils.escapeHtml(content) + '</textarea>' +
       '    </div>' +
 
       /* Comment */
       '    <div class="form-group">' +
       '      <label>Comment <span style="font-size:11px;color:var(--text-muted)">(markdown supported, max 2048 chars)</span></label>' +
-      '      <textarea class="form-input" id="blog-field-comment" placeholder="Commit message / description..." maxlength="2048"' +
+      '      <textarea class="form-input" id="blog-field-comment" placeholder="Commit message / description..." maxlength="2048" data-tooltip="Optional commit message describing this change. Visible in version history inspection (max 2048 chars)." data-help-page="/static/help/blog.html#new-document"' +
       '        style="min-height:60px;resize:vertical">' + Utils.escapeHtml(comment) + '</textarea>' +
       '      <div style="display:flex;justify-content:flex-end;margin-top:2px">' +
       '        <span id="blog-comment-counter" style="font-size:11px;color:var(--text-muted)">0 / 2048</span>' +
@@ -256,15 +256,15 @@
       '    <div class="form-group" style="flex-direction:row;align-items:center;gap:12px">' +
       '      <label style="margin-bottom:0">Published</label>' +
       '      <label class="toggle">' +
-      '        <input type="checkbox" id="blog-field-published"' + (published ? ' checked' : '') + ' />' +
+      '        <input type="checkbox" id="blog-field-published" data-tooltip="Make this document visible on your public blog page at /blog/your-username." data-help-page="/static/help/blog.html#public-blog"' + (published ? ' checked' : '') + ' />' +
       '        <span class="toggle-switch"></span>' +
       '      </label>' +
       '    </div>' +
 
       /* Action buttons */
       '    <div class="blog-editor-footer" style="display:flex;gap:8px;margin-top:16px;padding-top:16px;border-top:1px solid var(--border-color)">' +
-      '      <button class="btn btn-primary" id="btn-blog-save">Save</button>' +
-      (isNew ? '' : '<button class="btn btn-danger" id="btn-blog-delete">Delete</button>') +
+      '      <button class="btn btn-primary" id="btn-blog-save" data-tooltip="Save the document. Commits to git version history and updates the public page if published." data-help-page="/static/help/blog.html#save-delete">Save</button>' +
+      (isNew ? '' : '<button class="btn btn-danger" id="btn-blog-delete" data-tooltip="Permanently delete this document and its git history. This cannot be undone." data-help-page="/static/help/blog.html#save-delete">Delete</button>') +
       '    </div>' +
 
       '    <div id="blog-editor-status" style="margin-top:8px;font-size:12px;color:var(--danger)"></div>' +
@@ -479,7 +479,7 @@
       '<div class="blog-inspection-panel">' +
       '  <div class="blog-inspection-header">' +
       '    <h3>File History</h3>' +
-      '    <button class="btn btn-secondary btn-sm" id="btn-inspection-close">Close</button>' +
+      '    <button class="btn btn-secondary btn-sm" id="btn-inspection-close" data-tooltip="Close the version history inspection and return to editing." data-help-page="/static/help/blog.html#history">Close</button>' +
       '  </div>' +
       '  <div class="blog-inspection-body" id="blog-inspection-body">' +
       '    <div class="spinner" style="margin:40px auto"></div>' +

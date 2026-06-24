@@ -53,7 +53,7 @@
       +   '<h2 style="margin-bottom:16px;font-size:20px;font-weight:600">Agent History</h2>'
       +   '<div style="margin-bottom:12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
       +     '<label style="font-size:13px;color:var(--text-secondary);font-weight:500">Agent:</label>'
-      +     '<select id="history-agent-filter" class="form-input" style="max-width:200px">'
+      +     '<select id="history-agent-filter" class="form-input" style="max-width:200px" data-tooltip="Filter sessions by agent type. Select a specific agent to show only those sessions, or select All Agents to see everything." data-help-page="/static/help/history.html#agent-filter">'
       +       '<option value="">All Agents</option>'
       +       '<option value="research">Research</option>'
       +       '<option value="planning">Planning</option>'
@@ -124,9 +124,9 @@
             + '<td style="padding:8px 12px">' + title + '</td>'
             + '<td style="padding:8px 12px;text-align:right;color:var(--text-muted);font-size:12px">' + (s.word_count || 0) + '</td>'
             + '<td style="padding:8px 12px;text-align:right;white-space:nowrap">'
-            + '<button class="btn btn-secondary btn-sm" data-action="view" data-id="' + s.id + '" style="margin-right:4px">View</button>'
-            + '<button class="btn btn-secondary btn-sm" data-action="pdf" data-id="' + s.id + '" data-title="' + Utils.escapeHtml(s.title || 'Session') + '" style="margin-right:4px">PDF</button>'
-            + '<button class="btn btn-danger btn-sm" data-action="delete" data-id="' + s.id + '" data-title="' + Utils.escapeHtml(s.title || 'Session') + '">Del</button>'
+            + '<button class="btn btn-secondary btn-sm" data-action="view" data-id="' + s.id + '" style="margin-right:4px" data-tooltip="View the full session content including transcripts, reports, or plans." data-help-page="/static/help/history.html#session-detail">View</button>'
+            + '<button class="btn btn-secondary btn-sm" data-action="pdf" data-id="' + s.id + '" data-title="' + Utils.escapeHtml(s.title || 'Session') + '" style="margin-right:4px" data-tooltip="Export this session as a PDF document using the selected template." data-help-page="/static/help/history.html#pdf-export">PDF</button>'
+            + '<button class="btn btn-danger btn-sm" data-action="delete" data-id="' + s.id + '" data-title="' + Utils.escapeHtml(s.title || 'Session') + '" data-tooltip="Permanently delete this session. This action cannot be undone." data-help-page="/static/help/history.html#session-table">Del</button>'
             + '</td>';
           tbody.appendChild(row);
         });
@@ -144,7 +144,7 @@
       .catch(function () {
         content.innerHTML = '<div style="text-align:center;padding:32px">'
           + '<div style="color:var(--danger);margin-bottom:12px">Could not load sessions</div>'
-          + '<button class="btn btn-primary btn-sm" onclick="window._historyLoadSessions()">Retry</button>'
+          + '<button class="btn btn-primary btn-sm" onclick="window._historyLoadSessions()" data-tooltip="Retry loading session data after a failed attempt. Network issues are usually temporary." data-help-page="/static/help/history.html#session-table">Retry</button>'
           + '</div>';
         window._historyLoadSessions = function () {
           var filterEl = document.getElementById('history-agent-filter');
@@ -202,7 +202,7 @@
         content.innerHTML = ''
           + '<div style="padding:8px 0">'
           + '<div style="margin-bottom:16px">'
-          + '<button class="btn btn-secondary btn-sm" id="btn-back-to-list" style="margin-bottom:12px">'
+          + '<button class="btn btn-secondary btn-sm" id="btn-back-to-list" style="margin-bottom:12px" data-tooltip="Return to the session list view. You can also use your browser back button." data-help-page="/static/help/history.html#session-table">'
           +   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
           +   'Back to List'
           + '</button>'
@@ -273,7 +273,7 @@
         content.innerHTML = ''
           + '<div style="padding:8px 0">'
           + '<div style="margin-bottom:16px">'
-          + '<button class="btn btn-secondary btn-sm" id="btn-back-to-list" style="margin-bottom:12px">'
+          + '<button class="btn btn-secondary btn-sm" id="btn-back-to-list" style="margin-bottom:12px" data-tooltip="Return to the session list view. You can also use your browser back button." data-help-page="/static/help/history.html#session-table">'
           +   '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg>'
           +   'Back to List'
           + '</button>'

@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open WebUI — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Open WebUI Integration</h1>
+
+<h2 id="overview">Overview</h2>
+<p>Open WebUI is an optional integrated chat interface that runs alongside Workbench. When enabled, it provides an alternative chat experience with model management, conversation history, and a modern chat UI. Access it as an embedded iframe within the Workbench app or open it in a separate tab.</p>
+
+<h2 id="health-check">Health Check</h2>
+<p>The status display shows whether Open WebUI is reachable:</p>
+<ul>
+  <li><strong>Green dot — Active</strong>: Open WebUI is running and healthy</li>
+  <li><strong>Gray dot — Unreachable</strong>: Open WebUI is not responding</li>
+  <li><strong>Red dot — Error</strong>: Open WebUI returned an error</li>
+</ul>
+
+<h2 id="retry">Retry Button</h2>
+<p>If Open WebUI is unreachable, click "Retry" to re-check the connection. This performs a fresh health check against the Open WebUI backend.</p>
+
+<h2 id="open-new-tab">Open in New Tab</h2>
+<p>Click this link to open Open WebUI in a separate browser tab at <code>/open-webui/</code>. This gives you the full Open WebUI interface without the Workbench iframe wrapper.</p>
+
+<h2 id="iframe">Embedded View</h2>
+<p>When Open WebUI is healthy, it appears as an embedded iframe within the Workbench tab. All Open WebUI features (chat, model management, document upload) are available within this embed.</p>
+
+<div class="tip"><strong>Note:</strong> Open WebUI runs as a separate Docker container. If it's not healthy, verify the container is running: <code>docker compose ps open-webui</code></div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

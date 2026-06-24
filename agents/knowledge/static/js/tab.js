@@ -32,7 +32,7 @@
     var el = document.getElementById("kb-left-panel");
     el.innerHTML =
       '<h3 class="kb-panel-title">Knowledge Bases</h3>' +
-      '<button class="btn btn-primary btn-sm" id="kb-new-btn" style="width:100%;margin-bottom:12px">' +
+      '<button class="btn btn-primary btn-sm" id="kb-new-btn" style="width:100%;margin-bottom:12px" data-tooltip="Create a new knowledge base collection for storing and querying documents." data-help-page="/static/help/knowledge.html#create-collection">' +
       'New Knowledge Base</button>' +
       '<div id="kb-new-form" style="display:none"></div>' +
       '<div id="kb-list"></div>';
@@ -47,25 +47,25 @@
         '<div class="kb-form-box">' +
         '<div class="form-group">' +
         '<label>Name</label>' +
-        '<input class="form-input" id="kb-new-name" placeholder="My Knowledge Base" style="font-size:12px;padding:6px 10px" />' +
+        '<input class="form-input" id="kb-new-name" placeholder="My Knowledge Base" style="font-size:12px;padding:6px 10px" data-tooltip="Name for your knowledge base collection. Used to identify it in the sidebar." data-help-page="/static/help/knowledge.html#create-collection" />' +
         '</div>' +
         '<div class="form-group">' +
         '<label>Description</label>' +
-        '<input class="form-input" id="kb-new-desc" placeholder="Optional" style="font-size:12px;padding:6px 10px" />' +
+        '<input class="form-input" id="kb-new-desc" placeholder="Optional" style="font-size:12px;padding:6px 10px" data-tooltip="Optional description of the collection's purpose and content." data-help-page="/static/help/knowledge.html#create-collection" />' +
         '</div>' +
         '<div style="display:flex;gap:8px">' +
         '<div class="form-group" style="flex:1">' +
         '<label>Chunk Size</label>' +
-        '<input class="form-input" type="number" id="kb-new-chunk" value="1000" min="200" max="8000" style="font-size:12px;padding:6px 10px" />' +
+        '<input class="form-input" type="number" id="kb-new-chunk" value="1000" min="200" max="8000" style="font-size:12px;padding:6px 10px" data-tooltip="Size of text chunks for embedding (in tokens). Smaller chunks (256-512) for Q&A, larger for summarization." data-help-page="/static/help/knowledge.html#create-collection" />' +
         '</div>' +
         '<div class="form-group" style="flex:1">' +
         '<label>Overlap</label>' +
-        '<input class="form-input" type="number" id="kb-new-overlap" value="200" min="0" max="2000" style="font-size:12px;padding:6px 10px" />' +
+        '<input class="form-input" type="number" id="kb-new-overlap" value="200" min="0" max="2000" style="font-size:12px;padding:6px 10px" data-tooltip="Overlap between consecutive chunks (in tokens). Helps maintain context across chunk boundaries." data-help-page="/static/help/knowledge.html#create-collection" />' +
         '</div>' +
         '</div>' +
         '<div style="display:flex;gap:8px;margin-top:8px">' +
-        '<button class="btn btn-primary btn-sm" id="kb-new-create">Create</button>' +
-        '<button class="btn btn-secondary btn-sm" id="kb-new-cancel">Cancel</button>' +
+        '<button class="btn btn-primary btn-sm" id="kb-new-create" data-tooltip="Create the knowledge base collection with the specified settings." data-help-page="/static/help/knowledge.html#create-collection">Create</button>' +
+        '<button class="btn btn-secondary btn-sm" id="kb-new-cancel" data-tooltip="Discard the new collection form without saving." data-help-page="/static/help/knowledge.html#create-collection">Cancel</button>' +
         '</div>' +
         '<div id="kb-new-status" style="margin-top:8px;font-size:11px;color:var(--text-muted)"></div>' +
         '</div>';
@@ -105,7 +105,7 @@
           active +
           '" data-kb-id="' +
           Utils.escapeHtml(kb.id) +
-          '">' +
+          '" data-tooltip="Click to select this knowledge base. All subsequent uploads and queries target this collection." data-help-page="/static/help/knowledge.html#collection-list">' +
           '<div class="kb-item-name">' +
           Utils.escapeHtml(kb.name) +
           "</div>" +
@@ -178,7 +178,7 @@
 
     el.innerHTML =
       '<h3 class="kb-panel-title">Documents</h3>' +
-      '<div class="kb-upload-zone" id="kb-upload-zone">' +
+      '<div class="kb-upload-zone" id="kb-upload-zone" data-tooltip="Drag and drop files or click to browse. Supported formats: .txt, .pdf, .md, .html. Uploaded files are chunked and embedded." data-help-page="/static/help/knowledge.html#file-upload">' +
       '<div id="kb-upload-progress" class="kb-progress-bar" style="display:none"><div class="kb-progress-fill"></div></div>' +
       '<div id="kb-upload-text" style="text-align:center">Drop files here or click to browse<br><span style="font-size:11px;color:var(--text-muted)">Supports .txt, .md, .pdf</span></div>' +
       '<input type="file" id="kb-file-input" accept=".txt,.md,.pdf" style="display:none" />' +
@@ -186,9 +186,9 @@
       '<details class="kb-paste-section">' +
       '<summary class="kb-paste-summary">Paste text instead</summary>' +
       '<div class="form-group" style="margin-top:8px">' +
-      '<input class="form-input" id="kb-paste-filename" placeholder="Filename (optional)" style="font-size:12px;padding:6px 10px;margin-bottom:8px" />' +
-      '<textarea class="form-input" id="kb-paste-content" placeholder="Paste your text here..." style="min-height:120px;font-size:12px;padding:8px;resize:vertical" rows="6"></textarea>' +
-      '<button class="btn btn-primary btn-sm" id="kb-paste-submit" style="margin-top:8px">Ingest Text</button>' +
+      '<input class="form-input" id="kb-paste-filename" placeholder="Filename (optional)" style="font-size:12px;padding:6px 10px;margin-bottom:8px" data-tooltip="Name for the pasted text document — used for identification in the document list." data-help-page="/static/help/knowledge.html#paste-text" />' +
+      '<textarea class="form-input" id="kb-paste-content" placeholder="Paste your text here..." style="min-height:120px;font-size:12px;padding:8px;resize:vertical" rows="6" data-tooltip="Paste text content here. It will be chunked and embedded into the vector store." data-help-page="/static/help/knowledge.html#paste-text"></textarea>' +
+      '<button class="btn btn-primary btn-sm" id="kb-paste-submit" style="margin-top:8px" data-tooltip="Chunk and embed the pasted text into the selected knowledge base." data-help-page="/static/help/knowledge.html#paste-text">Ingest Text</button>' +
       "</div>" +
       "</details>" +
       '<div id="kb-documents-list"></div>';
@@ -383,7 +383,7 @@
             "</span>" +
             '<button class="btn btn-danger btn-xs kb-doc-delete" data-doc-id="' +
             Utils.escapeHtml(doc.id) +
-            '" title="Delete document">x</button>' +
+            '" title="Delete document" data-tooltip="Remove this document from the knowledge base and vector store." data-help-page="/static/help/knowledge.html#document-management">x</button>' +
             "</div>" +
             '<div class="kb-doc-meta">' +
             (doc.chunk_count || 0) +
@@ -444,8 +444,8 @@
       '<h3 class="kb-panel-title">Query</h3>' +
       '<div id="kb-query-messages" style="flex:1;overflow-y:auto;margin-bottom:12px;padding:8px 0"></div>' +
       '<div style="display:flex;gap:8px">' +
-      '<input class="form-input" id="kb-query-input" placeholder="Ask a question about your documents..." style="flex:1;font-size:14px" onkeydown="if(event.key==\'Enter\')window.kbQuerySend()" />' +
-      '<button class="btn btn-primary" onclick="window.kbQuerySend()">Send</button>' +
+      '<input class="form-input" id="kb-query-input" placeholder="Ask a question about your documents..." style="flex:1;font-size:14px" onkeydown="if(event.key==\'Enter\')window.kbQuerySend()" data-tooltip="Ask a question about your documents. The agent retrieves relevant chunks and generates a contextual answer." data-help-page="/static/help/knowledge.html#query" />' +
+      '<button class="btn btn-primary" onclick="window.kbQuerySend()" data-tooltip="Submit your query. The agent searches the vector store for relevant document chunks and synthesizes an answer." data-help-page="/static/help/knowledge.html#query">Send</button>' +
       "</div>" +
       '<div style="margin-top:6px;font-size:11px;color:var(--text-muted)">Responses are based on your ingested documents</div>';
 

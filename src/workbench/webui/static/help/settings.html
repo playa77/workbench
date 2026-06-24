@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Settings — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Settings</h1>
+
+<h2 id="profile">Profile</h2>
+<p>Displays your username and email address. These are set during account creation and cannot be changed from the UI.</p>
+
+<h2 id="change-password">Change Password</h2>
+<p>Enter your current password and a new password (minimum 8 characters). Click "Save Password" to update. You'll stay logged in after the change.</p>
+
+<h2 id="invite-users">Invite Users (Admin Only)</h2>
+<p>Admins can invite new users by entering their email and desired username. An invitation email is sent (if SMTP is configured) containing a link the recipient uses to set their password. Existing invites are listed with "Revoke" buttons to cancel pending invitations.</p>
+
+<h2 id="brave-search">Brave Search API Key</h2>
+<p>Used for web search in Deep Research. Enter your Brave Search API key (format: <code>BSA-...</code>) and click "Save Key". Once saved, the key is displayed in masked form (<code>BSA-...xyz</code>). Click "Remove Key" to delete it.</p>
+<div class="tip"><strong>Tip:</strong> Brave Search offers a free tier with 2,000 queries/month. Sign up at <a href="https://brave.com/search/api/" style="color:var(--accent)">brave.com/search/api</a>.</div>
+
+<h2 id="email-config">Email Configuration (Admin Only)</h2>
+<p>Configure SMTP settings for sending password reset emails and user invitations. Fields: SMTP host, port (default 587), username, password, from address. A Google API token textarea is available for Gmail OAuth2 authentication.</p>
+
+<h2 id="inference-providers">Inference Providers</h2>
+<p>Manage your LLM API connections. Each provider has:</p>
+<ul>
+  <li><strong>Name</strong> — display label (e.g. "OpenRouter", "OpenAI")</li>
+  <li><strong>API Key</strong> — the provider's API key (displayed masked after saving)</li>
+  <li><strong>URL</strong> — the API endpoint (default: <code>https://openrouter.ai/api/v1</code>)</li>
+  <li><strong>Strong Model</strong> — model ID for complex tasks (e.g. <code>deepseek/deepseek-v4-pro</code>)</li>
+  <li><strong>Quick Model</strong> — model ID for fast/lightweight tasks (e.g. <code>deepseek/deepseek-v4-flash</code>)</li>
+  <li><strong>Rate Limit</strong> — requests per minute (0 = unlimited)</li>
+  <li><strong>Set Default</strong> — makes this provider the default for all agents</li>
+</ul>
+<p>Click "Add Provider" to create a new one. Each provider card has Edit and Delete buttons.</p>
+
+<h2 id="theme">Theme</h2>
+<p>Toggle between Dark and Light mode. The button label updates to reflect the current state ("Switch to Light Theme" vs "Switch to Dark Theme"). Your preference is saved to localStorage and persists across sessions.</p>
+
+<h2 id="agents">Agent Settings</h2>
+<p>A grid of cards for each registered agent. Each card shows the agent name, description, and version. Features:</p>
+<ul>
+  <li><strong>Enable/Disable toggle</strong> — hides the agent tab from the header when disabled</li>
+  <li><strong>Plugin settings form</strong> — dynamically generated form fields based on the agent's schema. Field types include text, number, boolean (checkbox), enum (select), and others</li>
+  <li><strong>Save Settings</strong> — persists agent-specific configuration</li>
+</ul>
+
+<h2 id="api-keys">My API Keys</h2>
+<p>Create and manage personal API keys for programmatic access. Keys use the <code>wb-</code> prefix. Each key requires a descriptive name (label). When created, the full key is shown once — copy it immediately as it cannot be retrieved later. Keys can be deleted individually.</p>
+<div class="tip"><strong>Limit:</strong> Maximum 5 API keys per user.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>

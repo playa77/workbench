@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Knowledge Base — Workbench Help</title>
+  <link rel="stylesheet" href="/static/css/base.css">
+  <link rel="stylesheet" href="/static/css/theme-dark.css">
+  <style>
+    body { padding: 40px; max-width: 800px; margin: 0 auto; }
+    h1 { font-size: 24px; margin-bottom: 8px; color: var(--accent); }
+    h2 { font-size: 18px; margin: 28px 0 10px; color: var(--text-primary); border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+    h3 { font-size: 15px; margin: 20px 0 8px; color: var(--text-primary); }
+    p, li { font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    code { font-family: var(--font-mono); font-size: 12px; background: var(--bg-code); padding: 2px 5px; border-radius: 4px; }
+    .back-link { display: inline-block; margin-top: 24px; font-size: 12px; color: var(--text-muted); }
+    .tip { background: var(--accent-bg); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 4px; margin: 12px 0; font-size: 13px; }
+  </style>
+</head>
+<body>
+
+<h1>Knowledge Base</h1>
+
+<h2 id="overview">Overview</h2>
+<p>The Knowledge Base agent lets you create collections of documents, upload files, paste text, and query your content using semantic search powered by ChromaDB vector embeddings. Think of it as your personal RAG (Retrieval-Augmented Generation) system.</p>
+
+<h2 id="collections">Collections</h2>
+<p>Collections are named containers for documents. Each collection has independent chunking settings. Click a collection in the sidebar to select it — all subsequent uploads and queries target that collection.</p>
+
+<h3 id="create-collection">Creating a Collection</h3>
+<p>Click "New Knowledge Base" and fill in:</p>
+<ul>
+  <li><strong>Name</strong> — descriptive label for this collection</li>
+  <li><strong>Description</strong> — optional notes about the collection's purpose</li>
+  <li><strong>Chunk Size</strong> — size of text chunks for embedding (tokens)</li>
+  <li><strong>Chunk Overlap</strong> — overlap between consecutive chunks (tokens)</li>
+</ul>
+<p>Click "Create" to save or "Cancel" to abort.</p>
+
+<h3 id="collection-list">Collection List</h3>
+<p>All your collections appear on the left. Click a collection to select it. The main area updates to show that collection's documents and query interface.</p>
+
+<h2 id="file-upload">File Upload</h2>
+<p>Drag and drop files onto the upload zone or click to browse. Supported formats include <code>.txt</code>, <code>.pdf</code>, <code>.md</code>, <code>.html</code>, and more. Uploaded files are chunked according to the collection's settings and embedded into the vector database.</p>
+
+<h2 id="paste-text">Paste Text</h2>
+<p>Expand the "Paste Text" section to manually enter content. Provide a filename (for identification in the document list) and paste your text content. Click "Ingest Text" to chunk and embed the content.</p>
+
+<h2 id="document-management">Document Management</h2>
+<p>Documents in the selected collection are listed with their names and sizes. Click the delete button (trash icon) next to any document to remove it from the collection and vector store.</p>
+
+<h2 id="query">Querying</h2>
+<p>Type your question in the query input and click "Send" (or press Enter). The agent retrieves the most relevant chunks from the vector store and feeds them to the LLM for a contextual answer. Results show both the answer and the source document excerpts.</p>
+
+<div class="tip"><strong>Tip:</strong> Adjust chunk size based on your content type — smaller chunks (256-512) for Q&A, larger chunks (1024+) for document summarization.</div>
+
+<a class="back-link" href="/static/help/index.html">← Back to Help Index</a>
+
+</body>
+</html>
