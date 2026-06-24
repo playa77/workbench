@@ -1,0 +1,32 @@
+/* ==========================================
+   Workbench — Light Theme
+   Clean, professional, high-contrast
+   ========================================== */
+
+[data-theme="light"] {
+  --bg-primary: #f8f9fa;
+  --bg-secondary: #ffffff;
+  --bg-header: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: #f0f3f5;
+  --bg-input: #ffffff;
+  --bg-code: #f0f3f5;
+
+  --text-primary: #1a1d23;
+  --text-secondary: #495057;
+  --text-muted: #868e96;
+
+  --border-color: #dee2e6;
+
+  --accent: #2563eb;
+  --accent-bg: #eff6ff;
+
+  --success: #059669;
+  --success-bg: #ecfdf5;
+
+  --danger: #dc2626;
+  --danger-bg: #fef2f2;
+
+  --warning: #d97706;
+  --warning-bg: #fffbeb;
+}

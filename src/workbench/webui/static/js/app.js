@@ -415,6 +415,9 @@
         var p = providers[i];
         var badge = p.is_default ? ' <span style="background:var(--accent);color:#fff;padding:2px 8px;border-radius:4px;font-size:11px">Default</span>' : '';
         var serverFallback = p.id === null ? ' <span style="color:var(--text-muted);font-size:11px">(server fallback — add a key to override)</span>' : '';
+        var keyDisplay = p.masked_key
+          ? '<div><span style="color:var(--text-secondary)">API Key:</span> <code style="font-size:12px;background:var(--bg-code);padding:1px 6px;border-radius:3px">' + Utils.escapeHtml(p.masked_key) + '</code></div>'
+          : (p.has_api_key ? '<div><span style="color:var(--text-secondary)">API Key:</span> <span style="font-size:12px;color:var(--text-muted)">(stored)</span></div>' : '');
         html += '<div class="card provider-card" style="margin-bottom:12px;padding:16px" id="provider-card-' + (p.id || 'fallback') + '">' +
           '<div style="display:flex;justify-content:space-between;align-items:start">' +
           '<div>' +
@@ -434,6 +437,7 @@
           '<div><span style="color:var(--text-secondary)">Strong Model:</span> ' + Utils.escapeHtml(p.strong_model) + '</div>' +
           '<div><span style="color:var(--text-secondary)">Quick Model:</span> ' + Utils.escapeHtml(p.quick_model) + '</div>' +
           '<div><span style="color:var(--text-secondary)">Rate Limit:</span> ' + (p.requests_per_minute || 0) + ' RPM</div>' +
+          keyDisplay +
           '</div>' +
           '<div id="provider-edit-form-' + (p.id || 'new') + '" style="display:none;margin-top:12px"></div>' +
           '</div>';
@@ -446,14 +450,14 @@
     }
 
     function buildProviderFormHTML(provider, isNew, formSuffix) {
-      // Builds an inline add/edit form for a provider
-      // provider: the existing provider data (or empty for new)
-      // isNew: true for "Add Provider" form, false for edit
-      // formSuffix: unique suffix for element IDs to avoid collisions
       provider = provider || {};
       formSuffix = formSuffix || (provider && provider.id) || 'new';
       var title = isNew ? 'Add Provider' : 'Edit Provider';
-      var apiKeyPlaceholder = isNew ? 'sk-...' : '(unchanged — enter new to replace)';
+      var hasKey = provider.masked_key || (provider.has_api_key && !isNew);
+      var apiKeyPlaceholder = isNew ? 'sk-...' : 'Enter new key to replace';
+      var keyStatusHtml = !isNew && hasKey
+        ? '<div style="font-size:12px;color:var(--text-muted);margin-bottom:4px">Current: <code style="font-size:12px;background:var(--bg-code);padding:1px 6px;border-radius:3px">' + Utils.escapeHtml(provider.masked_key || '(stored)') + '</code></div>'
+        : '';
       var modelSuggestions = [];
       // Model suggestions are no longer hardcoded — enter the model IDs
       // your provider supports (e.g., "deepseek-ai/deepseek-v4-pro" for
@@ -466,6 +470,7 @@
         '</div>' +
         '<div class="form-group">' +
         '<label>API Key</label>' +
+        keyStatusHtml +
         '<input class="form-input" id="prov-form-key-' + formSuffix + '" type="password" placeholder="' + apiKeyPlaceholder + '" />' +
         '</div>' +
         '<div class="form-group">' +
@@ -766,13 +771,15 @@
         : keys.map(function (k) {
           var created = k.created_at ? k.created_at.split('T')[0] : '';
           var lastUsed = k.last_used_at ? 'Last used ' + k.last_used_at.split('T')[0] : '';
-          var fp = k.key_fingerprint
-            ? '<span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono)">' + Utils.escapeHtml(k.key_fingerprint) + '</span>'
-            : '';
+          var maskedDisplay = k.key_masked
+            ? '<span style="font-size:11px;color:var(--text-muted);font-family:var(--font-mono);margin-left:6px">' + Utils.escapeHtml(k.key_masked) + '</span>'
+            : (k.key_fingerprint
+              ? '<span style="font-size:10px;color:var(--text-muted);font-family:var(--font-mono);margin-left:6px">' + Utils.escapeHtml(k.key_fingerprint) + '</span>'
+              : '');
           return '<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border-color)">' +
             '<div>' +
             '<span style="font-weight:500;font-size:13px">' + Utils.escapeHtml(k.label) + '</span>' +
-            (fp ? ' <span style="margin-left:6px">' + fp + '</span>' : '') +
+            maskedDisplay +
             '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">Created ' + created + '</span>' +
             (lastUsed ? '<span style="font-size:11px;color:var(--text-muted);margin-left:8px">' + lastUsed + '</span>' : '') +
             '</div>' +
@@ -797,9 +804,16 @@
 
       section.querySelectorAll('[data-delete-key]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
-          await API.deleteApiKey(btn.dataset.deleteKey);
-          Utils.showToast('Key deleted', 'info');
-          loadApiKeys();
+          if (!confirm('Delete this API key? This cannot be undone.')) return;
+          Utils.setButtonLoading(btn, 'Deleting...');
+          try {
+            await API.deleteApiKey(btn.dataset.deleteKey);
+            Utils.showToast('Key deleted', 'info');
+            loadApiKeys();
+          } catch (e) {
+            Utils.resetButton(btn);
+            Utils.showToast('Error: ' + e.message, 'error');
+          }
         });
       });
 
@@ -869,10 +883,13 @@
       });
       listEl.querySelectorAll('[data-revoke-invite]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
+          if (!confirm('Revoke this invite?')) return;
+          Utils.setButtonLoading(btn, 'Revoking...');
           try {
             await API.deleteInvite(btn.dataset.revokeInvite);
             loadInviteList();
           } catch (e) {
+            Utils.resetButton(btn);
             document.getElementById('invite-status').textContent = 'Error: ' + e.message;
           }
         });
@@ -912,13 +929,15 @@
     container.innerHTML +=
       '<div class="settings-section">' +
       '<h3>Change Password</h3>' +
+      '<div class="settings-grid">' +
       '<div class="form-group">' +
       '<label>Current Password</label>' +
-      '<input class="form-input" id="change-password-current" type="password" placeholder="Current password" />' +
+      '<input class="form-input settings-field-limited" id="change-password-current" type="password" placeholder="Current password" />' +
       '</div>' +
       '<div class="form-group">' +
       '<label>New Password</label>' +
-      '<input class="form-input" id="change-password-new" type="password" placeholder="New password (min 8 chars)" />' +
+      '<input class="form-input settings-field-limited" id="change-password-new" type="password" placeholder="New password (min 8 chars)" />' +
+      '</div>' +
       '</div>' +
       '<button class="btn btn-primary" id="btn-change-password">Save Password</button>' +
       '<div id="change-password-message" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
@@ -946,6 +965,7 @@
     container.innerHTML +=
       '<div class="settings-section">' +
       '<h3>Invite Users</h3>' +
+      '<div class="settings-grid">' +
       '<div class="form-group">' +
       '<label>Email</label>' +
       '<input class="form-input" id="invite-email" type="email" placeholder="user@example.com" />' +
@@ -953,6 +973,7 @@
       '<div class="form-group">' +
       '<label>Username</label>' +
       '<input class="form-input" id="invite-username" placeholder="username" />' +
+      '</div>' +
       '</div>' +
       '<button class="btn btn-primary" id="btn-send-invite">Send Invite</button>' +
       '<div id="invite-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
@@ -981,13 +1002,18 @@
 
   function renderBraveKeySection(container, currentUser) {
     var hasBraveKey = currentUser && currentUser.has_brave_key;
+    var braveMasked = currentUser && currentUser.brave_key_masked || null;
+    var keyStatusHtml = hasBraveKey
+      ? '<div style="margin-bottom:8px;font-size:12px;color:var(--text-muted)">Current key: <code style="font-size:12px;background:var(--bg-code);padding:1px 6px;border-radius:3px">' + Utils.escapeHtml(braveMasked || '(stored)') + '</code></div>'
+      : '';
     container.innerHTML +=
       '<div class="settings-section">' +
       '<h3>Brave Search API Key</h3>' +
       '<p>Optional — used for web search in Deep Research. Falls back to the server-wide BRAVE_SEARCH_API_KEY if set.</p>' +
-      '<div class="form-group">' +
+      keyStatusHtml +
+      '<div class="form-group settings-field-limited">' +
       '<input class="form-input" id="brave-key-input" type="password" placeholder="' +
-      (hasBraveKey ? '(stored — enter new to replace)' : 'BSA-...') + '" />' +
+      (hasBraveKey ? '(enter new to replace)' : 'BSA-...') + '" />' +
       '</div>' +
       '<button class="btn btn-primary" id="btn-save-brave-key">Save Key</button>' +
       (hasBraveKey ? '<button class="btn btn-danger btn-sm" id="btn-delete-brave-key" style="margin-left:8px">Remove Key</button>' : '') +
@@ -1003,6 +1029,8 @@
         await API.setBraveKey(val);
         Utils.setButtonSuccess(this, 'Saved!');
         document.getElementById('brave-key-status').textContent = 'Key saved.';
+        currentUser = await API.me();
+        renderSettings(document.getElementById('settings-panel'));
       } catch (e) {
         Utils.resetButton(this);
         document.getElementById('brave-key-status').textContent = 'Error: ' + e.message;
@@ -1010,8 +1038,16 @@
     });
 
     document.getElementById('btn-delete-brave-key') && document.getElementById('btn-delete-brave-key').addEventListener('click', async function () {
-      await API.deleteBraveKey();
-      renderSettings(document.querySelector('#active-tab-content'));
+      if (!confirm('Remove Brave Search API key?')) return;
+      Utils.setButtonLoading(this, 'Removing...');
+      try {
+        await API.deleteBraveKey();
+        currentUser = await API.me();
+        renderSettings(document.getElementById('settings-panel'));
+      } catch (e) {
+        Utils.resetButton(this);
+        document.getElementById('brave-key-status').textContent = 'Error: ' + e.message;
+      }
     });
   }
 
@@ -1020,6 +1056,7 @@
       '<div class="settings-section">' +
       '<h3>Email Configuration (Server)</h3>' +
       '<p>SMTP settings for outgoing emails. Sent from playa77@gmail.com via Gmail API or SMTP.</p>' +
+      '<div class="settings-grid">' +
       '<div class="form-group">' +
       '<label>SMTP Host</label>' +
       '<input class="form-input" id="smtp-host" type="text" placeholder="smtp.gmail.com" />' +
@@ -1043,6 +1080,7 @@
       '<div class="form-group">' +
       '<label>Google API Token <span style="font-size:11px;color:var(--text-muted)">(for Gmail API access)</span></label>' +
       '<textarea class="form-input" id="google-token" rows="3" placeholder="Google OAuth2 refresh token for playa77@gmail.com" style="resize:vertical;font-family:monospace;font-size:12px"></textarea>' +
+      '</div>' +
       '</div>' +
       '<button class="btn btn-primary" id="btn-save-server-config">Save Config</button>' +
       '<div id="server-config-status" style="margin-top:8px;font-size:12px;color:var(--text-muted)"></div>' +
@@ -1080,7 +1118,7 @@
 
     document.getElementById('btn-theme-switch') && document.getElementById('btn-theme-switch').addEventListener('click', function () {
       Theme.toggle();
-      renderSettings(document.querySelector('#active-tab-content'));
+      this.textContent = 'Switch to ' + (Theme.get() === 'dark' ? 'Light' : 'Dark') + ' Theme';
     });
   }
 
@@ -1107,6 +1145,7 @@
       '</div>';
 
     document.getElementById('btn-logout') && document.getElementById('btn-logout').addEventListener('click', async function () {
+      Utils.setButtonLoading(this, 'Signing out...');
       await API.logout();
       currentUser = null;
       location.reload();
@@ -1133,10 +1172,19 @@
 
   /* ---- Global helpers ---- */
   window.toggleAgent = async function (name, enabled) {
+    var checkbox = document.querySelector('.agent-toggle[data-agent="' + name + '"]');
+    if (checkbox) checkbox.disabled = true;
     try {
       await API.updateAgentSettings(name, { enabled: enabled });
       renderTabs();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      if (checkbox) {
+        checkbox.checked = !enabled;
+        checkbox.disabled = false;
+      }
+      console.error(e);
+      Utils.showToast('Failed to update agent: ' + e.message, 'error');
+    }
   };
 
   /* ---- SVG icons ---- */

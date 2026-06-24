@@ -51,6 +51,7 @@ class UserApiKey(Base):
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False)
     key_hash: Mapped[str] = mapped_column(String(120), nullable=False)
     key_lookup: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    key_masked: Mapped[str | None] = mapped_column(String(20), nullable=True)
     label: Mapped[str] = mapped_column(String(100), nullable=False, default="default")
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -77,6 +78,7 @@ class UserBraveKey(Base):
     id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), unique=True, nullable=False)
     encrypted_key: Mapped[str] = mapped_column(Text, nullable=False)
+    masked_key: Mapped[str | None] = mapped_column(String(20), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=func.now())
 
     user: Mapped["User"] = relationship(back_populates="brave_key")
@@ -96,6 +98,7 @@ class UserInferenceProvider(Base):
     user_id: Mapped[UUID] = mapped_column(Uuid, ForeignKey("workbench_users.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(100), nullable=False, default="Default")
     api_key: Mapped[str | None] = mapped_column(Text, nullable=True)
+    api_key_masked: Mapped[str | None] = mapped_column(String(20), nullable=True)
     provider_url: Mapped[str] = mapped_column(String(500), nullable=False, default="https://openrouter.ai/api/v1")
     strong_model: Mapped[str] = mapped_column(String(200), nullable=False, default="deepseek/deepseek-v4-pro")
     quick_model: Mapped[str] = mapped_column(String(200), nullable=False, default="deepseek/deepseek-v4-flash")

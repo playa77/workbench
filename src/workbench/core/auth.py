@@ -36,11 +36,19 @@ security_scheme = HTTPBearer(auto_error=False)
 _SESSION_COOKIE = "workbench_session"
 
 
-def generate_api_key(prefix: str = "wb", expiry_days: int | None = None) -> tuple[str, str, str]:
+def generate_api_key(prefix: str = "wb", expiry_days: int | None = None) -> tuple[str, str, str, str]:
     raw = f"{prefix}-{secrets.token_urlsafe(32)}"
     hashed = bcrypt.hashpw(raw.encode(), bcrypt.gensalt()).decode()
     lookup = _hash_token(raw)
-    return raw, hashed, lookup
+    masked = mask_api_key(raw)
+    return raw, hashed, lookup, masked
+
+
+def mask_api_key(raw: str) -> str:
+    """Mask an API key for display: show first 6 chars (incl. prefix) and last 3 chars."""
+    if len(raw) <= 9:
+        return raw
+    return raw[:6] + "..." + raw[-3:]
 
 
 def verify_api_key(raw_key: str, hashed: str) -> bool:
@@ -190,16 +198,29 @@ async def get_user_brave_key(user: User, session: AsyncSession) -> str | None:
     return encryption.decrypt(row.encrypted_key)
 
 
+async def get_user_brave_key_info(user: User, session: AsyncSession) -> tuple[bool, str | None]:
+    """Returns (has_key, masked_key) for the user's Brave Search API key."""
+    result = await session.execute(
+        select(UserBraveKey).where(UserBraveKey.user_id == user.id)
+    )
+    row = result.scalar_one_or_none()
+    if row is None:
+        return False, None
+    return True, row.masked_key
+
+
 async def set_user_brave_key(user: User, api_key: str, session: AsyncSession) -> None:
     encrypted = encryption.encrypt(api_key)
+    masked = mask_api_key(api_key)
     result = await session.execute(
         select(UserBraveKey).where(UserBraveKey.user_id == user.id)
     )
     row = result.scalar_one_or_none()
     if row is not None:
         row.encrypted_key = encrypted
+        row.masked_key = masked
     else:
-        session.add(UserBraveKey(user_id=user.id, encrypted_key=encrypted))
+        session.add(UserBraveKey(user_id=user.id, encrypted_key=encrypted, masked_key=masked))
     await session.commit()
 
 
@@ -226,6 +247,7 @@ async def get_user_inference_providers(
             "requests_per_minute": config.inference_requests_per_minute,
             "is_default": True,
             "has_api_key": bool(os.environ.get("OPENROUTER_API_KEY")),
+            "masked_key": None,
         }]
     return [
         {
@@ -237,6 +259,7 @@ async def get_user_inference_providers(
             "requests_per_minute": row.requests_per_minute,
             "is_default": row.is_default,
             "has_api_key": row.api_key is not None,
+            "masked_key": row.api_key_masked,
         }
         for row in rows
     ]
@@ -289,6 +312,7 @@ async def create_inference_provider(
         user_id=user.id,
         name=name,
         api_key=encryption.encrypt(api_key) if api_key else None,
+        api_key_masked=mask_api_key(api_key) if api_key else None,
         provider_url=provider_url,
         strong_model=strong_model,
         quick_model=quick_model,
@@ -330,6 +354,7 @@ async def update_inference_provider(
         provider.name = name
     if api_key is not None:
         provider.api_key = encryption.encrypt(api_key) if len(api_key) > 0 else None
+        provider.api_key_masked = mask_api_key(api_key) if len(api_key) > 0 else None
     if provider_url is not None:
         provider.provider_url = provider_url
     if strong_model is not None:

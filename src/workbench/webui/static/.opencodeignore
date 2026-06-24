@@ -1,0 +1,12 @@
+# Additional patterns beyond .gitignore for OpenCode context filtering.
+# .gitignore patterns are ALREADY inherited -- only add project-specific
+# patterns here that should be hidden from the AI assistant.
+
+# Legacy sub-project reference archives (integrated into agents/services)
+MADS/
+PResearch/
+PlanExe/
+stoa/
+ai_news_scraper/
+citizen/
+open-webui-wrapper/

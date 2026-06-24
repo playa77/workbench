@@ -17,7 +17,7 @@ from workbench.core.auth import (
     generate_api_key,
     generate_token,
     get_current_user,
-    get_user_brave_key,
+    get_user_brave_key_info,
     get_user_inference_api_key,
     get_user_inference_providers,
     get_server_config,
@@ -89,6 +89,7 @@ class ApiKeyResponse(BaseModel):
     id: str
     label: str
     key_fingerprint: str | None = None
+    key_masked: str | None = None
     created_at: str
     last_used_at: str | None
     expires_at: str | None = None
@@ -120,6 +121,7 @@ class InferenceProviderResponse(BaseModel):
     requests_per_minute: int
     is_default: bool
     has_api_key: bool
+    masked_key: str | None = None
 
 
 class UserProfile(BaseModel):
@@ -130,6 +132,7 @@ class UserProfile(BaseModel):
     has_password: bool = False
     created_at: str
     has_brave_key: bool = False
+    brave_key_masked: str | None = None
     inference_providers: list[InferenceProviderResponse] = []
 
 
@@ -397,7 +400,7 @@ async def get_profile(
     user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
 ):
-    has_brave = await get_user_brave_key(user, session)
+    has_brave, brave_masked = await get_user_brave_key_info(user, session)
     providers = await get_user_inference_providers(user, session, request.app.state.config)
     return UserProfile(
         id=str(user.id),
@@ -406,7 +409,8 @@ async def get_profile(
         is_admin=user.is_admin,
         has_password=user.password_hash is not None,
         created_at=user.created_at.isoformat() if user.created_at else "",
-        has_brave_key=has_brave is not None,
+        has_brave_key=has_brave,
+        brave_key_masked=brave_masked,
         inference_providers=[InferenceProviderResponse(**p) for p in providers],
     )
 
@@ -471,6 +475,7 @@ async def list_api_keys(
             id=str(k.id),
             label=k.label,
             key_fingerprint=k.key_lookup[:8] if k.key_lookup else None,
+            key_masked=k.key_masked,
             created_at=k.created_at.isoformat() if k.created_at else "",
             last_used_at=k.last_used_at.isoformat() if k.last_used_at else None,
             expires_at=k.expires_at.isoformat() if k.expires_at else None,
@@ -496,8 +501,8 @@ async def create_api_key(
     if current_count >= max_keys:
         raise HTTPException(status_code=400, detail=f"Maximum of {max_keys} API keys reached")
 
-    raw_key, hashed, lookup = generate_api_key()
-    key = UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, label=body.label)
+    raw_key, hashed, lookup, masked_key = generate_api_key()
+    key = UserApiKey(user_id=user.id, key_hash=hashed, key_lookup=lookup, key_masked=masked_key, label=body.label)
     session.add(key)
     await session.commit()
     await session.refresh(key)
@@ -506,6 +511,7 @@ async def create_api_key(
         id=str(key.id),
         label=key.label,
         key_fingerprint=lookup[:8],
+        key_masked=key.key_masked,
         created_at=key.created_at.isoformat() if key.created_at else "",
         last_used_at=None,
         api_key=raw_key,
@@ -578,7 +584,9 @@ async def add_inference_provider(
         requests_per_minute=provider.requests_per_minute,
         is_default=provider.is_default,
         has_api_key=provider.api_key is not None,
+        masked_key=provider.api_key_masked,
     )
+
 
 
 @router.put("/me/inference-providers/{provider_id}", response_model=InferenceProviderResponse)
@@ -611,8 +619,8 @@ async def edit_inference_provider(
         requests_per_minute=provider.requests_per_minute,
         is_default=provider.is_default,
         has_api_key=provider.api_key is not None,
+        masked_key=provider.api_key_masked,
     )
-
 
 @router.delete("/me/inference-providers/{provider_id}")
 async def remove_inference_provider(
@@ -644,6 +652,7 @@ async def set_provider_default(
         requests_per_minute=provider.requests_per_minute,
         is_default=provider.is_default,
         has_api_key=provider.api_key is not None,
+        masked_key=provider.api_key_masked,
     )
 
 
