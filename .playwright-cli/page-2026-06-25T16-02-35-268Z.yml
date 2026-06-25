@@ -1,0 +1,230 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Workbench" [level=1] [ref=e5]
+        - generic [ref=e6]: v0.1.0
+      - navigation [ref=e64]:
+        - button "Chat" [ref=e65] [cursor=pointer]:
+          - img [ref=e66]
+          - text: Chat
+        - button "News Pipeline" [ref=e68] [cursor=pointer]:
+          - img [ref=e69]
+          - text: News Pipeline
+        - button "Debate Arena" [ref=e73] [cursor=pointer]:
+          - img [ref=e74]
+          - text: Debate Arena
+        - button "Deep Research" [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+          - text: Deep Research
+        - button "Consigliere" [ref=e83] [cursor=pointer]:
+          - img [ref=e84]
+          - text: Consigliere
+        - button "Strategic Planning" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - text: Strategic Planning
+        - button "Knowledge Base" [ref=e90] [cursor=pointer]:
+          - img [ref=e91]
+          - text: Knowledge Base
+        - button "OpenWebUI" [ref=e95] [cursor=pointer]:
+          - img [ref=e96]
+          - text: OpenWebUI
+        - button "History" [ref=e99] [cursor=pointer]:
+          - img [ref=e100]
+          - text: History
+        - button "Blog" [ref=e104] [cursor=pointer]:
+          - img [ref=e105]
+          - text: Blog
+        - button "Settings" [ref=e108] [cursor=pointer]:
+          - img [ref=e109]
+          - text: Settings
+      - generic [ref=e7]:
+        - button "Sign out" [ref=e8]:
+          - img [ref=e9]
+        - button "Toggle theme" [active] [ref=e12]:
+          - img [ref=e13]
+        - button "Settings" [ref=e19]:
+          - img [ref=e20]
+    - main [ref=e23]:
+      - generic [ref=e178]:
+        - heading "Settings" [level=2] [ref=e179]
+        - generic [ref=e180]:
+          - generic [ref=e181]:
+            - heading "Profile" [level=3] [ref=e182]
+            - paragraph [ref=e183]:
+              - text: Logged in as
+              - strong [ref=e184]: admin
+            - paragraph [ref=e185]: "Email: admin@gronowski.cc"
+          - generic [ref=e186]:
+            - heading "Change Password" [level=3] [ref=e187]
+            - generic [ref=e188]:
+              - generic [ref=e189]:
+                - generic [ref=e190]: Current Password
+                - textbox "Current password" [ref=e191]
+              - generic [ref=e192]:
+                - generic [ref=e193]: New Password
+                - textbox "New password (min 8 chars)" [ref=e194]
+            - button "Save Password" [ref=e195]
+          - generic [ref=e196]:
+            - heading "Invite Users" [level=3] [ref=e197]
+            - generic [ref=e198]:
+              - generic [ref=e199]:
+                - generic [ref=e200]: Email
+                - textbox "user@example.com" [ref=e201]
+              - generic [ref=e202]:
+                - generic [ref=e203]: Username
+                - textbox "username" [ref=e204]
+            - button "Send Invite" [ref=e205]
+            - paragraph [ref=e207]: No invites yet.
+          - generic [ref=e208]:
+            - heading "Brave Search API Key" [level=3] [ref=e209]
+            - paragraph [ref=e210]: Optional — used for web search in Deep Research. Falls back to the server-wide BRAVE_SEARCH_API_KEY if set.
+            - generic [ref=e211]:
+              - text: "Current key:"
+              - code [ref=e212]: BSA-te...321
+            - textbox "(enter new to replace)" [ref=e214]
+            - button "Save Key" [ref=e215]
+            - button "Remove Key" [ref=e216]
+          - generic [ref=e217]:
+            - heading "Email Configuration (Server)" [level=3] [ref=e218]
+            - paragraph [ref=e219]: SMTP settings for outgoing emails. Sent from playa77@gmail.com via Gmail API or SMTP.
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - generic [ref=e222]: SMTP Host
+                - textbox "smtp.gmail.com" [ref=e223]
+              - generic [ref=e224]:
+                - generic [ref=e225]: SMTP Port
+                - spinbutton [ref=e226]
+              - generic [ref=e227]:
+                - generic [ref=e228]: SMTP User (email address)
+                - textbox "playa77@gmail.com" [ref=e229]
+              - generic [ref=e230]:
+                - generic [ref=e231]: SMTP Password / App Password
+                - textbox "App password" [ref=e232]
+              - generic [ref=e233]:
+                - generic [ref=e234]: From Address
+                - textbox "playa77@gmail.com" [ref=e235]
+              - generic [ref=e236]:
+                - generic [ref=e237]: Google API Token (for Gmail API access)
+                - textbox "Google OAuth2 refresh token for playa77@gmail.com" [ref=e238]
+            - button "Save Config" [ref=e239]
+          - generic [ref=e240]:
+            - heading "Inference Providers" [level=3] [ref=e241]
+            - paragraph [ref=e242]: Configure OpenAI-compatible endpoints. API keys are encrypted at rest. Set one as default for all agents.
+            - generic [ref=e243]:
+              - generic [ref=e244]:
+                - generic [ref=e245]:
+                  - generic [ref=e246]:
+                    - strong [ref=e247]: OpenRouter
+                    - text: Default
+                  - generic [ref=e248]:
+                    - button "Edit" [ref=e249]
+                    - button "Delete" [ref=e250]
+                - generic [ref=e251]:
+                  - generic [ref=e252]: "URL: https://openrouter.ai/api/v1"
+                  - generic [ref=e253]: "Strong Model: deepseek/deepseek-v4-pro"
+                  - generic [ref=e254]: "Quick Model: deepseek/deepseek-v4-flash"
+                  - generic [ref=e255]: "Rate Limit: 0 RPM"
+                  - generic [ref=e256]:
+                    - text: "API Key:"
+                    - code [ref=e257]: sk-or-...bf3
+              - generic [ref=e258]:
+                - generic [ref=e259]:
+                  - strong [ref=e261]: Nvidia
+                  - generic [ref=e262]:
+                    - button "Set Default" [ref=e263]
+                    - button "Edit" [ref=e264]
+                    - button "Delete" [ref=e265]
+                - generic [ref=e266]:
+                  - generic [ref=e267]: "URL: https://integrate.api.nvidia.com/v1"
+                  - generic [ref=e268]: "Strong Model: deepseek-ai/deepseek-v4-pro"
+                  - generic [ref=e269]: "Quick Model: deepseek-ai/deepseek-v4-flash"
+                  - generic [ref=e270]: "Rate Limit: 0 RPM"
+                  - generic [ref=e271]:
+                    - text: "API Key:"
+                    - code [ref=e272]: nvapi-...IUU
+            - button "+ Add Provider" [ref=e273]
+          - generic [ref=e274]:
+            - heading "Theme" [level=3] [ref=e275]
+            - button "Switch to Light Theme" [ref=e276]
+          - generic [ref=e277]:
+            - heading "Agents" [level=3] [ref=e278]
+            - generic [ref=e279]:
+              - generic [ref=e280]:
+                - generic [ref=e282]:
+                  - img [ref=e283]
+                  - text: Chat
+                - paragraph [ref=e287]: LLM chat with your inference provider
+                - paragraph [ref=e288]: v0.1.0
+              - generic [ref=e289]:
+                - generic [ref=e291]:
+                  - img [ref=e292]
+                  - text: News Pipeline
+                - paragraph [ref=e298]: Multi-interest AI-powered RSS news scraper, theme analyzer, and content generator
+                - paragraph [ref=e299]: v0.2.0
+              - generic [ref=e300]:
+                - generic [ref=e302]:
+                  - img [ref=e303]
+                  - text: Debate Arena
+                - paragraph [ref=e310]: Multi-agent AI debate arena — assemble a panel with Director Mode
+                - paragraph [ref=e311]: v0.2.0
+              - generic [ref=e312]:
+                - generic [ref=e314]:
+                  - img [ref=e315]
+                  - text: Deep Research
+                - paragraph [ref=e320]: Autonomous web research agent — produce cited, publication-quality reports
+                - paragraph [ref=e321]: v0.2.0
+              - generic [ref=e322]:
+                - generic [ref=e324]:
+                  - img [ref=e325]
+                  - text: Consigliere
+                - paragraph [ref=e328]: Your contrarian consigliere — stress-tests any idea by finding weak links, probing blind spots, and iterating with you toward a bulletproof version
+                - paragraph [ref=e329]: v0.2.0
+              - generic [ref=e330]:
+                - generic [ref=e332]:
+                  - img [ref=e333]
+                  - text: Strategic Planning
+                - paragraph [ref=e339]: AI-powered strategic planning — 9 plan types including project plans, SWOT, WBS, RCA, pitches, and governance frameworks
+                - paragraph [ref=e340]: v0.2.0
+              - generic [ref=e341]:
+                - generic [ref=e343]:
+                  - img [ref=e344]
+                  - text: Knowledge Base
+                - paragraph [ref=e350]: Ingest documents into a vector database and ask questions over them with RAG
+                - paragraph [ref=e351]: v0.1.0
+                - generic [ref=e352]:
+                  - generic [ref=e354]: Plugin Settings
+                  - generic [ref=e355]:
+                    - generic [ref=e356]: Default Chunk Size
+                    - spinbutton [ref=e357]: "1000"
+                    - text: Characters per chunk
+                  - generic [ref=e358]:
+                    - generic [ref=e359]: Default Chunk Overlap
+                    - spinbutton [ref=e360]: "200"
+                    - text: Character overlap between consecutive chunks
+                  - generic [ref=e361]:
+                    - generic [ref=e362]: Embedding Model
+                    - textbox [ref=e363]: openai/text-embedding-3-small
+                    - text: OpenRouter embedding model ID
+                  - generic [ref=e364]:
+                    - generic [ref=e365]: Top K Chunks
+                    - spinbutton [ref=e366]: "5"
+                    - text: Number of chunks to retrieve per query
+                  - button "Save Settings" [ref=e367]
+          - generic [ref=e368]:
+            - heading "API Keys for admin" [level=3] [ref=e369]
+            - generic [ref=e370]:
+              - paragraph [ref=e371]: No API keys yet. Create your first one below.
+              - generic [ref=e372]:
+                - generic [ref=e373]: Create New Key
+                - generic [ref=e374]:
+                  - generic [ref=e375]:
+                    - generic [ref=e376]: Key Name
+                    - textbox "e.g. production, staging, personal" [ref=e377]
+                  - button "Create Key" [ref=e378]
+          - button "Sign Out" [ref=e380]
+  - generic [ref=e387]:
+    - generic [ref=e388]:
+      - generic [ref=e389]: Switch between dark and light mode. Your preference is saved locally and persists across sessions.
+      - button "Open help page" [ref=e390] [cursor=pointer]: "?"
+    - generic [ref=e391]: Press ? for help

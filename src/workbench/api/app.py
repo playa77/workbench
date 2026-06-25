@@ -13,8 +13,10 @@ from fastapi import Depends, FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, Response
-from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles as _StaticFiles
 from slowapi import _rate_limit_exceeded_handler
+from starlette.types import Scope
+import typing
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -113,7 +115,23 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
             response.headers["Content-Security-Policy"] = config.api_csp_header
         if config.api_strict_transport_security:
             response.headers["Strict-Transport-Security"] = config.api_strict_transport_security
+        # Prevent Cloudflare from serving stale cached static assets (JS, CSS)
+        if request.url.path.startswith("/static/"):
+            response.headers["Cache-Control"] = "public, max-age=300, must-revalidate"
         return response
+
+    # Versioned static files class that adds Cache-Control to prevent Cloudflare staleness
+    class StaticFiles(_StaticFiles):
+        async def __call__(self, scope: Scope, receive: typing.Any, send: typing.Any) -> None:
+            async def send_wrapper(message):
+                if message["type"] == "http.response.start":
+                    # Set short cache timeout so Cloudflare won't serve stale assets after deploy
+                    headers = dict(message.get("headers", []))
+                    headers[b"cache-control"] = b"public, max-age=300, must-revalidate"
+                    message["headers"] = list(headers.items())
+                await send(message)
+
+            await super().__call__(scope, receive, send_wrapper)
 
     if config.rate_limit_enabled:
         limiter._default_limits = [config.rate_limit_general]

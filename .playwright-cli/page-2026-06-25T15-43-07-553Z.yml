@@ -1,0 +1,18 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Workbench" [level=1] [ref=e5]
+      - generic [ref=e6]: v0.1.0
+    - navigation
+    - generic [ref=e7]:
+      - button "Sign out" [ref=e8]:
+        - img [ref=e9]
+      - button "Toggle theme" [ref=e12]:
+        - img [ref=e13]
+      - button "Settings" [ref=e19]:
+        - img [ref=e20]
+  - main [ref=e23]:
+    - generic [ref=e26]:
+      - heading "▣ Workbench" [level=2] [ref=e27]
+      - paragraph [ref=e28]: Unified BYOK AI Workbench
+      - paragraph [ref=e29]: Select an agent tab above to get started, or configure your settings.

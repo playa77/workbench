@@ -428,7 +428,7 @@
           if (!p.is_default) {
             html += '<button class="btn btn-sm btn-secondary set-default-btn" data-id="' + p.id + '" data-tooltip="Make this provider the default for all agents. The default provider is used unless an agent specifies otherwise." data-help-page="/static/help/settings.html#inference-providers">Set Default</button>';
           }
-          html += '<button class="btn btn-sm btn-secondary edit-provider-btn" data-id="' + p.id + '" data-tooltip="Edit this provider's configuration — change name, URL, API key, models, or rate limits." data-help-page="/static/help/settings.html#inference-providers">Edit</button>' +
+          html += '<button class="btn btn-sm btn-secondary edit-provider-btn" data-id="' + p.id + '" data-tooltip="Edit this provider\'s configuration — change name, URL, API key, models, or rate limits." data-help-page="/static/help/settings.html#inference-providers">Edit</button>' +
             '<button class="btn btn-sm btn-danger delete-provider-btn" data-id="' + p.id + '" data-tooltip="Remove this inference provider permanently. Any agent using this provider will fall back to the server default." data-help-page="/static/help/settings.html#inference-providers">Delete</button>';
         }
         html += '</div></div>' +

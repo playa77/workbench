@@ -1,0 +1,34 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Workbench" [level=1] [ref=e5]
+      - generic [ref=e6]: v0.1.0
+    - navigation
+    - generic [ref=e7]:
+      - button "Sign out" [ref=e8]:
+        - img [ref=e9]
+      - button "Toggle theme" [ref=e12]:
+        - img [ref=e13]
+      - button "Settings" [ref=e19]:
+        - img [ref=e20]
+  - main [ref=e23]:
+    - generic [ref=e26]:
+      - heading "▣ Workbench" [level=2] [ref=e27]
+      - paragraph [ref=e28]: Unified BYOK AI Workbench
+      - generic [ref=e29]:
+        - generic [ref=e30]: Sign In
+        - generic [ref=e31]:
+          - generic [ref=e32]:
+            - generic [ref=e33]: Email or Username
+            - textbox "Enter your email or username" [ref=e34]
+          - generic [ref=e35]:
+            - generic [ref=e36]: Password
+            - textbox "Enter your password" [ref=e37]
+          - button "Sign In" [ref=e38]
+        - link "Forgot password?" [ref=e40]:
+          - /url: "#"
+        - generic [ref=e42]:
+          - generic [ref=e43]:
+            - generic [ref=e44]: API Key
+            - textbox "Or paste your API key to sign in" [ref=e45]
+          - button "Sign In with API Key" [ref=e46]
