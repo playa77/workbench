@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "workbench"
-version = "0.1.0"
+version = "0.1.6"
 description = "Unified BYOK AI Workbench — agent-driven infrastructure for LLM-powered tools"
 requires-python = ">=3.11"
 license = {text = "MIT"}

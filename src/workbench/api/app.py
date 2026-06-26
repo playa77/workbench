@@ -20,6 +20,7 @@ import typing
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from workbench.__version__ import __version__
 from workbench.core.agents import get_registry, get_user_agent_settings
 from workbench.core.auth import get_current_user
 from workbench.core.config import WorkbenchConfig, load_config
@@ -68,7 +69,7 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
     async def lifespan(app: FastAPI):
         logger.info(
             "Workbench %s starting — host=%s port=%s",
-            "0.1.0", config.api_host, config.api_port,
+            __version__, config.api_host, config.api_port,
         )
 
         # Start the background news scheduler (non-blocking)
@@ -97,7 +98,7 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
     app = FastAPI(
         title="Workbench",
         description="Unified BYOK AI Workbench — agent-driven infrastructure for LLM-powered tools",
-        version="0.1.0",
+        version=__version__,
         lifespan=lifespan,
     )
 

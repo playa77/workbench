@@ -1,6 +1,6 @@
 # Workbench
 
-**Self-hosted BYOK AI Workbench** -- one dashboard, eight LLM-powered agents plus Open WebUI, zero telemetry.
+**Self-hosted BYOK AI Workbench** -- one dashboard, eight LLM-powered agents, a Blog/Publishing Hub, plus Open WebUI, zero telemetry.
 
 Run locally or deploy to a VPS with full HTTPS (Let's Encrypt + nginx). Bring your own OpenRouter key. Every agent lives in its own browser tab.
 
@@ -14,16 +14,17 @@ Run locally or deploy to a VPS with full HTTPS (Let's Encrypt + nginx). Bring yo
 
 | Agent | Tab | Capability |
 |---|---|---|
-| **Chat** | Chat | Plain LLM conversation with any OpenRouter model. No setup required beyond pasting your key. |
-| **News Pipeline** | News | RSS feed monitoring with AI theme extraction, scheduled background runs, and email delivery. Configure interests, the pipeline fetches, scrapes, analyzes, and delivers. |
-| **Debate Arena** | Debate | Structured multi-agent debates with 12 persona roles. Use Director Mode to inject interventions, pause/resume debates, and observe how perspectives clash. |
-| **Deep Research** | Research | Autonomous web research driven by function-calling. Multiple search iterations, source gathering, contradiction detection, and a single cited report at the end. |
-| **Consigliere** | Consigliere | Your contrarian idea stress-tester. Brings 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...) to bear, runs pairwise critique, surfaces biases and contradictions, then synthesizes. Iteratively refine any idea until it's bulletproof. |
-| **Strategic Planning** | Planning | Generates any of 9 plan types: project plans, SWOT analyses, WBS, schedules, root cause analyses, pitch decks, governance frameworks, team compositions, or executive summaries. |
-| **Math Tutor** | Math | Step-by-step problem solving with LaTeX rendering. Explains reasoning, not just answers. |
-| **Knowledge Base** | Knowledge | Create document collections, upload files, and query them with RAG-style retrieval. |
-| **History** | History | Unified searchable list of all past agent sessions. Filter by agent type, view full state, export as PDF. |
-| **Open WebUI** | Open WebUI | Full chat-first LLM interface with model management, RAG, and multimodality. Runs alongside the agent tabs in its own iframe, proxied through nginx. |
+|    | **Chat** | Chat | Plain LLM conversation with any OpenRouter model. No setup required beyond pasting your key. |
+|    | **News Pipeline** | News | RSS feed monitoring with AI theme extraction, scheduled background runs, and email delivery. Configure interests, the pipeline fetches, scrapes, analyzes, and delivers. |
+|    | **Debate Arena** | Debate | Structured multi-agent debates with 12 persona roles. Use Director Mode to inject interventions, pause/resume debates, and observe how perspectives clash. |
+|    | **Deep Research** | Research | Autonomous web research driven by function-calling. Multiple search iterations, source gathering, contradiction detection, and a single cited report at the end. |
+|    | **Consigliere** | Consigliere | Your contrarian idea stress-tester. Brings 8 analysis frames (Pro/Con, SWOT, Stakeholder, Forces...) to bear, runs pairwise critique, surfaces biases and contradictions, then synthesizes. Iteratively refine any idea until it's bulletproof. |
+|    | **Strategic Planning** | Planning | Generates any of 9 plan types: project plans, SWOT analyses, WBS, schedules, root cause analyses, pitch decks, governance frameworks, team compositions, or executive summaries. |
+|    | **Math Tutor** | Math | Step-by-step problem solving with LaTeX rendering. Explains reasoning, not just answers. |
+|    | **Knowledge Base** | Knowledge | Create document collections, upload files, and query them with RAG-style retrieval. |
+|    | **History** | History | Unified searchable list of all past agent sessions. Filter by agent type, view full state, export as PDF. |
+|    | **Blog / Publishing Hub** | Blog | Publish and manage markdown, HTML, and PDF documents. Per-user git-backed versioning, public blog page at `/blog/{username}`, and management UI with file upload and inline content editor. |
+|    | **Open WebUI** | Open WebUI | Full chat-first LLM interface with model management, RAG, and multimodality. Runs alongside the agent tabs in its own iframe, proxied through nginx. |
 
 ---
 
@@ -87,6 +88,8 @@ workbench serve --host 0.0.0.0          Listen on all interfaces
 workbench init-db                       Run Alembic migrations
 workbench create-user --username <name> --email <email> --password <pw> [--admin]    Create a new user with email/password login
 workbench version                       Print version
+workbench backup [--output-dir DIR] [--description DESC]    Create full-system backup archive
+workbench restore ARCHIVE               Restore from a backup archive
 ```
 
 ---
@@ -172,7 +175,7 @@ Rules enforced across all agents:
 
 ### SSE Streaming
 
-Long-running agents (Research, Deliberation, Planning) stream progress via Server-Sent Events. The pattern: `asyncio.Queue` + `async generator` + `StreamingResponse(text/event-stream)` on the backend; `ReadableStream` on the frontend. All support stop via `POST /{id}/stop`.
+Long-running agents (Research, Deliberation, Planning) stream progress via Server-Sent Events. The pattern: `asyncio.Queue` + `async generator` + `StreamingResponse(text/event-stream)` on the backend; `ReadableStream` on the frontend. All support stop/cancel via `AbortController` on the frontend and `asyncio.CancelledError` on the backend.
 
 ---
 
@@ -187,18 +190,37 @@ The web UI is a vanilla JavaScript SPA at `src/workbench/webui/static/`. No fram
 | `router.js` | Tab router with lazy script loading |
 | `theme.js` | Light/dark toggle, persisted to localStorage |
 | `utils.js` | HTML escaping and helpers |
+| `tooltips.js` | Hover-based tooltip rendering with `?` help-link badge and keyboard shortcut |
 | `css/base.css` | Layout, cards, buttons, forms, toggles |
 | `css/theme-light.css` / `css/theme-dark.css` | CSS custom property theme variants |
+| `css/tooltips.css` | Tooltip bubble styling with placement-aware arrow and help-link badge |
+| `css/blog-public.css` | Styling for the public blog page at `/blog/{username}` |
 | `components/chat-tab.js` | Chat agent UI |
-| `components/news-tab.js` | News pipeline: interests CRUD, runs, status |
+| `components/news-tab.js` | News pipeline: interests CRUD, feeds management, runs, status |
 | `components/debate-tab.js` | Debate arena: polling, Director Mode, pause/resume |
 | `components/research-tab.js` | SSE streaming research with live progress |
 | `components/deliberation-tab.js` | Frame selection, SSE phase tracking |
 | `components/planning-tab.js` | 9 plan types, SSE generation |
+| `components/blog-tab.js` | Blog / Publishing Hub: file upload, inline editor, publish/draft toggle |
 | `agents/math_tutor/static/js/tab.js` | Math tutor with LaTeX equation builder |
 | `agents/knowledge/static/js/tab.js` | Knowledge base management: collections, uploads, queries |
 | `components/history-tab.js` | Unified agent session history with filter, view, PDF export |
 | `components/owui-tab.js` | Open WebUI health check + iframe |
+
+---
+
+## CLI Commands (Full Reference)
+
+```
+workbench serve                         Start the server (default 127.0.0.1:8420)
+workbench serve --port 9000             Use a different port
+workbench serve --host 0.0.0.0          Listen on all interfaces
+workbench init-db                       Run Alembic migrations
+workbench create-user --username <name> --email <email> --password <pw> [--admin]    Create a new user with email/password login
+workbench version                       Print version
+workbench backup [--output-dir DIR] [--description DESC]    Create a full-system backup archive (PostgreSQL dump + data directory)
+workbench restore ARCHIVE               Restore from a backup archive (overwrites current DB and data directory)
+```
 
 ---
 
@@ -211,7 +233,7 @@ pip install -e ".[dev]"
 ### Commands
 
 ```bash
-pytest tests/ -v              # 1,069 tests, SQLite in-memory -- no external DB needed
+pytest tests/ -v              # 1,033+ tests, SQLite in-memory -- no external DB needed
 ruff check src/workbench/ agents/    # Lint
 mypy src/ agents/                   # Type check
 ```
@@ -228,43 +250,49 @@ mypy src/ agents/                   # Type check
 ```
 workbench/
 ├── agents/                          # Agent implementations (one per directory)
-│   ├── base.py                      # AgentBase -- shared ABC
+│   ├── base.py                      # AgentBase -- shared ABC (re-exports from workbench.core.agents)
 │   ├── chat/    debate/    deliberation/    knowledge/
 │   │   └── static/                  # Agent JS/CSS plugin, served at /static/plugins/
 │   ├── math_tutor/    news/    planning/    research/
 │       └── static/                  # Agent JS/CSS plugin, served at /static/plugins/
 │
 ├── src/workbench/                   # Core infrastructure
-│   ├── main.py                      # CLI entry point
+│   ├── main.py                      # CLI entry point (serve, init-db, create-user, backup, restore)
+│   ├── __version__.py               # Single-source version (0.1.6)
 │   ├── api/                         # FastAPI app, routes, dependency injection
 │   │   └── routes/sessions.py       # Agent session history API
-│   ├── core/                        # Config, DB, auth, models, encryption, agent registry
-│   ├── shared/                      # Canonical shared primitives (LLM router, config loader, DB session)
-│   ├── services/                    # Domain logic (debate engine, news pipeline, research orchestrator, etc.)
+│   ├── core/                        # Config, DB, auth, models, encryption, agent registry, rate limiter
+│   ├── shared/                      # Canonical shared primitives (LLM router, config loader, DB session, errors, network)
+│   ├── services/                    # Domain logic (backup, debate engine, deliberation, export, news pipeline/scheduler/store, planning, research orchestrator)
 │   └── webui/static/                # Vanilla JS SPA frontend
 │       ├── css/base.css             # Layout, cards, buttons, forms, toggles
 │       ├── css/theme-light.css      # Light theme
 │       ├── css/theme-dark.css       # Dark theme
+│       ├── css/tooltips.css          # Tooltip bubble styling
+│       ├── css/blog-public.css       # Public blog page styling
 │       ├── js/api.js                # HTTP + SSE client
 │       ├── js/app.js                # Boot, auth, settings, tabs
 │       ├── js/router.js             # Lazy tab loading
 │       ├── js/theme.js              # Light/dark toggle
 │       ├── js/utils.js              # Helpers
+│       ├── js/tooltips.js           # Tooltip rendering engine
 │       └── js/components/
 │           ├── chat-tab.js          # Chat UI
 │           ├── debate-tab.js        # Debate arena
-│           ├── deliberation-tab.js  # Deliberation UI
-│           ├── history-tab.js      # Unified agent session history
+│           ├── deliberation-tab.js  # Deliberation (Consigliere) UI
+│           ├── history-tab.js       # Unified agent session history
 │           ├── news-tab.js          # News pipeline
 │           ├── owui-tab.js          # Open WebUI iframe
 │           ├── planning-tab.js      # Planning UI
-│           └── research-tab.js      # Research UI
+│           ├── research-tab.js      # Research UI
+│           └── blog-tab.js          # Blog / Publishing Hub
+│       └── help/                    # 14 help pages (one per feature + index)
 │
 ├── config/default.toml              # Default configuration
-├── alembic/                         # Database migrations (13 versions)
-├── tests/                           # pytest suite (1,069 tests)
+├── alembic/                         # Database migrations (16 versions)
+├── tests/                           # pytest suite (1,033+ tests)
 ├── docker-compose.yml               # Docker deployment (PG + Workbench + Open WebUI)
-├── Dockerfile                       # python:3.12-slim, news+research extras
+├── Dockerfile                       # python:3.12-slim, tectonic, news+research extras, postgresql-client
 ├── pyproject.toml                   # Build, dependencies, tool configs
 └── DEPLOYMENT.md                    # Production deployment guide
 ```
@@ -289,7 +317,7 @@ Check that the agent is toggled on in Settings. Each agent only activates when e
 Default limits are 5/min for auth, 60/min for agents, 120/min general. Adjust via `config/default.toml` or environment variables.
 
 **PDF export fails or "tectonic command not found"**
-On bare-metal, the tectonic LaTeX engine is not installed by pip. Install it manually — see the Troubleshooting section of [DEPLOYMENT.md](DEPLOYMENT.md) for instructions. If compilation fails after installing tectonic, pre-warm the package cache by running `tectonic -X compile` on a sample `.tex` file once (requires internet on first run; packages are cached at `~/.cache/Tectonic/`).
+On bare-metal, the tectonic LaTeX engine is not installed by pip. Install it manually -- see the Troubleshooting section of [DEPLOYMENT.md](DEPLOYMENT.md) for instructions. If compilation fails after installing tectonic, pre-warm the package cache by running `tectonic -X compile` on a sample `.tex` file once (requires internet on first run; packages are cached at `~/.cache/Tectonic/`).
 
 **PDF template compilation errors**
 Tectonic auto-fetches LaTeX packages from CTAN. If a template fails, ensure
@@ -309,7 +337,7 @@ Workbench ships with six professional LaTeX templates for PDF export, selectable
 
 | Template | Key | Style |
 |---|---|---|
-| **Professional** | `professional` | Default — clean single-column, Linux Libertine fonts, TOC, accent color, professional layout |
+| **Professional** | `professional` | Default -- clean single-column, Linux Libertine fonts, TOC, accent color, professional layout |
 | **Tufte** | `tufte` | Tufte-inspired elegance with wide margins, small caps, and generous whitespace |
 | **Classic** | `classic` | Thesis-style with chapter openings, Bringhurst proportions, and elegant running headers |
 | **Modern** | `modern` | Sans-serif, color-accented, clean institutional feel (McKinsey/Deutsche Bank style) |

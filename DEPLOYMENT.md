@@ -201,7 +201,7 @@ sudo systemctl enable nginx
 ```bash
 # Health check via nginx
 curl http://localhost/health
-# Expected: {"status":"ok","version":"0.1.0"}
+# Expected: {"status":"ok","version":"0.1.6"}
 
 # Workbench UI via nginx
 curl -s -o /dev/null -w "%{http_code}" http://localhost/
@@ -350,7 +350,7 @@ Verify it responds on the domain:
 
 ```bash
 curl http://your-domain.com/health
-# Expected: {"status":"ok","version":"0.1.0"}
+# Expected: {"status":"ok","version":"0.1.6"}
 ```
 
 ### Obtain Let's Encrypt certificate
@@ -531,7 +531,7 @@ GET /health
 
 Response:
 ```json
-{"status": "ok", "version": "0.1.0"}
+{"status": "ok", "version": "0.1.6"}
 ```
 
 Used by Docker Compose healthcheck, load balancers, and uptime monitors.
@@ -607,19 +607,69 @@ Template listing: `GET /api/v1/export/templates`
 
 ## Backup and Restore
 
-### Docker Compose (PostgreSQL)
+### Data Storage
 
-**Backup:**
+PostgreSQL data is stored on the **host filesystem** at `./pgdata/` (bind mount, not a named volume). The application data directory (`/app/data` — blog posts, etc.) is also on the host at `./data/`. Both directories survive ANY Docker Compose lifecycle operation including `docker compose down -v`.
+
+**⚠️ Never delete the `pgdata/` or `data/` directories from the host unless you have a verified backup.**
+
+### Full-System Backup (CLI)
+
+The `workbench backup` command creates a single compressed `.tar.gz` archive containing the entire PostgreSQL database dump and the `/app/data` directory. A manifest with encryption key fingerprint is included.
+
+```bash
+# Create a backup inside the container
+docker compose exec workbench workbench backup
+
+# With custom description
+docker compose exec workbench workbench backup --description "Pre-upgrade backup for v0.2.0"
+
+# Specify custom output directory
+docker compose exec workbench workbench backup --output-dir /app/backups
+```
+
+Backup archives are written to `/app/backups/` inside the container, which is mounted to `./backups/` on the host. Archive naming: `workbench_full_YYYYMMDD_HHMMSS.tar.gz`.
+
+### Full-System Restore (CLI)
+
+⚠️ **Restore overwrites the current database and data directory.** All existing data is dropped before restoring.
+
+```bash
+# Restore from a backup archive
+docker compose exec workbench workbench restore /app/backups/workbench_full_20260626_120000.tar.gz
+```
+
+The restore command will:
+1. Drop and recreate the `public` schema
+2. Restore the PostgreSQL dump
+3. Replace the `/app/data/` directory with the backed-up version
+4. Warn if the encryption key has changed since the backup was created
+
+### Automated Backup (Cron)
+
+Use the built-in backup command with cron for scheduled backups:
+
+```cron
+# Daily full-system backup at 03:00
+0 3 * * * cd /home/opencode/workbench && docker compose exec -T workbench workbench backup --description "Automated nightly backup" >> /home/opencode/workbench/backups/backup.log 2>&1
+
+# Keep only last 30 days of backups
+0 4 * * * find /home/opencode/workbench/backups -name "workbench_full_*.tar.gz" -mtime +30 -delete
+```
+
+### Manual PostgreSQL Dump (Alternative)
+
+If you prefer a direct PostgreSQL dump without the full-system archive:
 
 ```bash
 # Dump the database
 docker compose exec db pg_dump -U workbench workbench > workbench_backup_$(date +%Y%m%d).sql
 
 # Also back up the data volume:
-docker compose cp workbench:/app/data ./data_backup_$(date +%Y%m%d)
+tar czf data_backup_$(date +%Y%m%d).tar.gz data/
 ```
 
-**Restore:**
+**Restore (manual):**
 
 ```bash
 # Stop the application container so no writes occur during restore
@@ -628,15 +678,26 @@ docker compose stop workbench
 # Restore the dump
 docker compose exec -T db psql -U workbench workbench < workbench_backup_YYYYMMDD.sql
 
+# Restore data directory
+tar xzf data_backup_YYYYMMDD.tar.gz
+
 docker compose start workbench
 ```
+
+### Per-User / Per-Agent Backup (Architecture)
+
+The `workbench/services/backup_service.py` module contains a clean abstraction for per-user and per-agent export/import. These functions are ready to be wired to API routes in a future release:
+
+- `export_user_data(user_id, session)` → Exports all data owned by a single user (API keys masked, never cleartext)
+- `import_user_data(user_id, data, session, merge_strategy)` → Imports with upsert/skip/replace strategies
+- `export_agent_data(agent_name, session, scope, user_id)` → Exports per-agent data for one user or all users
 
 ### Bare-Metal (SQLite)
 
 **Backup:**
 
 ```bash
-cp /opt/workbench/data/workbench.db /opt/workbench/data/workbench_backup_$(date +%Y%m%d).db
+cp /opt/workbench/data/workbench.db /opt/workbench/backups/workbench_backup_$(date +%Y%m%d).db
 ```
 
 **Restore:**
@@ -652,26 +713,15 @@ systemctl start workbench
 **Backup:**
 
 ```bash
-pg_dump -U workbench workbench > workbench_backup_$(date +%Y%m%d).sql
+workbench backup --output-dir /opt/workbench/backups
 ```
 
 **Restore:**
 
 ```bash
 systemctl stop workbench
-psql -U workbench workbench < workbench_backup_YYYYMMDD.sql
+workbench restore /opt/workbench/backups/workbench_full_YYYYMMDD_HHMMSS.tar.gz
 systemctl start workbench
-```
-
-### Automated Backup (Cron)
-
-Add to the workbench user's crontab:
-
-```cron
-# Daily backup at 03:00
-0 3 * * * docker compose exec -T db pg_dump -U workbench workbench > /opt/backups/workbench_$(date +\%Y\%m\%d).sql
-# Keep only last 14 days
-0 4 * * * find /opt/backups -name "workbench_*.sql" -mtime +14 -delete
 ```
 
 ---
