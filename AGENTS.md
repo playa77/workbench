@@ -9,4 +9,39 @@
 - **Authentication failures.** If login to any remote host fails, stop immediately and ask the user for guidance. Do not retry or attempt alternative credentials without explicit instruction.
 - **Python package installation.** Never use `--break-system-packages` (or equivalent flags) with `pip`. Always use a virtual environment. Create one venv per project directory (e.g., `./venv/`) and reuse it across tasks within that project. If a project directory doesn't exist yet, create it first, then initialize the venv there. Do not create throwaway venvs in arbitrary locations.
 - **Changelog.** Maintain a changelog for every project. Append all relevant changes as you go. If no changelog exists, create one before making the first modification.
-- **UI testin and debugging.** the agent-browser tool (which is essentialy a headless browser you can use to test web UIs) is installed. Besides using curl stuff, always additionally test Web UI/UX implementations,changes or improvements with agent-browser.
+- **Browser automation.** Never use the `agent-browser` skill/tool — it has serious unresolved issues. Use `playwright-cli` (or raw Playwright scripts) for all browser automation tasks instead.
+
+### Known Pitfalls
+
+#### Electron + AppImage: Chromium SUID Sandbox Crash
+
+**Problem:** Electron apps packaged as AppImage crash on launch with `FATAL:setuid_sandbox_host.cc` or show a blank window. Chromium's SUID sandbox helper requires `setuid` which cannot execute inside an AppImage's read-only squashfs filesystem.
+
+**Fix — two pieces, wired at packaging time (never a post-build patch):**
+
+1. **Wrapper script** — `scripts/apprun.sh`, committed to the repo:
+   ```sh
+   #!/bin/sh
+   SELF="$(readlink -f "$0")"
+   HERE="$(dirname "$SELF")"
+   exec "$HERE/<executable-name>" --no-sandbox "$@"
+   ```
+
+2. **Injection point** — in `forge.config.js`, the AppImage maker must use this script as the entrypoint. The exact config key depends on the maker (`runtime`, `entrypoint`, `customEntrypoint` — check the maker's docs), e.g.:
+   ```js
+   {
+     name: '@reforged/maker-appimage',
+     config: {
+       options: {
+         runtime: path.join(__dirname, 'scripts', 'apprun.sh'),
+       },
+     },
+   }
+   ```
+
+**The `.deb` package does not need this fix** — it runs on a writable filesystem where the sandbox works normally.
+
+**Anti-patterns (do not do):**
+- Launching the AppImage with `--no-sandbox` manually as a workaround
+- Writing a separate launcher script next to the AppImage after build
+- Editing the AppRun inside the squashfs after packaging

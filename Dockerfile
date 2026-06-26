@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libfontconfig1 libgraphite2-3 libharfbuzz0b \
     fonts-linuxlibertine fonts-inconsolata git \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install tectonic — single-binary modern LaTeX engine (XeTeX-based, auto-fetch packages)

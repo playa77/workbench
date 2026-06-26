@@ -2,6 +2,19 @@
 
 All notable changes to the Workbench project.
 
+## [0.1.6] — 2026-06-26
+
+### Added
+- **Full System Backup/Restore**: New `workbench backup` and `workbench restore` CLI commands that dump the entire PostgreSQL database (via `pg_dump`) and the `/app/data` directory into a single compressed `.tar.gz` archive. Includes a manifest with encryption key SHA-256 fingerprint for mismatch detection. Restore drops the public schema, restores from dump, and copies back data files.
+- **Per-User Export/Import Architecture** (`BackupService`): Designed but not yet exposed via API. `export_user_data()` exports every piece of data owned by a single user (API keys masked, never cleartext). `import_user_data()` supports three merge strategies: `upsert`, `skip_existing`, `replace`. Normal users can only export/import their own data; admins may target any user.
+- **Per-Agent Export/Import Architecture** (`BackupService`): Designed but not yet exposed via API. `export_agent_data()` exports all sessions, reports, and settings for a specific agent type, scoped to one user or all users. Useful for migrating agent-specific content without touching unrelated data.
+- **Backup Bind Mount**: `/app/backups` in the container is mounted to `./backups` on the host so backup archives survive container recreation.
+- **Docker**: Added `postgresql-client-15` to the Docker image for `pg_dump` and `psql` CLI tools.
+
+### Changed
+- **PostgreSQL Storage: Named Volume → Bind Mount**: The `db` service now uses `./pgdata:/var/lib/postgresql/data` (host bind mount) instead of the `pgdata` Docker named volume. This ensures ALL user data survives any Docker Compose lifecycle operation including `docker compose down -v`. Previously, `-v` would irreversibly destroy the entire database volume. The `pgdata/` directory is already in `.gitignore`.
+- **Docker Compose**: Added `./backups:/app/backups` volume mount. Removed `pgdata` from the `volumes:` block. Kept `openwebui_data` as a named volume (no user-owned data stored there).
+
 ## [0.1.5] — 2026-06-24
 
 ### Added
