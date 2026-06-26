@@ -1,0 +1,123 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - banner [ref=e3]:
+      - generic [ref=e4]:
+        - heading "Workbench" [level=1] [ref=e5]
+        - generic [ref=e6]: v0.1.0
+      - navigation [ref=e64]:
+        - button "Chat" [ref=e65] [cursor=pointer]:
+          - img [ref=e66]
+          - text: Chat
+        - button "News Pipeline" [ref=e68] [cursor=pointer]:
+          - img [ref=e69]
+          - text: News Pipeline
+        - button "Debate Arena" [ref=e73] [cursor=pointer]:
+          - img [ref=e74]
+          - text: Debate Arena
+        - button "Deep Research" [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+          - text: Deep Research
+        - button "Consigliere" [ref=e83] [cursor=pointer]:
+          - img [ref=e84]
+          - text: Consigliere
+        - button "Strategic Planning" [ref=e85] [cursor=pointer]:
+          - img [ref=e86]
+          - text: Strategic Planning
+        - button "Knowledge Base" [ref=e90] [cursor=pointer]:
+          - img [ref=e91]
+          - text: Knowledge Base
+        - button "OpenWebUI" [ref=e95] [cursor=pointer]:
+          - img [ref=e96]
+          - text: OpenWebUI
+        - button "History" [ref=e99] [cursor=pointer]:
+          - img [ref=e100]
+          - text: History
+        - button "Blog" [ref=e104] [cursor=pointer]:
+          - img [ref=e105]
+          - text: Blog
+        - button "Settings" [ref=e108] [cursor=pointer]:
+          - img [ref=e109]
+          - text: Settings
+      - generic [ref=e7]:
+        - button "Sign out" [ref=e8]:
+          - img [ref=e9]
+        - button "Toggle theme" [ref=e12]:
+          - img [ref=e13]
+        - button "Settings" [ref=e19]:
+          - img [ref=e20]
+    - main [ref=e23]:
+      - generic [ref=e142]:
+        - heading "News Pipeline" [level=2] [ref=e143]
+        - generic [ref=e144]:
+          - generic [ref=e221]:
+            - generic [ref=e222]:
+              - generic [ref=e223]: AI Commentary
+              - generic [ref=e224]:
+                - button "Edit" [ref=e225]
+                - button "Feeds" [ref=e226]
+                - button "Run Now" [ref=e227]
+                - button "Delete" [ref=e228]
+            - generic [ref=e229]: "Schedule: 03:00 every 24h | Summary: 750w | Script: 1250w"
+            - generic [ref=e230]:
+              - generic [ref=e231]: Summary
+              - generic [ref=e232]: Script
+              - generic [ref=e233]: Brief
+            - button "Load Runs" [ref=e235]
+          - generic [ref=e236]:
+            - generic [ref=e237]:
+              - generic [ref=e238]: AI News
+              - generic [ref=e239]:
+                - button "Edit" [ref=e240]
+                - button "Feeds" [ref=e241]
+                - button "Run Now" [ref=e242]
+                - button "Delete" [ref=e243]
+            - generic [ref=e244]: "Schedule: 04:00 every 24h | Summary: 750w | Script: 1250w"
+            - generic [ref=e245]:
+              - generic [ref=e246]: Summary
+              - generic [ref=e247]: Script
+              - generic [ref=e248]: Brief
+            - button "Load Runs" [ref=e250]
+          - generic [ref=e251]:
+            - generic [ref=e252]:
+              - generic [ref=e253]: Energy Transition
+              - generic [ref=e254]:
+                - button "Edit" [ref=e255]
+                - button "Feeds" [ref=e256]
+                - button "Run Now" [ref=e257]
+                - button "Delete" [ref=e258]
+            - generic [ref=e259]: "Schedule: 06:00 every 24h | Summary: 750w | Script: 1250w"
+            - generic [ref=e260]:
+              - generic [ref=e261]: Summary
+              - generic [ref=e262]: Script
+              - generic [ref=e263]: Brief
+            - button "Load Runs" [ref=e265]
+          - separator [ref=e266]
+          - generic [ref=e267]:
+            - generic [ref=e268]: Add Interest
+            - generic [ref=e269]:
+              - generic [ref=e270]:
+                - generic [ref=e271]: Name
+                - textbox "e.g. AI News" [ref=e272]
+              - generic [ref=e273]:
+                - generic [ref=e274]: Start Time (HH:MM)
+                - textbox [ref=e275]: 04:00
+              - generic [ref=e276]:
+                - generic [ref=e277]: Interval (hours)
+                - spinbutton [ref=e278]: "24"
+              - generic [ref=e279]:
+                - generic [ref=e280]: Summary Words
+                - spinbutton [ref=e281]: "750"
+              - generic [ref=e282]:
+                - generic [ref=e283]: Script Words
+                - spinbutton [ref=e284]: "1250"
+            - generic [ref=e285]:
+              - generic [ref=e288] [cursor=pointer]: Summary
+              - generic [ref=e291] [cursor=pointer]: Script
+              - generic [ref=e294] [cursor=pointer]: Brief
+            - button "Create Interest" [ref=e295]
+        - generic [ref=e206] [cursor=pointer]:
+          - generic [ref=e207]: Past News Sessions
+          - generic [ref=e208]: ▼
+  - generic [ref=e297]:
+    - generic [ref=e298]: ✓
+    - generic [ref=e299]: Interest created

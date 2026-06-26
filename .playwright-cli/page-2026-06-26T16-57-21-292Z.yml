@@ -1,0 +1,47 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Workbench" [level=1] [ref=e5]
+      - generic [ref=e6]: v0.1.0
+    - navigation [ref=e64]:
+      - button "Chat" [ref=e65] [cursor=pointer]:
+        - img [ref=e66]
+        - text: Chat
+      - button "News Pipeline" [ref=e68] [cursor=pointer]:
+        - img [ref=e69]
+        - text: News Pipeline
+      - button "Debate Arena" [active] [ref=e73] [cursor=pointer]:
+        - img [ref=e74]
+        - text: Debate Arena
+      - button "Deep Research" [ref=e79] [cursor=pointer]:
+        - img [ref=e80]
+        - text: Deep Research
+      - button "Consigliere" [ref=e83] [cursor=pointer]:
+        - img [ref=e84]
+        - text: Consigliere
+      - button "Strategic Planning" [ref=e85] [cursor=pointer]:
+        - img [ref=e86]
+        - text: Strategic Planning
+      - button "Knowledge Base" [ref=e90] [cursor=pointer]:
+        - img [ref=e91]
+        - text: Knowledge Base
+      - button "OpenWebUI" [ref=e95] [cursor=pointer]:
+        - img [ref=e96]
+        - text: OpenWebUI
+      - button "History" [ref=e99] [cursor=pointer]:
+        - img [ref=e100]
+        - text: History
+      - button "Blog" [ref=e104] [cursor=pointer]:
+        - img [ref=e105]
+        - text: Blog
+      - button "Settings" [ref=e108] [cursor=pointer]:
+        - img [ref=e109]
+        - text: Settings
+    - generic [ref=e7]:
+      - button "Sign out" [ref=e8]:
+        - img [ref=e9]
+      - button "Toggle theme" [ref=e12]:
+        - img [ref=e13]
+      - button "Settings" [ref=e19]:
+        - img [ref=e20]
+  - main [ref=e23]

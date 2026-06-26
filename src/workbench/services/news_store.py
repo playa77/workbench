@@ -20,8 +20,9 @@ class NewsStore:
     def __init__(self, session: AsyncSession):
         self._s = session
 
-    def _utcnow_iso(self) -> str:
-        return datetime.now(timezone.utc).isoformat()
+    def _utcnow_dt(self) -> datetime:
+        """Return a timezone-aware datetime for TIMESTAMP columns."""
+        return datetime.now(timezone.utc)
 
     def _todays_date_str(self) -> str:
         return datetime.now(timezone.utc).strftime("%Y-%m-%d")
@@ -153,7 +154,7 @@ class NewsStore:
                    VALUES (:iid, 'running', :now, :today)
                    RETURNING *"""
             ),
-            {"iid": interest_id, "now": self._utcnow_iso(), "today": self._todays_date_str()},
+            {"iid": interest_id, "now": self._utcnow_dt(), "today": self._todays_date_str()},
         )
         await self._s.commit()
         r = result.first()
@@ -236,7 +237,7 @@ class NewsStore:
             ),
             {
                 "rid": run_id, "fid": feed_id, "url": url, "title": title,
-                "author": author, "pat": published_at, "now": self._utcnow_iso(),
+                "author": author, "pat": published_at, "now": self._utcnow_dt(),
                 "excerpt": excerpt, "content": content, "cs": content_status,
             },
         )

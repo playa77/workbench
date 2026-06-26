@@ -194,7 +194,7 @@
       +   '<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
       +     '<button class="btn btn-warning btn-sm" id="btn-pause-debate" onclick="window.debatePause(this)" data-tooltip="Temporarily halt the debate mid-round. Agents stop responding until resumed." data-help-page="/static/help/debate.html#debate-controls">Pause</button>'
       +     '<button class="btn btn-success btn-sm" id="btn-resume-debate" onclick="window.debateResume(this)" disabled data-tooltip="Continue a paused debate from where it left off. Agents continue from the current round." data-help-page="/static/help/debate.html#debate-controls">Resume</button>'
-      +     '<button class="btn btn-danger btn-sm" id="btn-end-debate" onclick="window.debateEnd()" data-tooltip="Terminate the debate early and finalize results. Becomes 'Back to Setup' after completion." data-help-page="/static/help/debate.html#debate-controls">End Debate</button>'
+      +     '<button class="btn btn-danger btn-sm" id="btn-end-debate" onclick="window.debateEnd()" data-tooltip="Terminate the debate early and finalize results. Becomes \u2018Back to Setup\u2019 after completion." data-help-page="/static/help/debate.html#debate-controls">End Debate</button>'
       +   '</div>'
       +   '<div id="debate-director-panel" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-color)">'
       +     '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Director Mode</div>'

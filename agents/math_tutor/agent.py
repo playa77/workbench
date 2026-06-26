@@ -484,13 +484,13 @@ class MathTutorAgent(AgentBase):
                 f"Valid levels: {', '.join(COMPETENCY_LEVELS)}"
             )
 
-        response = await client.chat_completion(
-            messages=[
-                {"role": "system", "content": system_msg},
-                {"role": "user", "content": prompt},
-            ],
-            temperature=0.5,
-        )
+            response = await client.chat_completion(
+                messages=[
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": prompt},
+                ],
+                temperature=0.5,
+            )
 
             new_level = tutor_session.competency_level
             for line in response.splitlines():

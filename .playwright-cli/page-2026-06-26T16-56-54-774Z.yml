@@ -1,0 +1,105 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - heading "Workbench" [level=1] [ref=e5]
+      - generic [ref=e6]: v0.1.0
+    - navigation [ref=e64]:
+      - button "Chat" [ref=e65] [cursor=pointer]:
+        - img [ref=e66]
+        - text: Chat
+      - button "News Pipeline" [active] [ref=e68] [cursor=pointer]:
+        - img [ref=e69]
+        - text: News Pipeline
+      - button "Debate Arena" [ref=e73] [cursor=pointer]:
+        - img [ref=e74]
+        - text: Debate Arena
+      - button "Deep Research" [ref=e79] [cursor=pointer]:
+        - img [ref=e80]
+        - text: Deep Research
+      - button "Consigliere" [ref=e83] [cursor=pointer]:
+        - img [ref=e84]
+        - text: Consigliere
+      - button "Strategic Planning" [ref=e85] [cursor=pointer]:
+        - img [ref=e86]
+        - text: Strategic Planning
+      - button "Knowledge Base" [ref=e90] [cursor=pointer]:
+        - img [ref=e91]
+        - text: Knowledge Base
+      - button "OpenWebUI" [ref=e95] [cursor=pointer]:
+        - img [ref=e96]
+        - text: OpenWebUI
+      - button "History" [ref=e99] [cursor=pointer]:
+        - img [ref=e100]
+        - text: History
+      - button "Blog" [ref=e104] [cursor=pointer]:
+        - img [ref=e105]
+        - text: Blog
+      - button "Settings" [ref=e108] [cursor=pointer]:
+        - img [ref=e109]
+        - text: Settings
+    - generic [ref=e7]:
+      - button "Sign out" [ref=e8]:
+        - img [ref=e9]
+      - button "Toggle theme" [ref=e12]:
+        - img [ref=e13]
+      - button "Settings" [ref=e19]:
+        - img [ref=e20]
+  - main [ref=e23]:
+    - generic [ref=e142]:
+      - heading "News Pipeline" [level=2] [ref=e143]
+      - generic [ref=e144]:
+        - generic [ref=e145]:
+          - generic [ref=e146]:
+            - generic [ref=e147]: AI Commentary
+            - generic [ref=e148]:
+              - button "Edit" [ref=e149]
+              - button "Feeds" [ref=e150]
+              - button "Run Now" [ref=e151]
+              - button "Delete" [ref=e152]
+          - generic [ref=e153]: "Schedule: 03:00 every 24h | Summary: 750w | Script: 1250w"
+          - generic [ref=e154]:
+            - generic [ref=e155]: Summary
+            - generic [ref=e156]: Script
+            - generic [ref=e157]: Brief
+          - button "Load Runs" [ref=e159]
+        - generic [ref=e160]:
+          - generic [ref=e161]:
+            - generic [ref=e162]: AI News
+            - generic [ref=e163]:
+              - button "Edit" [ref=e164]
+              - button "Feeds" [ref=e165]
+              - button "Run Now" [ref=e166]
+              - button "Delete" [ref=e167]
+          - generic [ref=e168]: "Schedule: 04:00 every 24h | Summary: 750w | Script: 1250w"
+          - generic [ref=e169]:
+            - generic [ref=e170]: Summary
+            - generic [ref=e171]: Script
+            - generic [ref=e172]: Brief
+          - button "Load Runs" [ref=e174]
+        - separator [ref=e175]
+        - generic [ref=e176]:
+          - generic [ref=e177]: Add Interest
+          - generic [ref=e178]:
+            - generic [ref=e179]:
+              - generic [ref=e180]: Name
+              - textbox "e.g. AI News" [ref=e181]
+            - generic [ref=e182]:
+              - generic [ref=e183]: Start Time (HH:MM)
+              - textbox [ref=e184]: 04:00
+            - generic [ref=e185]:
+              - generic [ref=e186]: Interval (hours)
+              - spinbutton [ref=e187]: "24"
+            - generic [ref=e188]:
+              - generic [ref=e189]: Summary Words
+              - spinbutton [ref=e190]: "750"
+            - generic [ref=e191]:
+              - generic [ref=e192]: Script Words
+              - spinbutton [ref=e193]: "1250"
+          - generic [ref=e194]:
+            - generic [ref=e197] [cursor=pointer]: Summary
+            - generic [ref=e200] [cursor=pointer]: Script
+            - generic [ref=e203] [cursor=pointer]: Brief
+          - button "Create Interest" [ref=e204]
+      - generic [ref=e206] [cursor=pointer]:
+        - generic [ref=e207]: Past News Sessions
+        - generic [ref=e208]: ▼
