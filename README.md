@@ -34,7 +34,7 @@ Run locally or deploy to a VPS with full HTTPS (Let's Encrypt + nginx). Bring yo
 2. You register a username and save the generated API key.
 3. You paste your OpenRouter key in Settings. It is encrypted at rest with AES-256-GCM on your machine.
 4. Each agent tab is a self-contained tool backed by an LLM agent. The backend is a FastAPI server; the frontend is vanilla JavaScript with zero build step.
-5. **Every LLM call** flows through `OpenRouterClient` -- a single, auditable code path. No other external APIs are called.
+5. **Every LLM call** flows through `OpenRouterClient` -- a single, auditable code path. External APIs (Brave Search for Deep Research, RSS feeds for News Pipeline, SMTP for email delivery) are called through dedicated service wrappers with anti-SSRF validation.
 
 ---
 

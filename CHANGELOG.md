@@ -9,7 +9,7 @@ All notable changes to the Workbench project.
 - **Per-User Export/Import Architecture** (`BackupService`): Designed but not yet exposed via API. `export_user_data()` exports every piece of data owned by a single user (API keys masked, never cleartext). `import_user_data()` supports three merge strategies: `upsert`, `skip_existing`, `replace`. Normal users can only export/import their own data; admins may target any user.
 - **Per-Agent Export/Import Architecture** (`BackupService`): Designed but not yet exposed via API. `export_agent_data()` exports all sessions, reports, and settings for a specific agent type, scoped to one user or all users. Useful for migrating agent-specific content without touching unrelated data.
 - **Backup Bind Mount**: `/app/backups` in the container is mounted to `./backups` on the host so backup archives survive container recreation.
-- **Docker**: Added `postgresql-client-15` to the Docker image for `pg_dump` and `psql` CLI tools.
+- **Docker**: Added `postgresql-client` to the Docker image for `pg_dump` and `psql` CLI tools.
 
 ### Changed
 - **PostgreSQL Storage: Named Volume → Bind Mount**: The `db` service now uses `./pgdata:/var/lib/postgresql/data` (host bind mount) instead of the `pgdata` Docker named volume. This ensures ALL user data survives any Docker Compose lifecycle operation including `docker compose down -v`. Previously, `-v` would irreversibly destroy the entire database volume. The `pgdata/` directory is already in `.gitignore`.
