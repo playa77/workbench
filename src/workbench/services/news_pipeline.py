@@ -13,9 +13,7 @@ import re
 from datetime import datetime, timezone
 from typing import Any
 
-import feedparser
 import httpx
-import trafilatura
 
 from workbench.shared.llm.router import OpenRouterClient
 
@@ -87,6 +85,9 @@ class NewsPipeline:
         return run_id
 
     async def _scrape(self, run_id: int, interest_id: int, interest: dict) -> None:
+        import feedparser
+        import trafilatura
+
         await self._store.update_run(run_id, current_stage="scrape")
         feeds = await self._store.get_feeds_for_interest(interest_id)
 

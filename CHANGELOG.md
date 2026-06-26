@@ -2,6 +2,11 @@
 
 All notable changes to the Workbench project.
 
+## [Unreleased]
+
+### Fixed
+- **Optional dependency imports in `news_pipeline.py`**: Moved `import feedparser` and `import trafilatura` from module level into `_scrape()` method, fixing `ModuleNotFoundError` during pytest collection when the `[news]` optional dependencies aren't installed. The `httpx` import remains at module level since it's a core dependency.
+
 ## [0.1.6] — 2026-06-26
 
 ### Added
