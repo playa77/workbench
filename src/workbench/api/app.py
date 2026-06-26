@@ -33,6 +33,20 @@ logger = logging.getLogger(__name__)
 
 SESSION_CLEANUP_INTERVAL = 300
 
+
+# Versioned static files class that adds Cache-Control to prevent Cloudflare staleness
+class StaticFiles(_StaticFiles):
+    async def __call__(self, scope: Scope, receive: typing.Any, send: typing.Any) -> None:
+        async def send_wrapper(message):
+            if message["type"] == "http.response.start":
+                # Set short cache timeout so Cloudflare won't serve stale assets after deploy
+                headers = dict(message.get("headers", []))
+                headers[b"cache-control"] = b"public, max-age=300, must-revalidate"
+                message["headers"] = list(headers.items())
+            await send(message)
+
+        await super().__call__(scope, receive, send_wrapper)
+
 _BUILTIN_AGENTS = [
     ("agents.chat.agent", "ChatAgent"),
     ("agents.news.agent", "NewsAgent"),
@@ -120,19 +134,6 @@ def create_app(config: WorkbenchConfig | None = None) -> FastAPI:
         if request.url.path.startswith("/static/"):
             response.headers["Cache-Control"] = "public, max-age=300, must-revalidate"
         return response
-
-    # Versioned static files class that adds Cache-Control to prevent Cloudflare staleness
-    class StaticFiles(_StaticFiles):
-        async def __call__(self, scope: Scope, receive: typing.Any, send: typing.Any) -> None:
-            async def send_wrapper(message):
-                if message["type"] == "http.response.start":
-                    # Set short cache timeout so Cloudflare won't serve stale assets after deploy
-                    headers = dict(message.get("headers", []))
-                    headers[b"cache-control"] = b"public, max-age=300, must-revalidate"
-                    message["headers"] = list(headers.items())
-                await send(message)
-
-            await super().__call__(scope, receive, send_wrapper)
 
     if config.rate_limit_enabled:
         limiter._default_limits = [config.rate_limit_general]
