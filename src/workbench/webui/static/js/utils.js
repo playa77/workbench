@@ -171,9 +171,103 @@ const Utils = (() => {
       });
   }
 
+  /* ---- Confirmation Modal ---- */
+  /* Nielsen #5 (Error Prevention), #3 (User Control): Replace native confirm()
+     dialogs with accessible custom modals that show what will be deleted and
+     explain consequences. Native confirm() is a modal trap with no undo. */
+
+  /** Show a confirmation dialog.
+   *  @param {string} title - Modal title (e.g. "Delete API Key")
+   *  @param {string} message - Body text explaining what will happen and consequences
+   *  @param {string} confirmLabel - Button text describing the action (e.g. "Delete 'Production Key'")
+   *  @param {string} confirmStyle - CSS class for confirm button: 'danger', 'primary', 'warning'
+   *  @returns {Promise<boolean>} - Resolves true if confirmed, false if cancelled
+   */
+  function showConfirm(title, message, confirmLabel, confirmStyle) {
+    confirmStyle = confirmStyle || 'danger';
+    return new Promise(function (resolve) {
+      // Remove any existing modal
+      var existing = document.getElementById('confirm-modal-overlay');
+      if (existing) existing.remove();
+
+      var overlay = document.createElement('div');
+      overlay.id = 'confirm-modal-overlay';
+      overlay.className = 'confirm-overlay';
+      overlay.setAttribute('role', 'dialog');
+      overlay.setAttribute('aria-modal', 'true');
+      overlay.setAttribute('aria-labelledby', 'confirm-modal-title');
+
+      var styleClass = 'btn-confirm-' + confirmStyle;
+      overlay.innerHTML =
+        '<div class="confirm-modal">' +
+        '  <h3 class="confirm-title" id="confirm-modal-title">' + escapeHtml(title) + '</h3>' +
+        '  <p class="confirm-message">' + message + '</p>' +
+        '  <div class="confirm-actions">' +
+        '    <button class="btn btn-secondary btn-cancel" id="confirm-btn-cancel">Cancel</button>' +
+        '    <button class="btn ' + styleClass + '" id="confirm-btn-confirm">' + escapeHtml(confirmLabel) + '</button>' +
+        '  </div>' +
+        '</div>';
+
+      document.body.appendChild(overlay);
+
+      // Focus trap: focus the cancel button by default (safer choice)
+      var cancelBtn = document.getElementById('confirm-btn-cancel');
+      var confirmBtn = document.getElementById('confirm-btn-confirm');
+      cancelBtn.focus();
+
+      function cleanup() {
+        if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+        document.removeEventListener('keydown', onKeydown);
+      }
+
+      function onKeydown(e) {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          cleanup();
+          resolve(false);
+        }
+        // Trap focus within modal
+        if (e.key === 'Tab') {
+          var focusable = overlay.querySelectorAll('button');
+          if (focusable.length === 0) return;
+          var first = focusable[0];
+          var last = focusable[focusable.length - 1];
+          if (e.shiftKey && document.activeElement === first) {
+            e.preventDefault();
+            last.focus();
+          } else if (!e.shiftKey && document.activeElement === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+
+      document.addEventListener('keydown', onKeydown);
+
+      cancelBtn.addEventListener('click', function () {
+        cleanup();
+        resolve(false);
+      });
+
+      confirmBtn.addEventListener('click', function () {
+        cleanup();
+        resolve(true);
+      });
+
+      // Close on overlay click (not on modal click)
+      overlay.addEventListener('click', function (e) {
+        if (e.target === overlay) {
+          cleanup();
+          resolve(false);
+        }
+      });
+    });
+  }
+
   return {
     escapeHtml: escapeHtml,
     showToast: showToast,
+    showConfirm: showConfirm,
     setButtonLoading: setButtonLoading,
     setButtonSuccess: setButtonSuccess,
     resetButton: resetButton,

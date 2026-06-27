@@ -320,18 +320,27 @@
   }
 
   function deleteSession(btn, id, title) {
-    if (!confirm('Delete session "' + title + '"?')) return;
-    Utils.setButtonLoading(btn, 'Deleting...');
-    API.deleteSession(id)
-      .then(function () {
-        Utils.resetButton(btn);
-        Utils.showToast('Session deleted', 'info');
-        var filterEl = document.getElementById('history-agent-filter');
-        loadSessions(filterEl ? filterEl.value : '');
-      })
-      .catch(function (e) {
-        Utils.resetButton(btn);
-        Utils.showToast('Delete failed: ' + e.message, 'error');
-      });
+    // Nielsen #5 (Error Prevention): Custom confirmation modal with session title
+    // and permanent-deletion warning, replacing native confirm().
+    Utils.showConfirm(
+      'Delete Session',
+      'Delete <strong>' + Utils.escapeHtml(title) + '</strong>? The session data will be permanently removed from your history. This cannot be undone.',
+      'Delete "' + Utils.escapeHtml(title) + '"',
+      'danger'
+    ).then(function (confirmed) {
+      if (!confirmed) return;
+      Utils.setButtonLoading(btn, 'Deleting...');
+      API.deleteSession(id)
+        .then(function () {
+          Utils.resetButton(btn);
+          Utils.showToast('Session deleted', 'info');
+          var filterEl = document.getElementById('history-agent-filter');
+          loadSessions(filterEl ? filterEl.value : '');
+        })
+        .catch(function (e) {
+          Utils.resetButton(btn);
+          Utils.showToast('Delete failed: ' + e.message, 'error');
+        });
+    });
   }
 })();

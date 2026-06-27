@@ -5,10 +5,18 @@ All notable changes to the Workbench project.
 ## [Unreleased]
 
 ### Added
+- **UX: Setup Key Recovery (Nielsen #5, #6)**: After first-time account creation, the generated API key is now displayed with a copy-to-clipboard button and an explicit "I've Saved My Key — Sign In" confirmation step. Prevents the dead-end where users close the page without saving their key and can never recover it.
+- **UX: Confirmation Modal System (Nielsen #5, #3)**: Replaced all native `confirm()` dialogs with an accessible custom modal (`Utils.showConfirm()`) that shows the specific item being deleted, explains consequences, and supports keyboard navigation (Escape to cancel, Tab focus trap, Enter to confirm). Applied to: delete provider, delete API key, revoke invitation, delete session, delete news interest, and delete blog document.
+- **UX: Tab Load Failure Recovery (Nielsen #1, Don Norman #4)**: Tab panels now show a descriptive loading state with agent name. If the component script fails to load within 15 seconds (timeout), an error state appears with a "Retry" button. Script `onerror` is also handled with a retry option. Previously an infinite spinner left users stuck.
+- **UX: Enhanced Error Messages (Nielsen #9)**: Login failure messages now distinguish between "invalid credentials", "account locked/disabled", and "email not verified", with clear guidance on how to resolve each case. Setup errors provide friendly messages for common failures (username taken, weak password).
 - **News Pipeline — Per-Interest Email Recipient with Verification**: Users can now set any email address as the recipient for nightly news deliverables on a per-interest basis. A verification email with a 24-hour expiry link is sent to the recipient address. The recipient must click the public verification link (no login required) to confirm. Until verified, deliveries fall back to the user's own email address. Admin users see a warning notice on the interest card when email is not verified.
 - **News Pipeline — Feed Edit**: Each feed in the feed management panel now has an "Edit" button for inline editing of name and URL (calls the existing `PATCH /feeds/{id}` endpoint).
 - **News Pipeline — Interest Card Badges**: Interest cards now display the feed count badge (e.g. "3 feeds") next to the interest name and show recipient email status (verified, unverified warning) below the schedule line.
 - **News Pipeline — Email Toggle and Recipient in Edit Form**: The Interest Edit form now includes an `enable_email` toggle and an `email_recipient` input field, with a "Verify Email" button when a new unverified recipient is set.
+
+### Changed
+- **UX: Button labels** updated for action specificity: "Sign In" → "Sign In to Workbench", "Sign In" (API key form) → "Sign In with API Key".
+- **UX: "No UI" dead-end** replaced with a fallback message including a button to open Chat.
 
 ### Fixed
 - **News Pipeline — Feed Panel UX**: After adding or removing a feed, the feed management panel now stays open (previously it folded closed after every single operation, requiring the user to re-click "Feeds" for each feed). A background refresh re-renders the updated feed list in-place.

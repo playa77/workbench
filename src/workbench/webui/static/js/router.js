@@ -102,23 +102,71 @@ const Router = (() => {
 
     var panel = _getOrCreatePanel(name);
     panel.style.display = 'block';
-    panel.innerHTML = '<div class="spinner" style="margin:40px auto"></div>';
+    // Nielsen #1 (Visibility of system status): Show what's happening with a
+    // descriptive loading state, not just a spinner.
+    panel.innerHTML = '<div class="tab-loading">' +
+      '<div class="spinner" style="margin:40px auto 12px"></div>' +
+      '<p style="text-align:center;color:var(--text-muted);font-size:13px">Loading ' + Utils.escapeHtml(name) + '...</p>' +
+      '</div>';
 
     if (jsPath && !loadedScripts[jsPath]) {
       loadedScripts[jsPath] = true;
       var script = document.createElement('script');
       script.src = jsPath;
+
+      // C2: Tab load failure recovery — timeout after 15 seconds with error
+      // state and retry button. Applies Nielsen #1 (Visibility) and Don Norman
+      // principle #4 (Feedback).
+      var loadTimeout = setTimeout(function () {
+        if (!tabCallbacks[name]) {
+          panel.innerHTML = '<div class="card" style="text-align:center;padding:40px">' +
+            '<p style="color:var(--text-muted);margin-bottom:16px">Could not load <strong>' + Utils.escapeHtml(name) + '</strong>. The component script may be unavailable or the server may be slow.</p>' +
+            '<button class="btn btn-primary btn-sm" id="tab-retry-' + Utils.escapeHtml(name) + '">Retry</button>' +
+            '</div>';
+          document.getElementById('tab-retry-' + name).addEventListener('click', function () {
+            // Reset state and retry loading
+            delete loadedScripts[jsPath];
+            delete tabPanels[name];
+            Router.setActive(name);
+          });
+        }
+      }, 15000);
+
       script.onload = function () {
+        clearTimeout(loadTimeout);
         if (tabCallbacks[name]) {
           _createAndRender(name);
           panel.style.display = 'block';
+        } else {
+          // Script loaded but didn't register a callback — component error
+          panel.innerHTML = '<div class="card" style="text-align:center;padding:40px">' +
+            '<p style="color:var(--text-muted);margin-bottom:16px"><strong>' + Utils.escapeHtml(name) + '</strong> component loaded but failed to initialize.</p>' +
+            '<button class="btn btn-primary btn-sm" onclick="location.reload()">Reload Page</button>' +
+            '</div>';
         }
       };
+
+      script.onerror = function () {
+        clearTimeout(loadTimeout);
+        panel.innerHTML = '<div class="card" style="text-align:center;padding:40px">' +
+          '<p style="color:var(--text-muted);margin-bottom:16px">Failed to load <strong>' + Utils.escapeHtml(name) + '</strong>. Check your connection and try again.</p>' +
+          '<button class="btn btn-primary btn-sm" id="tab-retry-' + Utils.escapeHtml(name) + '">Retry</button>' +
+          '</div>';
+        document.getElementById('tab-retry-' + name).addEventListener('click', function () {
+          delete loadedScripts[jsPath];
+          delete tabPanels[name];
+          Router.setActive(name);
+        });
+      };
+
       document.body.appendChild(script);
       return;
     }
 
-    panel.innerHTML = '<div class="card"><p>Agent "' + Utils.escapeHtml(name) + '" has no UI yet.</p></div>';
+    panel.innerHTML = '<div class="card" style="text-align:center;padding:32px">' +
+      '<p style="color:var(--text-muted);margin-bottom:12px">' + Utils.escapeHtml(name) + ' is not yet available in this version.</p>' +
+      '<button class="btn btn-secondary btn-sm" onclick="Router.setActive(\'chat\')">Open Chat</button>' +
+      '</div>';
   }
 
   function getActive() {
