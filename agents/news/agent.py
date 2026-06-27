@@ -13,13 +13,14 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from agents.base import AgentBase
 from workbench.core.auth import get_current_user, get_user_inference_api_key
-from workbench.core.db import get_session
+from workbench.core.db import get_session, get_session_factory
 from workbench.core.models import AgentSession, User
 
 _news_scheduler: Any = None
@@ -66,6 +67,9 @@ class NewsAgent(AgentBase):
         # Scheduler
         router.add_api_route("/interests/{interest_id}/next-run", self.get_next_run, methods=["GET"])
         router.add_api_route("/scheduler/status", self.scheduler_status, methods=["GET"])
+        # Email verification (public endpoint — no auth required)
+        router.add_api_route("/verify-email-recipient", self.verify_email_recipient_public, methods=["GET"])
+        router.add_api_route("/interests/{interest_id}/send-verification-email", self.send_verification_email, methods=["POST"])
 
     # ---- Interests ----
     async def list_interests(self, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
@@ -86,7 +90,24 @@ class NewsAgent(AgentBase):
         existing = await store.get_interest(str(user.id), interest_id)
         if not existing:
             raise HTTPException(status_code=404, detail="Interest not found")
-        updated = await store.update_interest(str(user.id), interest_id, body.model_dump(exclude_none=True))
+
+        update_data = body.model_dump(exclude_none=True)
+
+        # If email_recipient changed, reset verification status
+        if "email_recipient" in update_data:
+            new_recipient = update_data["email_recipient"].strip()
+            old_recipient = (existing.get("email_recipient") or "").strip()
+            if new_recipient and new_recipient != old_recipient:
+                # Reset verified flag — the new email needs verification
+                await store._s.execute(
+                    __import__("sqlalchemy").text(
+                        "UPDATE news_interests SET email_recipient_verified = FALSE WHERE id = :iid"
+                    ),
+                    {"iid": interest_id},
+                )
+                await store._s.commit()
+
+        updated = await store.update_interest(str(user.id), interest_id, update_data)
         return {"interest": updated}
 
     async def delete_interest(self, interest_id: int, user: User = Depends(get_current_user), session: AsyncSession = Depends(get_session)):
@@ -184,8 +205,6 @@ class NewsAgent(AgentBase):
             logger = __import__("logging").getLogger(__name__)
             logger.exception("Failed to save AgentSession for news run %d", run_id)
 
-        # Send email if configured — use server-wide SMTP from workbench_server_config
-        # (per-interest SMTP fields do not exist in the DB schema)
         # Send email if configured — uses local Postfix on the VPS host.
         # No authentication needed (Docker containers are in mynetworks).
         if interest.get("enable_email"):
@@ -193,8 +212,13 @@ class NewsAgent(AgentBase):
                 from workbench.core.auth import get_server_config_value
                 from workbench.services.news_emailer import send_pipeline_results
 
-                # Honor per-interest email_recipient (configurable in UI), fall back to user's email
-                recipient = interest.get("email_recipient") or user.email or "playa77@gmail.com"
+                # Determine recipient: use per-interest email only if verified,
+                # otherwise fall back to user's own email
+                custom_recipient = interest.get("email_recipient", "").strip()
+                if custom_recipient and interest.get("email_recipient_verified"):
+                    recipient = custom_recipient
+                else:
+                    recipient = user.email or "playa77@gmail.com"
 
                 smtp_config = {
                     "host": await get_server_config_value(session, "smtp_host", "172.18.0.1"),
@@ -292,6 +316,103 @@ class NewsAgent(AgentBase):
         return {
             "running": bool(sched) and sched._started,
         }
+
+    # ---- Email Recipient Verification ----
+
+    async def send_verification_email(
+        self, interest_id: int, user: User = Depends(get_current_user),
+        session: AsyncSession = Depends(get_session),
+    ):
+        """Send a verification email to the interest's email_recipient address."""
+        from workbench.services.news_store import NewsStore
+        store = NewsStore(session)
+        interest = await store.get_interest(str(user.id), interest_id)
+        if not interest:
+            raise HTTPException(status_code=404, detail="Interest not found")
+
+        recipient = (interest.get("email_recipient") or "").strip()
+        if not recipient:
+            raise HTTPException(status_code=400, detail="No email recipient configured for this interest")
+
+        if interest.get("email_recipient_verified"):
+            return {"status": "already_verified", "message": "Email recipient is already verified"}
+
+        # Generate and store verification token (24-hour expiry)
+        raw_token = await store.set_email_recipient_verification_token(interest_id)
+
+        # Build the verification link
+        import os
+        base_url = os.environ.get("WORKBENCH_BASE_URL", "https://workbench.gronowski.cc")
+        verify_url = f"{base_url}/api/v1/agents/news/verify-email-recipient?interest_id={interest_id}&token={raw_token}"
+
+        # Send the verification email
+        try:
+            from workbench.core.email import _send_email as send_smtp_email
+            from workbench.core.config import load_config
+            config = load_config()
+
+            await send_smtp_email(
+                config=config,
+                to_address=recipient,
+                subject="Verify your email for Workbench News Pipeline",
+                html_body=(
+                    f'<h2 style="font-weight:600;font-size:18px;margin-bottom:16px">Verify your email</h2>'
+                    f'<p>You are receiving this email because this address was set as the recipient '
+                    f'for news pipeline deliveries for interest <strong>{interest.get("name", "Unknown")}</strong>.</p>'
+                    f'<p>Click the button below to verify your email address. This link expires in 24 hours.</p>'
+                    f'<p><a href="{verify_url}" style="display:inline-block;background:#60a5fa;color:#0f1117;'
+                    f'padding:10px 20px;border-radius:4px;text-decoration:none;font-weight:600;margin:16px 0">'
+                    f'Verify email</a></p>'
+                    f'<p style="font-size:12px;color:#6b6e7d">If you did not request this, you can ignore this email.</p>'
+                ),
+                plain_body=(
+                    f"Verify your email address for Workbench News Pipeline:\n\n"
+                    f"Interest: {interest.get('name', 'Unknown')}\n"
+                    f"Verify here: {verify_url}\n\n"
+                    f"This link expires in 24 hours.\n"
+                    f"If you did not request this, you can ignore this email."
+                ),
+            )
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to send verification email: {exc}")
+
+        return {"status": "sent", "message": f"Verification email sent to {recipient}"}
+
+    async def verify_email_recipient_public(
+        self, interest_id: int = Query(...), token: str = Query(...),
+    ):
+        """Public endpoint (no auth) — verifies an email recipient token from a link clicked in email."""
+        session_factory = get_session_factory()
+        async with session_factory() as session:
+            from workbench.services.news_store import NewsStore
+            store = NewsStore(session)
+
+            interest = await store.get_interest_by_id_global(interest_id)
+            if not interest:
+                return HTMLResponse(
+                    content="<h1>Not Found</h1><p>This interest does not exist.</p>",
+                    status_code=404,
+                )
+
+            success = await store.verify_email_recipient(interest_id, token)
+            if success:
+                return HTMLResponse(
+                    content=(
+                        "<!DOCTYPE html><html><head><meta charset='utf-8'><title>Email Verified</title>"
+                        "<style>body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;"
+                        "display:flex;justify-content:center;align-items:center;min-height:100vh;"
+                        "background:#0f1117;color:#e4e6eb;text-align:center}"
+                        "h1{color:#60a5fa;margin-bottom:8px}p{color:#6b6e7d}</style></head>"
+                        "<body><div><h1>Email Verified ✓</h1>"
+                        f"<p>The email recipient for <strong>{interest.get('name', 'News Interest')}</strong> has been verified.</p>"
+                        "<p>You can close this page.</p></div></body></html>"
+                    ),
+                )
+            else:
+                return HTMLResponse(
+                    content="<h1>Verification Failed</h1><p>This link is invalid or has expired (links are valid for 24 hours). Please request a new verification email.</p>",
+                    status_code=400,
+                )
 
     def get_frontend_tab(self) -> dict:
         return {

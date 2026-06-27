@@ -7,7 +7,9 @@ Tables: news_interests, news_feeds, news_runs, news_articles, news_themes, news_
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+import hashlib
+import secrets
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 from typing import Any
 
@@ -64,7 +66,13 @@ class NewsStore:
     # ---- Interests ----
     async def list_interests(self, user_id: str) -> list[dict[str, Any]]:
         rows = await self._s.execute(
-            text("SELECT * FROM news_interests WHERE user_id = :uid ORDER BY name"),
+            text(
+                "SELECT ni.*, COALESCE(fc.cnt, 0) AS feed_count "
+                "FROM news_interests ni "
+                "LEFT JOIN (SELECT interest_id, COUNT(*) AS cnt FROM news_feeds GROUP BY interest_id) fc "
+                "ON fc.interest_id = ni.id "
+                "WHERE ni.user_id = :uid ORDER BY ni.name"
+            ),
             {"uid": user_id},
         )
         return [dict(r._mapping) for r in rows]
@@ -462,3 +470,76 @@ class NewsStore:
             text("SELECT * FROM news_interests ORDER BY name")
         )
         return [dict(r._mapping) for r in rows]
+
+    async def get_interest_by_id_global(self, interest_id: int) -> dict[str, Any] | None:
+        """Fetch any interest by ID without user scope — for public endpoints like email verification."""
+        row = await self._s.execute(
+            text("SELECT * FROM news_interests WHERE id = :iid"),
+            {"iid": interest_id},
+        )
+        r = row.first()
+        if r is None:
+            return None
+        return dict(r._mapping)
+
+    @staticmethod
+    def _hash_token(token: str) -> str:
+        return hashlib.sha256(token.encode()).hexdigest()
+
+    def _generate_verification_token(self) -> tuple[str, str]:
+        """Generate a raw token and its SHA-256 hash. Returns (raw, hash)."""
+        raw = secrets.token_urlsafe(32)
+        return raw, self._hash_token(raw)
+
+    async def set_email_recipient_verification_token(self, interest_id: int) -> str:
+        """Generate and store a verification token for an interest's email recipient.
+
+        Returns the raw token (to embed in the verification link).
+        The token hash and expiry (24h) are stored in the DB.
+        """
+        raw, hashed = self._generate_verification_token()
+        expires = self._utcnow_dt() + timedelta(hours=24)
+        await self._s.execute(
+            text(
+                "UPDATE news_interests "
+                "SET pending_email_recipient_token_hash = :hash, "
+                "    pending_email_recipient_token_expires = :expires "
+                "WHERE id = :iid"
+            ),
+            {"hash": hashed, "expires": expires, "iid": interest_id},
+        )
+        await self._s.commit()
+        return raw
+
+    async def verify_email_recipient(self, interest_id: int, raw_token: str) -> bool:
+        """Verify an email recipient token. Returns True if successful, False if expired/invalid."""
+        interest = await self.get_interest_by_id_global(interest_id)
+        if not interest:
+            return False
+
+        stored_hash = interest.get("pending_email_recipient_token_hash")
+        expires = interest.get("pending_email_recipient_token_expires")
+        if not stored_hash or not expires:
+            return False
+
+        # Check expiry (expires is a naive datetime in UTC)
+        now = self._utcnow_dt()
+        if expires < now:
+            return False
+
+        if self._hash_token(raw_token) != stored_hash:
+            return False
+
+        # Mark verified and clear the pending token
+        await self._s.execute(
+            text(
+                "UPDATE news_interests "
+                "SET email_recipient_verified = TRUE, "
+                "    pending_email_recipient_token_hash = NULL, "
+                "    pending_email_recipient_token_expires = NULL "
+                "WHERE id = :iid"
+            ),
+            {"iid": interest_id},
+        )
+        await self._s.commit()
+        return True

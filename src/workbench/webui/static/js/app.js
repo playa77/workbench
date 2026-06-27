@@ -16,6 +16,7 @@
   async function boot() {
     try {
       currentUser = await API.me();
+      window._workbenchUser = currentUser;
       document.getElementById('active-tab-content').innerHTML = '';
       await renderTabs();
       renderMain();

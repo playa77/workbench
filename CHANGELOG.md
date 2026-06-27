@@ -4,8 +4,16 @@ All notable changes to the Workbench project.
 
 ## [Unreleased]
 
+### Added
+- **News Pipeline — Per-Interest Email Recipient with Verification**: Users can now set any email address as the recipient for nightly news deliverables on a per-interest basis. A verification email with a 24-hour expiry link is sent to the recipient address. The recipient must click the public verification link (no login required) to confirm. Until verified, deliveries fall back to the user's own email address. Admin users see a warning notice on the interest card when email is not verified.
+- **News Pipeline — Feed Edit**: Each feed in the feed management panel now has an "Edit" button for inline editing of name and URL (calls the existing `PATCH /feeds/{id}` endpoint).
+- **News Pipeline — Interest Card Badges**: Interest cards now display the feed count badge (e.g. "3 feeds") next to the interest name and show recipient email status (verified, unverified warning) below the schedule line.
+- **News Pipeline — Email Toggle and Recipient in Edit Form**: The Interest Edit form now includes an `enable_email` toggle and an `email_recipient` input field, with a "Verify Email" button when a new unverified recipient is set.
+
 ### Fixed
+- **News Pipeline — Feed Panel UX**: After adding or removing a feed, the feed management panel now stays open (previously it folded closed after every single operation, requiring the user to re-click "Feeds" for each feed). A background refresh re-renders the updated feed list in-place.
 - **Optional dependency imports in `news_pipeline.py`**: Moved `import feedparser` and `import trafilatura` from module level into `_scrape()` method, fixing `ModuleNotFoundError` during pytest collection when the `[news]` optional dependencies aren't installed. The `httpx` import remains at module level since it's a core dependency.
+- **News Pipeline — Email Dispatch Guard**: When `enable_email` is on but `email_recipient` is not verified, the system now correctly falls back to the user's email address (previously it used the unverified recipient address).
 
 ## [0.1.6] — 2026-06-26
 
