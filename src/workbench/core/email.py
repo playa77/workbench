@@ -50,7 +50,7 @@ async def _send_email(config, to_address: str, subject: str, html_body: str, pla
     from email.mime.text import MIMEText
 
     msg = MIMEMultipart("alternative")
-    msg["From"] = from_addr or "playa77@gmail.com"
+    msg["From"] = from_addr or "emailfrom@workbench.gronowski.cc"
     msg["To"] = to_address
     msg["Subject"] = subject
     msg.attach(MIMEText(plain_body + _PLAIN_SIGNATURE, "plain", "utf-8"))

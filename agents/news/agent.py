@@ -143,6 +143,19 @@ class NewsAgent(AgentBase):
 
         # Save AgentSession
         try:
+            import uuid as _uuid_mod
+            from datetime import date as _date, datetime as _datetime
+
+            def _sanitize(obj: Any) -> Any:
+                """Recursively convert non-JSON-serializable types to str."""
+                if isinstance(obj, dict):
+                    return {k: _sanitize(v) for k, v in obj.items()}
+                if isinstance(obj, list):
+                    return [_sanitize(v) for v in obj]
+                if isinstance(obj, (_uuid_mod.UUID, _date, _datetime)):
+                    return str(obj)
+                return obj
+
             title = interest.get("name", f"News Run {run_id}")
             agent_session = AgentSession(
                 user_id=user.id,
@@ -150,20 +163,20 @@ class NewsAgent(AgentBase):
                 session_id=str(run_id),
                 title=title,
                 state_json={
-                    "interest": interest,
+                    "interest": _sanitize(interest),
                     "run_id": run_id,
                     "pipeline_stage": "completed",
                 },
                 content=None,
                 content_format="markdown",
-                metadata_json={
+                metadata_json=_sanitize({
                     "interest_id": interest.get("id"),
                     "interest_name": interest.get("name"),
                     "enable_summary": interest.get("enable_summary"),
                     "enable_script": interest.get("enable_script"),
                     "enable_brief": interest.get("enable_brief"),
                     "interval_hours": interest.get("interval_hours"),
-                },
+                }),
             )
             session.add(agent_session)
             await session.commit()
@@ -171,22 +184,37 @@ class NewsAgent(AgentBase):
             logger = __import__("logging").getLogger(__name__)
             logger.exception("Failed to save AgentSession for news run %d", run_id)
 
-        # Send email if configured
-        if interest.get("enable_email") and interest.get("email_smtp_host"):
+        # Send email if configured — use server-wide SMTP from workbench_server_config
+        # (per-interest SMTP fields do not exist in the DB schema)
+        # Send email if configured — uses local Postfix on the VPS host.
+        # No authentication needed (Docker containers are in mynetworks).
+        if interest.get("enable_email"):
             try:
+                from workbench.core.auth import get_server_config_value
                 from workbench.services.news_emailer import send_pipeline_results
+
+                # Honor per-interest email_recipient (configurable in UI), fall back to user's email
+                recipient = interest.get("email_recipient") or user.email or "playa77@gmail.com"
+
+                smtp_config = {
+                    "host": await get_server_config_value(session, "smtp_host", "172.18.0.1"),
+                    "port": int(await get_server_config_value(session, "smtp_port", "25")),
+                    "user": await get_server_config_value(session, "smtp_user", ""),
+                    "password": await get_server_config_value(session, "smtp_password", ""),
+                    "sender": await get_server_config_value(session, "smtp_from", "emailfrom@workbench.gronowski.cc"),
+                    "recipient": recipient,
+                }
+
+                logger = __import__("logging").getLogger(__name__)
+                logger.info("Dispatching email for run %d to %s via %s:%s",
+                             run_id, smtp_config["recipient"],
+                             smtp_config["host"], smtp_config["port"])
+
                 await send_pipeline_results(
                     run_id=run_id,
                     store=store,
                     interest=interest,
-                    smtp_config={
-                        "host": interest.get("email_smtp_host", ""),
-                        "port": interest.get("email_smtp_port", 587),
-                        "user": interest.get("email_smtp_user", ""),
-                        "password_env": interest.get("email_smtp_password_env", ""),
-                        "sender": interest.get("email_sender", ""),
-                        "recipient": interest.get("email_recipient", ""),
-                    },
+                    smtp_config=smtp_config,
                 )
             except Exception as exc:
                 logger = __import__("logging").getLogger(__name__)

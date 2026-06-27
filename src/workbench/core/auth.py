@@ -51,8 +51,21 @@ def mask_api_key(raw: str) -> str:
     return raw[:6] + "..." + raw[-3:]
 
 
+def _bcrypt_verify(raw: str, hashed: str) -> bool:
+    """Compare a raw value against a bcrypt hash.
+
+    Returns False (instead of raising) when the hash is not a valid bcrypt
+    digest (e.g. a SHA-256 token stored prior to the bcrypt 5.0.0 upgrade).
+    """
+    try:
+        return bcrypt.checkpw(raw.encode(), hashed.encode())
+    except ValueError:
+        return False
+
+
 def verify_api_key(raw_key: str, hashed: str) -> bool:
-    return bcrypt.checkpw(raw_key.encode(), hashed.encode())
+    """Compare a raw API token against its stored hash."""
+    return _bcrypt_verify(raw_key, hashed)
 
 
 def hash_password(password: str) -> str:
@@ -60,7 +73,7 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    return bcrypt.checkpw(password.encode(), hashed.encode())
+    return _bcrypt_verify(password, hashed)
 
 
 def generate_token() -> tuple[str, str]:

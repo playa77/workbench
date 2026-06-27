@@ -73,7 +73,7 @@ class NewsPipeline:
             await self._brief(run_id, interest, llm)
             await self._store.update_run(
                 run_id, status="completed",
-                    completed_at=datetime.now(tz=timezone.utc).isoformat(),
+                    completed_at=datetime.now(tz=timezone.utc).replace(tzinfo=None),
             )
             logger.info("Pipeline run %d completed successfully", run_id)
         except Exception as exc:

@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any
 
 from sqlalchemy import text
@@ -21,11 +22,44 @@ class NewsStore:
         self._s = session
 
     def _utcnow_dt(self) -> datetime:
-        """Return a timezone-aware datetime for TIMESTAMP columns."""
-        return datetime.now(timezone.utc)
+        """Return a naive datetime for TIMESTAMP WITHOUT TIME ZONE columns."""
+        return datetime.now(timezone.utc).replace(tzinfo=None)
 
     def _todays_date_str(self) -> str:
-        return datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        return datetime.now(timezone.utc).replace(tzinfo=None).strftime("%Y-%m-%d")
+
+    @staticmethod
+    def _parse_date(raw: str) -> datetime | None:
+        """Parse an RSS pubDate string into a naive UTC datetime.
+
+        Tries email.utils.parsedate_to_datetime first (RFC 2822),
+        then a handful of common ISO-ish variants.  Returns None on failure.
+        """
+        if not raw or not raw.strip():
+            return None
+        raw = raw.strip()
+        # -- RFC 2822 (the most common RSS format) --
+        try:
+            dt = parsedate_to_datetime(raw)
+            return dt.replace(tzinfo=None)
+        except (ValueError, TypeError):
+            pass
+        # -- ISO 8601 / common fallbacks --
+        for fmt in (
+            "%Y-%m-%dT%H:%M:%S%z",
+            "%Y-%m-%dT%H:%M:%S",
+            "%Y-%m-%d %H:%M:%S%z",
+            "%Y-%m-%d %H:%M:%S",
+            "%Y-%m-%d",
+        ):
+            try:
+                dt = datetime.strptime(raw, fmt)
+                if dt.tzinfo is not None:
+                    dt = dt.astimezone(timezone.utc).replace(tzinfo=None)
+                return dt
+            except ValueError:
+                continue
+        return None
 
     # ---- Interests ----
     async def list_interests(self, user_id: str) -> list[dict[str, Any]]:
@@ -52,13 +86,15 @@ class NewsStore:
                    (user_id, name, start_time, interval_hours, target_summary_words,
                     target_script_words, target_script_de_words, target_brief_words,
                     enable_summary, enable_script, enable_script_de,
-                    enable_brief, enable_email, input_data_length_mode, input_word_count)
+                    enable_brief, enable_email, input_data_length_mode, input_word_count,
+                    email_sender, email_recipient)
                    VALUES (:uid, :name, :start_time, :interval_hours,
                            :target_summary_words, :target_script_words,
                            :target_script_de_words, :target_brief_words,
                            :enable_summary, :enable_script, :enable_script_de,
                            :enable_brief, :enable_email,
-                           :input_data_length_mode, :input_word_count)
+                           :input_data_length_mode, :input_word_count,
+                           :email_sender, :email_recipient)
                    RETURNING *"""
             ),
             {
@@ -77,6 +113,8 @@ class NewsStore:
                 "enable_email": data.get("enable_email", False),
                 "input_data_length_mode": data.get("input_data_length_mode", "full_article"),
                 "input_word_count": data.get("input_word_count", 256),
+                "email_sender": data.get("email_sender", ""),
+                "email_recipient": data.get("email_recipient", ""),
             },
         )
         await self._s.commit()
@@ -225,6 +263,9 @@ class NewsStore:
         content: str | None,
         content_status: str,
     ) -> dict[str, Any]:
+        # Parse published_at from RSS string to datetime.
+        # RSS feeds emit wildly different formats; fall back to now on failure.
+        parsed_published = self._parse_date(published_at) or self._utcnow_dt()
         result = await self._s.execute(
             text(
                 """INSERT INTO news_articles
@@ -237,7 +278,7 @@ class NewsStore:
             ),
             {
                 "rid": run_id, "fid": feed_id, "url": url, "title": title,
-                "author": author, "pat": published_at, "now": self._utcnow_dt(),
+                "author": author, "pat": parsed_published, "now": self._utcnow_dt(),
                 "excerpt": excerpt, "content": content, "cs": content_status,
             },
         )
@@ -353,6 +394,7 @@ class NewsStore:
             "enable_summary", "enable_script", "enable_script_de",
             "enable_brief", "enable_email",
             "input_data_length_mode", "input_word_count",
+            "email_sender", "email_recipient",
         }
         updates = {k: v for k, v in data.items() if k in updatable and v is not None}
         if not updates:

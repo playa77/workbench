@@ -34,17 +34,25 @@ def _send_email(
     subject: str,
     body: str,
 ) -> None:
+    """Send a plain-text email via SMTP.
+
+    Connects to smtp_host:smtp_port.  If smtp_user is provided,
+    STARTTLS + LOGIN is attempted; otherwise a plain (unauthenticated)
+    connection is used (e.g. for a local Postfix relay).
+    """
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = sender
     msg["To"] = recipient
 
     last_exc: Exception | None = None
+    wants_auth = bool(smtp_user)
     for attempt in range(_SMTP_MAX_RETRIES + 1):
         try:
             with smtplib.SMTP(smtp_host, smtp_port) as server:
-                server.starttls()
-                server.login(smtp_user, smtp_password)
+                if wants_auth:
+                    server.starttls()
+                    server.login(smtp_user, smtp_password)
                 server.send_message(msg)
             logger.info("Email sent — subject=%r", subject)
             return
@@ -181,17 +189,14 @@ async def send_pipeline_results(
     run_date = run.get("run_date", "") if run else ""
     name = interest.get("name", "Interest")
 
-    smtp_password = os.environ.get("WORKBENCH_NEWS_SMTP_PASSWORD", "")
-    if not smtp_password:
-        logger.warning("WORKBENCH_NEWS_SMTP_PASSWORD env var not set — skipping email")
-        return 0
+    smtp_password = os.environ.get("WORKBENCH_NEWS_SMTP_PASSWORD", "") or smtp_config.get("password", "")
 
     smtp_kwargs = {
-        "smtp_host": smtp_config.get("host", "smtp.gmail.com"),
-        "smtp_port": smtp_config.get("port", 587),
+        "smtp_host": smtp_config.get("host", "172.18.0.1"),
+        "smtp_port": smtp_config.get("port", 25),
         "smtp_user": smtp_config.get("user", ""),
         "smtp_password": smtp_password,
-        "sender": smtp_config.get("sender", ""),
+        "sender": smtp_config.get("sender", "emailfrom@workbench.gronowski.cc"),
         "recipient": smtp_config.get("recipient", ""),
     }
 
