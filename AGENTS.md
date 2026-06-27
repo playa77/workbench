@@ -9,7 +9,7 @@
 - **Authentication failures.** If login to any remote host fails, stop immediately and ask the user for guidance. Do not retry or attempt alternative credentials without explicit instruction.
 - **Python package installation.** Never use `--break-system-packages` (or equivalent flags) with `pip`. Always use a virtual environment. Create one venv per project directory (e.g., `./venv/`) and reuse it across tasks within that project. If a project directory doesn't exist yet, create it first, then initialize the venv there. Do not create throwaway venvs in arbitrary locations.
 - **Changelog.** Maintain a changelog for every project. Append all relevant changes as you go. If no changelog exists, create one before making the first modification.
-- **Browser automation.** Never use the `agent-browser` skill/tool — it has serious unresolved issues. Always use `playwright-cli` (or raw Playwright scripts) instead.
+- **Browser automation.** Never use the `agent-browser` skill/tool — it has serious unresolved issues. Use `playwright-cli` (or raw Playwright scripts) for all browser automation tasks instead.
 
 ### Known Pitfalls
 

@@ -96,15 +96,7 @@
         boot();
       }).catch(function (e) {
         Utils.resetButton(btn);
-        // Nielsen #9 (Error recovery): Explain what happened AND how to fix it
-        var errMsg = String(e.message || '');
-        var displayMsg = 'Invalid email/username or password. Check your credentials and try again.';
-        if (errMsg.indexOf('locked') !== -1 || errMsg.indexOf('disabled') !== -1) {
-          displayMsg = 'Account is locked or disabled. Contact your administrator.';
-        } else if (errMsg.indexOf('verify') !== -1 || errMsg.indexOf('confirm') !== -1) {
-          displayMsg = 'Please verify your email address before signing in.';
-        }
-        document.getElementById('login-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(displayMsg) + '</div>';
+        document.getElementById('login-message').innerHTML = '<div class="alert alert-error">Invalid credentials</div>';
       });
     }
 
@@ -220,66 +212,12 @@
         return;
       }
       Utils.setButtonLoading(btn, 'Creating...');
-      return API.setup(username, email, password).then(function (data) {
-        Utils.resetButton(btn);
-        // CRITICAL FIX (Nielsen #5 Error Prevention, #6 Recognition): Show API key
-        // with copy-to-clipboard and explicit "I've saved it" confirmation before
-        // proceeding. Prevents the dead-end where users close the page without saving
-        // their key and can never recover it.
-        var apiKey = data.api_key || '';
-        var container = document.getElementById('active-tab-content');
-        container.innerHTML = '<div class="welcome-screen"><div class="welcome-card">' +
-          '<h2>Workbench</h2>' +
-          '<div class="card" style="margin-top:24px;text-align:left;max-width:480px;margin-left:auto;margin-right:auto">' +
-          '<div class="card-header">Account Created</div>' +
-          '<p style="margin-bottom:16px;font-size:14px;color:var(--text-secondary)">Your admin account has been created. <strong>Save your API key now — it will not be shown again.</strong></p>' +
-          '<div class="api-key-display" style="margin-bottom:12px;font-size:13px;padding:12px" id="setup-api-key-display">' +
-          '<code style="word-break:break-all">' + Utils.escapeHtml(apiKey) + '</code>' +
-          '</div>' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap">' +
-          '<button class="btn btn-primary" id="btn-copy-setup-key" data-tooltip="Copy the API key to your clipboard. Save it securely — it cannot be retrieved later." data-help-page="/static/help/login.html#first-time-setup">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>' +
-          'Copy API Key</button>' +
-          '<button class="btn btn-success" id="btn-saved-setup-key" style="background:var(--success);color:#fff;border-color:var(--success)" data-tooltip="Confirm that you have saved your API key and proceed to sign in." data-help-page="/static/help/login.html#first-time-setup">' +
-          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px"><polyline points="20 6 9 17 4 12"/></svg>' +
-          "I've Saved My Key — Sign In</button>" +
-          '</div>' +
-          '<div id="setup-key-status" style="margin-top:12px;font-size:13px;min-height:20px"></div>' +
-          '</div></div></div>';
-
-        // Copy-to-clipboard
-        document.getElementById('btn-copy-setup-key').addEventListener('click', function () {
-          navigator.clipboard.writeText(apiKey).then(function () {
-            var status = document.getElementById('setup-key-status');
-            status.innerHTML = '<span style="color:var(--success)">✓ Copied to clipboard</span>';
-          }).catch(function () {
-            // Fallback: select the text for manual copy
-            var display = document.getElementById('setup-api-key-display');
-            var range = document.createRange();
-            range.selectNodeContents(display);
-            var selection = window.getSelection();
-            selection.removeAllRanges();
-            selection.addRange(range);
-            var status = document.getElementById('setup-key-status');
-            status.innerHTML = '<span style="color:var(--warning)">⚠ Could not copy automatically. Key selected — use Ctrl+C to copy.</span>';
-          });
-        });
-
-        // Proceed to login after confirmation
-        document.getElementById('btn-saved-setup-key').addEventListener('click', function () {
-          boot();
-        });
+      return API.setup(username, email, password).then(function () {
+        Utils.showToast('Account created', 'success');
+        boot();
       }).catch(function (e) {
         Utils.resetButton(btn);
-        // Nielsen #9: Error messages must explain what happened AND how to fix it
-        var errMsg = String(e.message || 'Unknown error');
-        var friendlyMsg = errMsg;
-        if (errMsg.indexOf('already exists') !== -1 || errMsg.indexOf('taken') !== -1) {
-          friendlyMsg = 'Username or email is already in use. Try a different one or sign in instead.';
-        } else if (errMsg.indexOf('password') !== -1) {
-          friendlyMsg = errMsg + ' Choose a stronger password (min 8 characters, mix of letters and numbers).';
-        }
-        document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(friendlyMsg) + '</div>';
+        document.getElementById('setup-message').innerHTML = '<div class="alert alert-error">' + Utils.escapeHtml(e.message) + '</div>';
       });
     }
 
@@ -607,17 +545,7 @@
       section.querySelectorAll('.delete-provider-btn').forEach(function(btn) {
         btn.addEventListener('click', async function() {
           var id = btn.dataset.id;
-          // Nielsen #5 (Error Prevention): Custom confirmation modal with
-          // specific item name and consequences, replacing native confirm()
-          var card = btn.closest('.provider-card');
-          var providerName = card ? card.querySelector('strong').textContent : 'this provider';
-          var confirmed = await Utils.showConfirm(
-            'Delete Provider',
-            'Delete <strong>' + Utils.escapeHtml(providerName) + '</strong>? Agents using this provider will fall back to the server default. This cannot be undone.',
-            'Delete ' + Utils.escapeHtml(providerName),
-            'danger'
-          );
-          if (!confirmed) return;
+          if (!confirm('Delete this provider?')) return;
           Utils.setButtonLoading(btn, 'Deleting...');
           try {
             await API.deleteInferenceProvider(id);
@@ -877,21 +805,7 @@
 
       section.querySelectorAll('[data-delete-key]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
-          // Nielsen #5 (Error Prevention): Specific item name and consequences
-          // in confirmation modal, replacing native confirm().
-          var row = btn.closest('div[style*="display:flex"]');
-          var keyLabel = 'this key';
-          if (row) {
-            var labelEl = row.querySelector('span[style*="font-weight:500"]');
-            if (labelEl) keyLabel = labelEl.textContent.trim();
-          }
-          var confirmed = await Utils.showConfirm(
-            'Delete API Key',
-            'Delete API key <strong>' + Utils.escapeHtml(keyLabel) + '</strong>? Any services using this key will immediately lose access. This cannot be undone.',
-            'Delete "' + Utils.escapeHtml(keyLabel) + '"',
-            'danger'
-          );
-          if (!confirmed) return;
+          if (!confirm('Delete this API key? This cannot be undone.')) return;
           Utils.setButtonLoading(btn, 'Deleting...');
           try {
             await API.deleteApiKey(btn.dataset.deleteKey);
@@ -970,20 +884,7 @@
       });
       listEl.querySelectorAll('[data-revoke-invite]').forEach(function (btn) {
         btn.addEventListener('click', async function () {
-          // Nielsen #5 (Error Prevention): Custom confirmation replacing native confirm()
-          var row = btn.closest('div[style*="display:flex"]');
-          var inviteEmail = 'this invitation';
-          if (row) {
-            var emailEl = row.querySelector('span[style*="font-weight:500"]');
-            if (emailEl) inviteEmail = emailEl.textContent.trim();
-          }
-          var confirmed = await Utils.showConfirm(
-            'Revoke Invitation',
-            'Revoke the invitation for <strong>' + Utils.escapeHtml(inviteEmail) + '</strong>? The invite link will stop working immediately. This cannot be undone.',
-            'Revoke Invitation',
-            'danger'
-          );
-          if (!confirmed) return;
+          if (!confirm('Revoke this invite?')) return;
           Utils.setButtonLoading(btn, 'Revoking...');
           try {
             await API.deleteInvite(btn.dataset.revokeInvite);

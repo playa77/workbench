@@ -451,30 +451,20 @@
 
   function deletePost(btn) {
     if (!state.activePost) return;
-    // Nielsen #5 (Error Prevention): Custom confirmation modal with document title
-    // and permanent-deletion warning, replacing native confirm().
-    var postTitle = state.activePost.title || 'Untitled';
-    Utils.showConfirm(
-      'Delete Document',
-      'Delete <strong>' + Utils.escapeHtml(postTitle) + '</strong>? This document and all its revision history will be permanently removed. This cannot be undone.',
-      'Delete "' + Utils.escapeHtml(postTitle) + '"',
-      'danger'
-    ).then(function (confirmed) {
-      if (!confirmed) return;
+    if (!confirm('Delete "' + (state.activePost.title || 'Untitled') + '"? This cannot be undone.')) return;
 
-      var statusDiv = document.getElementById('blog-editor-status');
-      Utils.setButtonLoading(btn, 'Deleting...');
+    var statusDiv = document.getElementById('blog-editor-status');
+    Utils.setButtonLoading(btn, 'Deleting...');
 
-      blogAPI('DELETE', '/api/v1/blog/posts/' + state.activePost.id).then(function () {
-        Utils.showToast('Document deleted', 'info');
-        state.activePost = null;
-        state.editing = false;
-        loadPosts();
-      }).catch(function (err) {
-        Utils.resetButton(btn);
-        if (statusDiv) statusDiv.textContent = 'Error: ' + err.message;
-        Utils.showToast('Failed to delete: ' + err.message, 'error');
-      });
+    blogAPI('DELETE', '/api/v1/blog/posts/' + state.activePost.id).then(function () {
+      Utils.showToast('Document deleted', 'info');
+      state.activePost = null;
+      state.editing = false;
+      loadPosts();
+    }).catch(function (err) {
+      Utils.resetButton(btn);
+      if (statusDiv) statusDiv.textContent = 'Error: ' + err.message;
+      Utils.showToast('Failed to delete: ' + err.message, 'error');
     });
   }
 

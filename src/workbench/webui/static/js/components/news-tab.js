@@ -248,14 +248,7 @@
   };
 
   window.newsDeleteInterest = async (interestId, btn) => {
-    // Nielsen #5 (Error Prevention): Custom confirmation replacing native confirm()
-    var confirmed = await Utils.showConfirm(
-      'Delete Interest',
-      'Delete this news interest? All associated runs and results will also be removed. This cannot be undone.',
-      'Delete Interest',
-      'danger'
-    );
-    if (!confirmed) return;
+    if (!confirm('Delete this interest?')) return;
     if (btn) Utils.setButtonLoading(btn, 'Deleting...');
     try {
       await fetch(`/api/v1/agents/news/interests/${interestId}`, { method:'DELETE', headers: authHeaders() });
