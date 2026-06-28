@@ -4,6 +4,9 @@ All notable changes to the Workbench project.
 
 ## [Unreleased]
 
+### Fixed
+- **Debate Arena & Knowledge Base tab rendering**: Fixed JavaScript syntax errors caused by unescaped apostrophes inside single-quoted HTML strings in `debate-tab.js` (`next round's`) and `knowledge/tab.js` (`collection's`). These caused both tabs to fail with `Unexpected identifier 's'` errors, leaving them in a permanent blank/loading state.
+
 ### Added
 - **News Pipeline — Per-Interest Email Recipient with Verification**: Users can now set any email address as the recipient for nightly news deliverables on a per-interest basis. A verification email with a 24-hour expiry link is sent to the recipient address. The recipient must click the public verification link (no login required) to confirm. Until verified, deliveries fall back to the user's own email address. Admin users see a warning notice on the interest card when email is not verified.
 - **News Pipeline — Feed Edit**: Each feed in the feed management panel now has an "Edit" button for inline editing of name and URL (calls the existing `PATCH /feeds/{id}` endpoint).

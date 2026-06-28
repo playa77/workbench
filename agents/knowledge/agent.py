@@ -128,7 +128,7 @@ class KnowledgeBaseAgent(AgentBase):
     async def _require_enabled(self, user: User, session: AsyncSession) -> None:
         user_settings = await _get_agent_settings(str(user.id), session)
         agent_config = user_settings.get(self.name, {})
-        if not agent_config.get("enabled", False):
+        if not agent_config.get("enabled", True):
             raise HTTPException(
                 status_code=403,
                 detail=f"Agent '{self.display_name}' is not enabled. "

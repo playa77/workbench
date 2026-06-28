@@ -51,7 +51,7 @@
         '</div>' +
         '<div class="form-group">' +
         '<label>Description</label>' +
-        '<input class="form-input" id="kb-new-desc" placeholder="Optional" style="font-size:12px;padding:6px 10px" data-tooltip="Optional description of the collection's purpose and content." data-help-page="/static/help/knowledge.html#create-collection" />' +
+        '<input class="form-input" id="kb-new-desc" placeholder="Optional" style="font-size:12px;padding:6px 10px" data-tooltip="Optional description of the collection\'s purpose and content." data-help-page="/static/help/knowledge.html#create-collection" />' +
         '</div>' +
         '<div style="display:flex;gap:8px">' +
         '<div class="form-group" style="flex:1">' +

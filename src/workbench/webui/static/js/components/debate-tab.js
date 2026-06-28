@@ -199,7 +199,7 @@
       +   '<div id="debate-director-panel" style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border-color)">'
       +     '<div style="font-size:12px;font-weight:600;margin-bottom:8px;color:var(--text-secondary)">Director Mode</div>'
       +     '<div style="display:flex;gap:8px;align-items:flex-end">'
-      +       '<input class="form-input" id="inject-content" placeholder="Inject a message..." style="flex:1" data-tooltip="Enter content to inject into the debate. This text will be included in the next round's responses." data-help-page="/static/help/debate.html#director-mode" />'
+      +       '<input class="form-input" id="inject-content" placeholder="Inject a message..." style="flex:1" data-tooltip="Enter content to inject into the debate. This text will be included in the next round\'s responses." data-help-page="/static/help/debate.html#director-mode" />'
       +       '<div style="min-width:120px">'
       +         '<label style="font-size:10px;color:var(--text-muted)">Weight</label>'
       +         '<input class="form-input" id="inject-weight" type="number" value="0.5" min="0" max="1" step="0.1" style="padding:4px 8px" data-tooltip="Weight of injected content (1–10). Higher values make the injected content more influential." data-help-page="/static/help/debate.html#director-mode" />'
