@@ -133,9 +133,17 @@
         var feedCountBadge = '<span style="font-size:10px;color:var(--text-muted);font-weight:normal;margin-left:6px">(' + (i.feed_count || 0) + ' feeds)</span>';
         var recipientInfo = '';
         if (i.email_recipient && i.email_recipient_verified) {
-          recipientInfo = '<div style="font-size:11px;color:var(--accent)">📧 Delivers to: ' + Utils.escapeHtml(i.email_recipient) + '</div>';
+          recipientInfo = '<div style="font-size:11px;color:var(--accent)">📧 Delivers to: ' + Utils.escapeHtml(i.email_recipient) + ' ✓</div>';
         } else if (i.enable_email && i.email_recipient) {
-          recipientInfo = '<div style="font-size:11px;color:var(--warning)">⚠ Email not verified — ' + (currentUser.is_admin ? 'deliveries will use the user email' : 'using your email') + '</div>';
+          var recipientLabel = currentUser.is_admin
+            ? 'Email <strong>' + Utils.escapeHtml(i.email_recipient) + '</strong> not verified — deliveries will use the user email'
+            : 'Email <strong>' + Utils.escapeHtml(i.email_recipient) + '</strong> not verified — using your email';
+          recipientInfo = '<div style="font-size:11px;color:var(--warning);display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+            + '<span>⚠ ' + recipientLabel + '</span>'
+            + '<button class="btn btn-secondary btn-sm" style="padding:2px 8px;font-size:10px" onclick="window.newsSendVerificationEmail(' + i.id + ', this)" data-tooltip="Send a verification email to ' + Utils.escapeHtml(i.email_recipient) + '">Verify Email</button>'
+            + '</div>';
+        } else if (i.enable_email && !i.email_recipient) {
+          recipientInfo = '<div style="font-size:11px;color:var(--warning)">⚠ Email enabled — no recipient set (will use your email)</div>';
         }
         return `
         <div class="card" id="news-interest-card-${i.id}">
@@ -300,7 +308,6 @@
         var interests = data.interests || [];
         var interest = interests.find(function (i) { return i.id === interestId; });
         if (!interest) { if (btn) Utils.resetButton(btn); return; }
-        var emailVerified = interest.email_recipient_verified;
         var emailRecipient = interest.email_recipient || '';
         var enableEmailChecked = interest.enable_email ? ' checked' : '';
         editDiv.innerHTML = 
@@ -318,14 +325,7 @@
           '<label class="toggle"><input type="checkbox" id="ei-brf-' + interestId + '"' + (interest.enable_brief ? ' checked' : '') + '><span class="toggle-switch"></span><span class="toggle-label">Brief</span></label>' +
           '<label class="toggle"><input type="checkbox" id="ei-email-' + interestId + '"' + enableEmailChecked + '><span class="toggle-switch"></span><span class="toggle-label">Email</span></label>' +
           '</div>' +
-          '<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end">' +
-          '<div class="form-group" style="margin:0"><label>Email Recipient</label><input class="form-input" id="ei-email-recipient-' + interestId + '" value="' + Utils.escapeHtml(emailRecipient) + '" placeholder="Leave empty for your email" style="font-size:12px" /></div>' +
-          (emailRecipient && !emailVerified
-            ? '<button class="btn btn-secondary btn-sm" id="ei-verify-btn-' + interestId + '" onclick="window.newsSendVerificationEmail(' + interestId + ', this)" style="margin-bottom:0;white-space:nowrap">Verify Email</button>'
-            : (emailRecipient && emailVerified
-              ? '<span style="font-size:11px;color:var(--accent);margin-bottom:4px">✓ Verified</span>'
-              : '')) +
-          '</div>' +
+           '<div class="form-group" style="margin:0"><label>Email Recipient</label><input class="form-input" id="ei-email-recipient-' + interestId + '" value="' + Utils.escapeHtml(emailRecipient) + '" placeholder="Leave empty for your email" style="font-size:12px" /></div>' +
           '<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="window.newsSaveInterest(' + interestId + ', this)">Save</button>' +
           '<button class="btn btn-secondary btn-sm" style="margin-left:6px;margin-top:8px" onclick="document.getElementById(\'news-edit-' + interestId + '\').style.display=\'none\'">Cancel</button>';
         editDiv.style.display = 'block';
@@ -528,6 +528,7 @@
       if (!r.ok) return r.json().then(function (e) { throw new Error(e.detail); });
       if (btn) Utils.resetButton(btn);
       Utils.showToast('Verification email sent', 'success');
+      loadInterests();
     }).catch(function (e) {
       if (btn) Utils.resetButton(btn);
       Utils.showToast('Failed: ' + e.message, 'error');

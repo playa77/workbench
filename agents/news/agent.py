@@ -345,13 +345,17 @@ class NewsAgent(AgentBase):
         base_url = os.environ.get("WORKBENCH_BASE_URL", "https://workbench.gronowski.cc")
         verify_url = f"{base_url}/api/v1/agents/news/verify-email-recipient?interest_id={interest_id}&token={raw_token}"
 
+        # Read SMTP overrides from the server_config DB table (admin-configured in Settings)
+        from workbench.core.email import get_smtp_overrides_from_db
+        smtp_overrides = await get_smtp_overrides_from_db(session)
+
         # Send the verification email
         try:
             from workbench.core.email import _send_email as send_smtp_email
             from workbench.core.config import load_config
             config = load_config()
 
-            await send_smtp_email(
+            sent_ok = await send_smtp_email(
                 config=config,
                 to_address=recipient,
                 subject="Verify your email for Workbench News Pipeline",
@@ -372,7 +376,15 @@ class NewsAgent(AgentBase):
                     f"This link expires in 24 hours.\n"
                     f"If you did not request this, you can ignore this email."
                 ),
+                smtp_overrides=smtp_overrides,
             )
+            if not sent_ok:
+                raise HTTPException(
+                    status_code=500,
+                    detail="SMTP not configured or failed to send. Configure SMTP in Settings or check server logs.",
+                )
+        except HTTPException:
+            raise
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to send verification email: {exc}")
 

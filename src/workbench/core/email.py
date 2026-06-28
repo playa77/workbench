@@ -48,11 +48,14 @@ async def _send_email(config, to_address: str, subject: str, html_body: str, pla
     import aiosmtplib
     from email.mime.multipart import MIMEMultipart
     from email.mime.text import MIMEText
+    from email.utils import formatdate, make_msgid
 
     msg = MIMEMultipart("alternative")
     msg["From"] = from_addr or "emailfrom@workbench.gronowski.cc"
     msg["To"] = to_address
     msg["Subject"] = subject
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = make_msgid(domain=host)
     msg.attach(MIMEText(plain_body + _PLAIN_SIGNATURE, "plain", "utf-8"))
     msg.attach(MIMEText(_HTML_WRAPPER.format(body=html_body), "html", "utf-8"))
 
@@ -64,6 +67,7 @@ async def _send_email(config, to_address: str, subject: str, html_body: str, pla
             username=user or None,
             password=password or None,
             use_tls=use_tls,
+            start_tls=use_tls,
         )
         LOGGER.info("Email sent to %s: %s", to_address, subject)
         return True
