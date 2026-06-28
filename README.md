@@ -233,7 +233,7 @@ pip install -e ".[dev]"
 ### Commands
 
 ```bash
-pytest tests/ -v              # 1,033+ tests, SQLite in-memory -- no external DB needed
+pytest tests/ -v              # 1,069 tests, SQLite in-memory -- no external DB needed
 ruff check src/workbench/ agents/    # Lint
 mypy src/ agents/                   # Type check
 ```
@@ -289,8 +289,8 @@ workbench/
 │       └── help/                    # 14 help pages (one per feature + index)
 │
 ├── config/default.toml              # Default configuration
-├── alembic/                         # Database migrations (16 versions)
-├── tests/                           # pytest suite (1,033+ tests)
+├── alembic/                         # Database migrations (18 versions)
+├── tests/                           # pytest suite (1,069 tests)
 ├── docker-compose.yml               # Docker deployment (PG + Workbench + Open WebUI)
 ├── Dockerfile                       # python:3.12-slim, tectonic, news+research extras, postgresql-client
 ├── pyproject.toml                   # Build, dependencies, tool configs

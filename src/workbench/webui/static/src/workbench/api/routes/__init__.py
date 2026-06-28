@@ -1,1 +1,0 @@
-"""Core routes package."""

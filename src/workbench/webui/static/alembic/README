@@ -1,4 +1,0 @@
-# ALEMBIC_README
-# This directory contains Alembic migration scripts for PostgreSQL.
-# To run migrations manually:
-#   DATABASE_URL=postgresql+asyncpg://... alembic upgrade head
