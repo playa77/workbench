@@ -6,6 +6,7 @@ All notable changes to the Workbench project.
 
 ### Fixed
 - **Debate Arena & Knowledge Base tab rendering**: Fixed JavaScript syntax errors caused by unescaped apostrophes inside single-quoted HTML strings in `debate-tab.js` (`next round's`) and `knowledge/tab.js` (`collection's`). These caused both tabs to fail with `Unexpected identifier 's'` errors, leaving them in a permanent blank/loading state.
+- **Math Tutor enabled state mismatch**: `_require_enabled()` in `agents/math_tutor/agent.py` defaulted to `False`, but the tabs API (`GET /api/v1/tabs`) and agents API (`GET /api/v1/agents`) both defaulted to `True`. This caused the Math Tutor toggle to appear checked in Settings even when no DB row existed, and the actual agent endpoints returned 403 "not enabled". Changed the default to `True` for consistency.
 
 ### Added
 - **News Pipeline — Per-Interest Email Recipient with Verification**: Users can now set any email address as the recipient for nightly news deliverables on a per-interest basis. A verification email with a 24-hour expiry link is sent to the recipient address. The recipient must click the public verification link (no login required) to confirm. Until verified, deliveries fall back to the user's own email address. Admin users see a warning notice on the interest card when email is not verified.
